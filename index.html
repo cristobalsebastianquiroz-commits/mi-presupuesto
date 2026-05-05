@@ -173,6 +173,32 @@
   /* ── INFO BOX ── */
   .info-box { background: rgba(56,189,248,.08); border: 1px solid rgba(56,189,248,.2); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 12px; color: var(--muted); line-height: 1.6; }
   .info-box strong { color: var(--accent); }
+
+  /* ── DEUDORES ── */
+  .deudor-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid var(--border); cursor: pointer; transition: border-color .2s; }
+  .deudor-card:hover { border-color: var(--accent); }
+  .deudor-card.pagado { opacity: .55; border-style: dashed; }
+  .deudor-top { display: flex; align-items: center; gap: 12px; }
+  .deudor-avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; flex-shrink: 0; background: rgba(56,189,248,.15); color: var(--accent); }
+  .deudor-info { flex: 1; min-width: 0; }
+  .deudor-nombre { font-size: 15px; font-weight: 600; }
+  .deudor-desc { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .deudor-monto { text-align: right; }
+  .deudor-total { font-size: 18px; font-weight: 600; font-family: "DM Mono", monospace; color: var(--yellow); }
+  .deudor-total.cobrado { color: var(--green); }
+  .deudor-fecha { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .deudor-abonos { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .abono-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .abono-row span:first-child { color: var(--muted); }
+  .abono-row span:last-child { color: var(--green); font-family: "DM Mono", monospace; }
+  .deudor-status { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 3px 8px; border-radius: 99px; font-weight: 500; margin-top: 8px; }
+  .deudor-status.pendiente { background: rgba(251,191,36,.12); color: var(--yellow); border: 1px solid rgba(251,191,36,.25); }
+  .deudor-status.cobrado { background: rgba(74,222,128,.12); color: var(--green); border: 1px solid rgba(74,222,128,.25); }
+  .deudor-status.parcial { background: rgba(56,189,248,.12); color: var(--accent); border: 1px solid rgba(56,189,248,.25); }
+  .resumen-cobro { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .resumen-cobro-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+  .resumen-cobro-pill .val { font-size: 17px; font-weight: 600; font-family: "DM Mono", monospace; margin-bottom: 2px; }
+  .resumen-cobro-pill .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 </style>
 </head>
 <body>
@@ -195,6 +221,10 @@
     <button class="nav-btn" onclick="showTab('metas')" id="tab-metas">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="3" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21"/><line x1="3" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></svg>
       Metas
+    </button>
+    <button class="nav-btn" onclick="showTab('cobros')" id="tab-cobros">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.42 0-8-1.79-8-4V6c0-2.21 3.58-4 8-4s8 1.79 8 4v8c0 2.21-3.58 4-8 4z"/></svg>
+      Cobros
     </button>
     <button class="nav-btn" onclick="showTab('config')" id="tab-config">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -253,6 +283,7 @@ function getData() {
   if (!d.presupuestos) d.presupuestos = {};
   if (!d.metas) d.metas = [];
   if (!d.customCats) d.customCats = [];
+  if (!d.deudores) d.deudores = [];
   if (!d.currentMonth) {
     const now = new Date();
     d.currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -347,6 +378,7 @@ function showTab(tab) {
   if (tab === 'resumen') c.innerHTML = renderResumen();
   else if (tab === 'gastos') c.innerHTML = renderGastos();
   else if (tab === 'metas') c.innerHTML = renderMetas();
+  else if (tab === 'cobros') c.innerHTML = renderCobros();
   else if (tab === 'config') c.innerHTML = renderConfig();
 }
 
@@ -1070,6 +1102,234 @@ function closeSheet() {
   document.getElementById('sheet').classList.remove('open');
 }
 
+
+// ── COBROS (Personas que me deben) ───────────────────────────────────────────
+function renderCobros() {
+  const d = getData();
+  const deudores = d.deudores || [];
+
+  const totalPendiente = deudores.reduce((a, x) => {
+    if (x.cobrado) return a;
+    const abonado = (x.abonos || []).reduce((s, ab) => s + ab.monto, 0);
+    return a + Math.max(x.monto - abonado, 0);
+  }, 0);
+  const totalCobrado = deudores.reduce((a, x) => {
+    if (!x.cobrado) return a;
+    return a + x.monto;
+  }, 0);
+  const countPendiente = deudores.filter(x => !x.cobrado).length;
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-top:4px">
+    <span style="font-size:16px;font-weight:600">💸 Me deben</span>
+    <button onclick="openAddDeudor()" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);color:var(--yellow);border-radius:10px;padding:7px 14px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">+ Agregar</button>
+  </div>`;
+
+  if (deudores.length > 0) {
+    html += `<div class="resumen-cobro">
+      <div class="resumen-cobro-pill">
+        <div class="val" style="color:var(--yellow)">${fmt(totalPendiente)}</div>
+        <div class="lbl">Por cobrar</div>
+      </div>
+      <div class="resumen-cobro-pill">
+        <div class="val" style="color:var(--green)">${fmt(totalCobrado)}</div>
+        <div class="lbl">Cobrado</div>
+      </div>
+      <div class="resumen-cobro-pill">
+        <div class="val" style="color:var(--muted)">${countPendiente}</div>
+        <div class="lbl">Pendientes</div>
+      </div>
+    </div>`;
+  }
+
+  if (deudores.length === 0) {
+    return html + `<div class="empty" style="margin-top:30px"><div class="empty-icon">🤝</div><p>Sin deudas registradas.<br>Toca + para agregar.</p></div>`;
+  }
+
+  // Pendientes primero
+  const pendientes = deudores.filter(x => !x.cobrado);
+  const cobrados   = deudores.filter(x => x.cobrado);
+
+  if (pendientes.length > 0) {
+    html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:4px 2px 8px">Pendientes</div>`;
+    pendientes.forEach(x => { html += renderDeudorCard(x); });
+  }
+
+  if (cobrados.length > 0) {
+    html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:14px 2px 8px">Cobrados ✓</div>`;
+    cobrados.forEach(x => { html += renderDeudorCard(x); });
+  }
+
+  return html;
+}
+
+function renderDeudorCard(x) {
+  const abonado = (x.abonos || []).reduce((s, ab) => s + ab.monto, 0);
+  const restante = Math.max(x.monto - abonado, 0);
+  const pct = x.monto > 0 ? Math.min((abonado / x.monto) * 100, 100) : 0;
+  const inicial = x.nombre.trim().charAt(0).toUpperCase();
+
+  let statusClass = 'pendiente', statusLabel = '⏳ Pendiente';
+  if (x.cobrado) { statusClass = 'cobrado'; statusLabel = '✓ Cobrado'; }
+  else if (abonado > 0) { statusClass = 'parcial'; statusLabel = `💧 Abonado ${fmt(abonado)}`; }
+
+  let html = `<div class="deudor-card${x.cobrado?' pagado':''}" onclick="openEditDeudor('${x.id}')">
+    <div class="deudor-top">
+      <div class="deudor-avatar">${inicial}</div>
+      <div class="deudor-info">
+        <div class="deudor-nombre">${x.nombre}</div>
+        ${x.desc ? `<div class="deudor-desc">${x.desc}</div>` : ''}
+        <span class="deudor-status ${statusClass}">${statusLabel}</span>
+      </div>
+      <div class="deudor-monto">
+        <div class="deudor-total${x.cobrado?' cobrado':''}">${fmt(restante > 0 ? restante : x.monto)}</div>
+        <div class="deudor-fecha">${x.fecha || ''}</div>
+      </div>
+    </div>`;
+
+  if (!x.cobrado && x.monto > 0 && abonado > 0) {
+    html += `<div style="margin-top:12px">
+      <div class="prog-bar"><div class="prog-fill accent" style="width:${pct}%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px">
+        <span>Abonado: ${fmt(abonado)}</span><span>Total: ${fmt(x.monto)}</span>
+      </div>
+    </div>`;
+  }
+
+  if (x.abonos && x.abonos.length > 0 && !x.cobrado) {
+    html += `<div class="deudor-abonos">`;
+    x.abonos.slice().reverse().forEach(ab => {
+      html += `<div class="abono-row"><span>🟢 ${ab.fecha || 'Abono'}</span><span>+${fmt(ab.monto)}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function openAddDeudor() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('sheet-content').innerHTML = `
+    <div class="sheet-title">💸 Nueva deuda</div>
+    <div class="field"><label>Nombre de la persona</label><input type="text" id="d-nombre" placeholder="Ej: Juan Pérez"></div>
+    <div class="field"><label>Motivo / descripción</label><input type="text" id="d-desc" placeholder="Ej: Préstamo para comida, Cuota viaje..."></div>
+    <div class="field"><label>Monto total ($)</label><input type="number" id="d-monto" placeholder="0" inputmode="numeric"></div>
+    <div class="field"><label>Fecha del préstamo</label><input type="date" id="d-fecha" value="${today}"></div>
+    <button class="btn-primary" onclick="saveDeudor()">Guardar</button>
+  `;
+  openSheet();
+}
+
+function openEditDeudor(id) {
+  const d = getData();
+  const x = d.deudores.find(e => e.id === id);
+  if (!x) return;
+  const abonado = (x.abonos || []).reduce((s, ab) => s + ab.monto, 0);
+  const restante = Math.max(x.monto - abonado, 0);
+
+  let abonosHtml = '';
+  if (x.abonos && x.abonos.length > 0) {
+    abonosHtml = `<div style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Historial de abonos</div>
+      <div class="card" style="padding:0 16px;margin-bottom:0">`;
+    x.abonos.slice().reverse().forEach(ab => {
+      abonosHtml += `<div class="abono-row" style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <span>${ab.fecha || '—'} · ${ab.nota || 'Abono'}</span>
+        <span>+${fmt(ab.monto)}</span>
+      </div>`;
+    });
+    abonosHtml += `</div></div>`;
+  }
+
+  document.getElementById('sheet-content').innerHTML = `
+    <div class="sheet-title">✏️ ${x.nombre}</div>
+    <div class="summary-grid" style="margin-bottom:16px">
+      <div class="pill"><div class="pill-label">Deuda total</div><div class="pill-val" style="color:var(--yellow)">${fmt(x.monto)}</div></div>
+      <div class="pill"><div class="pill-label">${restante > 0 ? 'Pendiente' : '¡Cobrado!'}</div><div class="pill-val" style="color:${restante>0?'var(--red)':'var(--green)'}">${fmt(restante > 0 ? restante : x.monto)}</div></div>
+    </div>
+    ${!x.cobrado && restante > 0 ? `
+    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid var(--border)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">Registrar abono</div>
+      <div class="field" style="margin-bottom:8px"><label>Monto del abono ($)</label><input type="number" id="ab-monto" placeholder="0" inputmode="numeric"></div>
+      <div class="field" style="margin-bottom:8px"><label>Nota</label><input type="text" id="ab-nota" placeholder="Ej: Me pagó en efectivo..."></div>
+      <button onclick="saveAbono('${id}')" style="width:100%;padding:11px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:var(--green);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">✓ Registrar abono</button>
+    </div>
+    ` : ''}
+    ${abonosHtml}
+    ${!x.cobrado ? `<button onclick="marcarCobrado('${id}')" style="width:100%;padding:12px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:var(--green);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px">🎉 Marcar como cobrado</button>` : `<button onclick="marcarPendiente('${id}')" style="width:100%;padding:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:var(--yellow);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;margin-bottom:10px">↩️ Reabrir deuda</button>`}
+    <button class="btn-delete" style="width:100%" onclick="deleteDeudor('${id}')">🗑️ Eliminar registro</button>
+  `;
+  openSheet();
+}
+
+function saveDeudor() {
+  const nombre = document.getElementById('d-nombre').value.trim();
+  if (!nombre) { alert('Ingresa el nombre de la persona'); return; }
+  const monto = parseFloat(document.getElementById('d-monto').value);
+  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+  const fecha = document.getElementById('d-fecha').value;
+  const [y, m, day] = fecha.split('-');
+  const fechaLabel = `${parseInt(day)} ${MONTHS[parseInt(m)-1].slice(0,3)} ${y}`;
+  const d = getData();
+  d.deudores.push({
+    id: Date.now().toString(),
+    nombre,
+    desc: document.getElementById('d-desc').value.trim(),
+    monto,
+    fecha: fechaLabel,
+    cobrado: false,
+    abonos: [],
+  });
+  save(d);
+  closeSheet();
+  showTab('cobros');
+}
+
+function saveAbono(id) {
+  const monto = parseFloat(document.getElementById('ab-monto').value);
+  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+  const nota = document.getElementById('ab-nota').value.trim();
+  const today = new Date();
+  const fechaLabel = `${today.getDate()} ${MONTHS[today.getMonth()].slice(0,3)} ${today.getFullYear()}`;
+  const d = getData();
+  const x = d.deudores.find(e => e.id === id);
+  if (!x) return;
+  if (!x.abonos) x.abonos = [];
+  x.abonos.push({ monto, nota, fecha: fechaLabel });
+  // Si el abono cubre el restante, marcar como cobrado automáticamente
+  const abonado = x.abonos.reduce((s, ab) => s + ab.monto, 0);
+  if (abonado >= x.monto) x.cobrado = true;
+  save(d);
+  closeSheet();
+  showTab('cobros');
+}
+
+function marcarCobrado(id) {
+  const d = getData();
+  const x = d.deudores.find(e => e.id === id);
+  if (x) x.cobrado = true;
+  save(d);
+  closeSheet();
+  showTab('cobros');
+}
+
+function marcarPendiente(id) {
+  const d = getData();
+  const x = d.deudores.find(e => e.id === id);
+  if (x) x.cobrado = false;
+  save(d);
+  closeSheet();
+  showTab('cobros');
+}
+
+function deleteDeudor(id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  const d = getData();
+  d.deudores = d.deudores.filter(e => e.id !== id);
+  save(d);
+  closeSheet();
+  showTab('cobros');
+}
 // ── INIT ──────────────────────────────────────────────────────────────────────
 showTab('resumen');
 </script>
