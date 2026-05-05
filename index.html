@@ -66,6 +66,7 @@
   .prog-fill.green { background: var(--green); }
   .prog-fill.yellow { background: var(--yellow); }
   .prog-fill.red { background: var(--red); }
+  .prog-fill.accent { background: var(--accent); }
 
   /* ── CATEGORY ITEMS ── */
   .cat-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
@@ -108,20 +109,38 @@
   .type-btn.active-ing { background: rgba(74,222,128,.15); border-color: var(--green); color: var(--green); }
   .type-btn.active-gas { background: rgba(248,113,113,.15); border-color: var(--red); color: var(--red); }
   .btn-primary { width: 100%; padding: 14px; background: var(--accent); color: #0f172a; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 6px; }
+  .btn-secondary { width: 100%; padding: 12px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 8px; }
   .btn-delete { background: rgba(248,113,113,.15); color: var(--red); border: 1px solid rgba(248,113,113,.3); border-radius: 10px; padding: 10px 16px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; }
 
   /* ── METAS ── */
-  .meta-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); }
+  .meta-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); cursor: pointer; transition: border-color .2s; }
+  .meta-card:hover { border-color: var(--accent); }
   .meta-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
   .meta-name { font-size: 15px; font-weight: 500; }
   .meta-pct { font-size: 22px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--accent); }
   .meta-nums { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .meta-badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 500; margin-top: 4px; }
+  .meta-badge.linked { background: rgba(56,189,248,.15); color: var(--accent); border: 1px solid rgba(56,189,248,.3); }
+  .meta-badge.manual { background: rgba(148,163,184,.1); color: var(--muted); border: 1px solid var(--border); }
+  .meta-saving-info { margin-top: 10px; padding: 10px 12px; background: var(--surface2); border-radius: 10px; border: 1px solid var(--border); }
+  .meta-saving-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 3px 0; }
+  .meta-saving-row span:first-child { color: var(--muted); }
+  .meta-saving-row span:last-child { font-weight: 500; font-family: 'DM Mono', monospace; }
+
+  /* ── EMOJI PICKER ── */
+  .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 8px; max-height: 140px; overflow-y: auto; }
+  .emoji-opt { padding: 8px; border-radius: 8px; font-size: 20px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
+  .emoji-opt:hover { background: var(--surface2); }
+  .emoji-opt.selected { border-color: var(--accent); background: rgba(56,189,248,.1); }
+  .color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; }
+  .color-opt { width: 100%; aspect-ratio: 1; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
+  .color-opt.selected { border-color: white; transform: scale(1.1); }
 
   /* ── SETTINGS ── */
   .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
   .setting-row:last-child { border-bottom: none; }
   .setting-label { font-size: 14px; }
-  .setting-val { font-size: 13px; color: var(--accent); font-weight: 500; }
+  .setting-val { font-size: 13px; color: var(--accent); font-weight: 500; cursor: pointer; }
   .month-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
   .month-btn { padding: 10px 6px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; text-align: center; }
   .month-btn.active { background: rgba(56,189,248,.15); border-color: var(--accent); color: var(--accent); font-weight: 500; }
@@ -140,6 +159,20 @@
   .month-bar::-webkit-scrollbar { display: none; }
   .month-chip { flex-shrink: 0; padding: 6px 14px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
   .month-chip.active { background: rgba(56,189,248,.15); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+
+  /* ── CAT MANAGE ── */
+  .cat-manage-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .cat-manage-item:last-child { border-bottom: none; }
+  .cat-manage-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+  .cat-manage-name { flex: 1; font-size: 14px; }
+  .cat-manage-actions { display: flex; gap: 8px; }
+  .btn-icon { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; color: var(--muted); font-size: 14px; transition: all .15s; }
+  .btn-icon:hover { background: var(--surface2); color: var(--text); }
+  .btn-icon.del:hover { color: var(--red); }
+
+  /* ── INFO BOX ── */
+  .info-box { background: rgba(56,189,248,.08); border: 1px solid rgba(56,189,248,.2); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .info-box strong { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -181,19 +214,36 @@
 </div>
 
 <script>
-// ── DATA ─────────────────────────────────────────────────────────────────────
-const CATS = [
-  { id:'ahorro',    name:'Ahorro',       icon:'💰', color:'rgba(167,139,250,.2)',  es:'gasto' },
-  { id:'vivienda',  name:'Vivienda',     icon:'🏠', color:'rgba(56,189,248,.2)',   es:'gasto' },
-  { id:'alimento',  name:'Alimentación', icon:'🍽️', color:'rgba(74,222,128,.2)',   es:'gasto' },
-  { id:'transp',    name:'Transporte',   icon:'🚗', color:'rgba(251,191,36,.2)',   es:'gasto' },
-  { id:'entret',    name:'Ocio',         icon:'🎬', color:'rgba(167,139,250,.2)',  es:'gasto' },
-  { id:'deudas',    name:'Deudas',       icon:'💳', color:'rgba(248,113,113,.2)',  es:'gasto' },
-  { id:'ingreso',   name:'Ingreso',      icon:'📥', color:'rgba(74,222,128,.2)',   es:'ingreso'},
+// ── CATEGORÍAS BASE (no borrable, siempre presentes) ─────────────────────────
+const BASE_CATS = [
+  { id:'ahorro',    name:'Ahorro',       icon:'💰', color:'rgba(167,139,250,.2)',  es:'gasto',   base:true },
+  { id:'vivienda',  name:'Vivienda',     icon:'🏠', color:'rgba(56,189,248,.2)',   es:'gasto',   base:true },
+  { id:'alimento',  name:'Alimentación', icon:'🍽️', color:'rgba(74,222,128,.2)',   es:'gasto',   base:true },
+  { id:'transp',    name:'Transporte',   icon:'🚗', color:'rgba(251,191,36,.2)',   es:'gasto',   base:true },
+  { id:'entret',    name:'Ocio',         icon:'🎬', color:'rgba(167,139,250,.2)',  es:'gasto',   base:true },
+  { id:'deudas',    name:'Deudas',       icon:'💳', color:'rgba(248,113,113,.2)',  es:'gasto',   base:true },
+  { id:'ingreso',   name:'Ingreso',      icon:'📥', color:'rgba(74,222,128,.2)',   es:'ingreso', base:true },
 ];
+
+// Paleta de colores para categorías personalizadas
+const CAT_COLORS = [
+  'rgba(56,189,248,.25)',   // azul
+  'rgba(74,222,128,.25)',   // verde
+  'rgba(251,191,36,.25)',   // amarillo
+  'rgba(248,113,113,.25)',  // rojo
+  'rgba(167,139,250,.25)',  // morado
+  'rgba(244,114,182,.25)',  // rosa
+  'rgba(251,146,60,.25)',   // naranja
+  'rgba(34,211,238,.25)',   // cyan
+  'rgba(163,230,53,.25)',   // lima
+  'rgba(209,213,219,.25)',  // gris
+];
+
+const CAT_EMOJIS = ['🏋️','✈️','🎓','💊','🐾','📚','💻','🎮','🛍️','☕','🎵','🏥','💇','🔧','🎁','🌿','🍺','🚀','🏊','🎨','📱','🏡','👶','🐶','⚡','🌊','🎯','💎','🎪','🎭'];
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+// ── DATA ─────────────────────────────────────────────────────────────────────
 function load() { try { return JSON.parse(localStorage.getItem('presupuesto_v1') || '{}'); } catch(e){ return {}; } }
 function save(d) { localStorage.setItem('presupuesto_v1', JSON.stringify(d)); }
 
@@ -202,6 +252,7 @@ function getData() {
   if (!d.txs) d.txs = [];
   if (!d.presupuestos) d.presupuestos = {};
   if (!d.metas) d.metas = [];
+  if (!d.customCats) d.customCats = [];
   if (!d.currentMonth) {
     const now = new Date();
     d.currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -209,8 +260,17 @@ function getData() {
   return d;
 }
 
+// Obtener TODAS las categorías (base + personalizadas)
+function getAllCats() {
+  const d = getData();
+  return [...BASE_CATS, ...d.customCats];
+}
+
 let currentTab = 'resumen';
 let editingMeta = null;
+let editingCat = null;
+let selectedEmoji = '🎯';
+let selectedColor = CAT_COLORS[0];
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function fmt(n) {
@@ -228,13 +288,38 @@ function monthLabel(key) {
 function getMonthTxs(d) {
   return d.txs.filter(t => t.month === monthKey(d));
 }
-function getCat(id) { return CATS.find(c => c.id === id) || CATS[0]; }
+function getCat(id) {
+  return getAllCats().find(c => c.id === id) || BASE_CATS[0];
+}
 
 function getTotals(d) {
   const txs = getMonthTxs(d);
   const ingresos = txs.filter(t => t.cat === 'ingreso').reduce((a,t) => a + t.monto, 0);
   const gastos   = txs.filter(t => t.cat !== 'ingreso').reduce((a,t) => a + t.monto, 0);
   return { ingresos, gastos, balance: ingresos - gastos };
+}
+
+// Calcular cuánto se ha ahorrado REAL en el mes actual (categoría "ahorro")
+function getAhorroReal(d) {
+  const txs = getMonthTxs(d);
+  return txs.filter(t => t.cat === 'ahorro').reduce((a,t) => a + t.monto, 0);
+}
+
+// Calcular total ahorrado histórico (todos los meses) en la categoría ahorro
+function getAhorroHistorico(d) {
+  return d.txs.filter(t => t.cat === 'ahorro').reduce((a,t) => a + t.monto, 0);
+}
+
+// Obtener total aportado a una meta específica (ahorros vinculados)
+function getAportesMeta(d, metaId) {
+  // Si la meta tiene aportación manual (campo ahorrado), suma ese + ahorros históricos si está vinculada
+  const m = d.metas.find(x => x.id === metaId);
+  if (!m) return 0;
+  if (m.vinculado) {
+    // Vinculada al ahorro real: base manual + ahorro acumulado desde creación
+    return (m.baseAhorrado || 0) + (m.ahorroVinculado || 0);
+  }
+  return m.ahorrado || 0;
 }
 
 // ── HEADER ───────────────────────────────────────────────────────────────────
@@ -271,6 +356,7 @@ function renderResumen() {
   const { ingresos, gastos, balance } = getTotals(d);
   const pres = d.presupuestos[monthKey(d)] || {};
   const txs = getMonthTxs(d);
+  const allCats = getAllCats();
 
   let html = `<div class="summary-grid">
     <div class="pill"><div class="pill-label">Ingresos</div><div class="pill-val green">${fmt(ingresos)}</div></div>
@@ -279,7 +365,7 @@ function renderResumen() {
 
   // Gasto por categoría
   html += `<div class="card"><div class="card-title">Gastos por categoría</div>`;
-  const catIds = CATS.filter(c => c.id !== 'ingreso');
+  const catIds = allCats.filter(c => c.id !== 'ingreso');
   let hasAny = false;
   catIds.forEach(cat => {
     const total = txs.filter(t => t.cat === cat.id).reduce((a,t) => a + t.monto, 0);
@@ -370,31 +456,66 @@ function renderGastos() {
 // ── METAS ────────────────────────────────────────────────────────────────────
 function renderMetas() {
   const d = getData();
+  const ahorroHistorico = getAhorroHistorico(d);
+
   let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-top:4px">
     <span style="font-size:16px;font-weight:600">Mis metas</span>
     <button onclick="openAddMeta()" style="background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);color:var(--accent);border-radius:10px;padding:7px 14px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">+ Nueva</button>
   </div>`;
 
-  if (d.metas.length === 0) {
-    return html + `<div class="empty" style="margin-top:40px"><div class="empty-icon">🎯</div><p>Sin metas todavía.<br>Crea una para empezar.</p></div>`;
+  // Resumen de ahorro disponible
+  if (ahorroHistorico > 0) {
+    html += `<div class="card" style="margin-bottom:14px;background:rgba(56,189,248,.06);border-color:rgba(56,189,248,.2)">
+      <div class="card-title" style="color:var(--accent)">Ahorro total acumulado</div>
+      <div style="font-size:24px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent)">${fmt(ahorroHistorico)}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Registrado en categoría Ahorro · todos los meses</div>
+    </div>`;
   }
 
+  if (d.metas.length === 0) {
+    return html + `<div class="empty" style="margin-top:20px"><div class="empty-icon">🎯</div><p>Sin metas todavía.<br>Crea una para empezar.</p></div>`;
+  }
+
+  // Calcular cuánto ahorro ya está "comprometido" en metas vinculadas
+  let ahorroComprometido = 0;
   d.metas.forEach(m => {
-    const pct = m.objetivo > 0 ? Math.min(m.ahorrado / m.objetivo * 100, 100) : 0;
-    const color = pct >= 100 ? 'green' : pct >= 50 ? 'yellow' : 'green';
-    const restante = Math.max(m.objetivo - m.ahorrado, 0);
+    if (m.vinculado) ahorroComprometido += (m.ahorroVinculado || 0);
+  });
+
+  d.metas.forEach(m => {
+    const totalAhorrado = m.vinculado
+      ? (m.baseAhorrado || 0) + (m.ahorroVinculado || 0)
+      : (m.ahorrado || 0);
+    const pct = m.objetivo > 0 ? Math.min(totalAhorrado / m.objetivo * 100, 100) : 0;
+    const barColor = pct >= 100 ? 'green' : 'accent';
+    const restante = Math.max(m.objetivo - totalAhorrado, 0);
+    const mesesRestantes = m.mensual > 0 ? Math.ceil(restante / m.mensual) : null;
+
     html += `<div class="meta-card" onclick="openEditMeta('${m.id}')">
       <div class="meta-top">
-        <div><div class="meta-name">${m.nombre}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${m.mensual>0?'Ahorro mensual: '+fmt(m.mensual):''}</div></div>
+        <div>
+          <div class="meta-name">${m.emoji || '🎯'} ${m.nombre}</div>
+          <span class="meta-badge ${m.vinculado ? 'linked' : 'manual'}">${m.vinculado ? '🔗 Vinculada al ahorro' : '✏️ Manual'}</span>
+        </div>
         <div class="meta-pct">${pct.toFixed(0)}%</div>
       </div>
-      <div class="prog-bar"><div class="prog-fill ${color}" style="width:${pct}%"></div></div>
+      <div class="prog-bar"><div class="prog-fill ${barColor}" style="width:${pct}%"></div></div>
       <div class="meta-nums">
-        <span>${fmt(m.ahorrado)} ahorrado</span>
-        <span>Meta: ${fmt(m.objetivo)}</span>
+        <span>${fmt(totalAhorrado)} ahorrado</span>
+        <span>Objetivo: ${fmt(m.objetivo)}</span>
       </div>
-      ${restante > 0 && m.mensual > 0 ? `<div style="margin-top:8px;font-size:12px;color:var(--muted)">⏳ ${Math.ceil(restante/m.mensual)} meses para lograrlo</div>` : ''}
-      ${pct >= 100 ? `<div style="margin-top:8px;font-size:13px;color:var(--green);font-weight:500">🎉 ¡Meta alcanzada!</div>` : ''}
+      <div class="meta-saving-info" style="margin-top:10px">
+        ${m.vinculado ? `
+          <div class="meta-saving-row"><span>Base inicial</span><span>${fmt(m.baseAhorrado||0)}</span></div>
+          <div class="meta-saving-row"><span>Ahorro vinculado</span><span style="color:var(--accent)">${fmt(m.ahorroVinculado||0)}</span></div>
+          <div class="meta-saving-row" style="padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span style="font-weight:500;color:var(--text)">Falta para la meta</span><span style="color:${restante>0?'var(--yellow)':'var(--green)'};font-weight:600">${restante > 0 ? fmt(restante) : '🎉 ¡Completada!'}</span></div>
+        ` : `
+          <div class="meta-saving-row"><span>Ahorrado</span><span>${fmt(m.ahorrado||0)}</span></div>
+          <div class="meta-saving-row" style="padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span style="font-weight:500;color:var(--text)">Falta para la meta</span><span style="color:${restante>0?'var(--yellow)':'var(--green)'};font-weight:600">${restante > 0 ? fmt(restante) : '🎉 ¡Completada!'}</span></div>
+        `}
+        ${mesesRestantes && restante > 0 ? `<div class="meta-saving-row" style="padding-top:4px"><span>Estimado si ahorras ${fmt(m.mensual)}/mes</span><span>${mesesRestantes} meses</span></div>` : ''}
+      </div>
+      ${pct >= 100 ? `<div style="margin-top:10px;font-size:13px;color:var(--green);font-weight:500;text-align:center">🎉 ¡Meta alcanzada!</div>` : ''}
     </div>`;
   });
   return html;
@@ -405,6 +526,7 @@ function renderConfig() {
   const d = getData();
   const pres = d.presupuestos[monthKey(d)] || {};
   const mes = monthLabel(monthKey(d));
+  const allCats = getAllCats();
 
   let html = `<div style="padding-top:4px">
   <div class="card"><div class="card-title">Mes activo</div>`;
@@ -423,9 +545,42 @@ function renderConfig() {
   });
   html += `</div></div>`;
 
+  // Categorías personalizadas
+  html += `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="card-title" style="margin-bottom:0">Categorías</div>
+      <button onclick="openAddCat()" style="background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);color:var(--accent);border-radius:8px;padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer">+ Nueva</button>
+    </div>`;
+
+  // Categorías base (solo lectura)
+  html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Predeterminadas</div>`;
+  BASE_CATS.filter(c => c.id !== 'ingreso').forEach(cat => {
+    html += `<div class="cat-manage-item">
+      <div class="cat-manage-icon" style="background:${cat.color}">${cat.icon}</div>
+      <span class="cat-manage-name">${cat.name}</span>
+      <span style="font-size:11px;color:var(--muted)">Base</span>
+    </div>`;
+  });
+
+  // Categorías personalizadas
+  if (d.customCats && d.customCats.length > 0) {
+    html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px">Personalizadas</div>`;
+    d.customCats.forEach(cat => {
+      html += `<div class="cat-manage-item">
+        <div class="cat-manage-icon" style="background:${cat.color}">${cat.icon}</div>
+        <span class="cat-manage-name">${cat.name}</span>
+        <div class="cat-manage-actions">
+          <button class="btn-icon" onclick="openEditCat('${cat.id}')">✏️</button>
+          <button class="btn-icon del" onclick="deleteCat('${cat.id}')">🗑️</button>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
   // Presupuestos
   html += `<div class="card"><div class="card-title">Presupuesto para ${mes}</div>`;
-  CATS.filter(c=>c.id!=='ingreso').forEach(cat => {
+  allCats.filter(c=>c.id!=='ingreso').forEach(cat => {
     html += `<div class="setting-row">
       <span class="setting-label">${cat.icon} ${cat.name}</span>
       <span class="setting-val" onclick="openEditPres('${cat.id}')">${pres[cat.id]?fmt(pres[cat.id]):'Fijar'}</span>
@@ -445,6 +600,7 @@ function renderConfig() {
 
 // ── SHEET: AGREGAR MOVIMIENTO ─────────────────────────────────────────────────
 function openAddSheet() {
+  const allCats = getAllCats();
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-title">Nuevo movimiento</div>
@@ -456,7 +612,7 @@ function openAddSheet() {
     <div class="field"><label>Descripción</label><input type="text" id="f-desc" placeholder="Ej: Supermercado Lider"></div>
     <div class="field" id="f-cat-wrap"><label>Categoría</label>
       <select id="f-cat">
-        ${CATS.filter(c=>c.id!=='ingreso').map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+        ${allCats.filter(c=>c.id!=='ingreso').map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
       </select>
     </div>
     <div class="field"><label>Fecha</label><input type="date" id="f-fecha" value="${today}"></div>
@@ -480,17 +636,39 @@ function saveTx() {
   const fecha = document.getElementById('f-fecha').value;
   const [y,m,day] = fecha.split('-');
   const fechaLabel = `${parseInt(day)} ${MONTHS[parseInt(m)-1].slice(0,3)} ${y}`;
+  const catId = txType === 'ing' ? 'ingreso' : document.getElementById('f-cat').value;
+
   d.txs.push({
     id: Date.now().toString(),
     monto,
     desc: document.getElementById('f-desc').value.trim(),
-    cat: txType === 'ing' ? 'ingreso' : document.getElementById('f-cat').value,
+    cat: catId,
     fecha: fechaLabel,
     month: monthKey(d),
   });
+
+  // Si es un gasto de ahorro, actualizar metas vinculadas automáticamente
+  if (catId === 'ahorro') {
+    actualizarMetasVinculadas(d, monto);
+  }
+
   save(d);
   closeSheet();
   showTab(currentTab);
+}
+
+// Distribuir ahorro nuevo entre metas vinculadas (en orden de creación)
+function actualizarMetasVinculadas(d, montoNuevo) {
+  let disponible = montoNuevo;
+  d.metas.forEach(m => {
+    if (!m.vinculado || disponible <= 0) return;
+    const totalActual = (m.baseAhorrado || 0) + (m.ahorroVinculado || 0);
+    const restante = Math.max(m.objetivo - totalActual, 0);
+    if (restante <= 0) return;
+    const aportar = Math.min(disponible, restante);
+    m.ahorroVinculado = (m.ahorroVinculado || 0) + aportar;
+    disponible -= aportar;
+  });
 }
 
 // ── SHEET: EDITAR TX ──────────────────────────────────────────────────────────
@@ -577,14 +755,63 @@ function savePresupuesto(catId) {
 function openAddMeta() {
   editingMeta = null;
   document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">Nueva meta</div>
+    <div class="sheet-title">Nueva meta 🎯</div>
+    <div class="info-box">
+      <strong>💡 ¿Vincular al ahorro?</strong><br>
+      Si activas la vinculación, cada vez que registres un gasto en la categoría <strong>Ahorro</strong>, el monto se descontará automáticamente de esta meta.
+    </div>
     <div class="field"><label>Nombre de la meta</label><input type="text" id="m-nombre" placeholder="Ej: Fondo de emergencia"></div>
+    <div class="field"><label>Emoji</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span id="m-emoji-preview" style="font-size:28px">🎯</span>
+        <input type="text" id="m-emoji" value="🎯" placeholder="🎯" style="width:80px" oninput="document.getElementById('m-emoji-preview').textContent=this.value||'🎯'">
+      </div>
+      <div class="emoji-grid">
+        ${['🎯','🏖️','🚗','🏠','✈️','💻','🎓','💊','🐾','📚','💎','🎁','🌿','🎵','🏋️','🍺','🚀','🏊','👶','🔧'].map(e=>`<div class="emoji-opt" onclick="pickEmoji('${e}','new')">${e}</div>`).join('')}
+      </div>
+    </div>
     <div class="field"><label>Monto objetivo ($)</label><input type="number" id="m-objetivo" placeholder="0" inputmode="numeric"></div>
-    <div class="field"><label>Ya tengo ahorrado ($)</label><input type="number" id="m-ahorrado" placeholder="0" inputmode="numeric"></div>
-    <div class="field"><label>Ahorro mensual ($)</label><input type="number" id="m-mensual" placeholder="0" inputmode="numeric"></div>
+    <div class="field"><label>Base inicial ya ahorrada ($)</label><input type="number" id="m-ahorrado" placeholder="0" inputmode="numeric"></div>
+    <div class="field"><label>Ahorro mensual estimado ($)</label><input type="number" id="m-mensual" placeholder="0" inputmode="numeric"></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:14px;background:var(--surface2);border-radius:12px;margin-bottom:14px">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:500">🔗 Vincular al ahorro real</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Los gastos en "Ahorro" se aplicarán a esta meta automáticamente</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:44px;height:24px">
+        <input type="checkbox" id="m-vinculado" style="opacity:0;width:0;height:0">
+        <span onclick="toggleSwitch('m-vinculado')" style="position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:99px;transition:.3s" id="sw-vinculado"></span>
+      </label>
+    </div>
     <button class="btn-primary" onclick="saveMeta()">Guardar meta</button>
   `;
   openSheet();
+}
+
+function pickEmoji(e, ctx) {
+  if (ctx === 'new') {
+    document.getElementById('m-emoji').value = e;
+    document.getElementById('m-emoji-preview').textContent = e;
+    document.querySelectorAll('.emoji-opt').forEach(el => el.classList.remove('selected'));
+    event.target.classList.add('selected');
+  } else {
+    document.getElementById('me-emoji').value = e;
+    document.getElementById('me-emoji-preview').textContent = e;
+    document.querySelectorAll('.emoji-opt').forEach(el => el.classList.remove('selected'));
+    event.target.classList.add('selected');
+  }
+}
+
+function toggleSwitch(id) {
+  const cb = document.getElementById(id);
+  cb.checked = !cb.checked;
+  const sw = document.getElementById('sw-' + id.replace('m-',''));
+  sw.style.background = cb.checked ? 'var(--accent)' : 'var(--border)';
+  if (cb.checked) {
+    sw.innerHTML = `<span style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;left:24px;top:3px;transition:.3s"></span>`;
+  } else {
+    sw.innerHTML = `<span style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;left:3px;top:3px;transition:.3s"></span>`;
+  }
 }
 
 function openEditMeta(id) {
@@ -592,12 +819,32 @@ function openEditMeta(id) {
   const m = d.metas.find(x => x.id === id);
   if (!m) return;
   editingMeta = id;
+  const totalAhorrado = m.vinculado
+    ? (m.baseAhorrado || 0) + (m.ahorroVinculado || 0)
+    : (m.ahorrado || 0);
+  const restante = Math.max(m.objetivo - totalAhorrado, 0);
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-title">Editar meta</div>
     <div class="field"><label>Nombre</label><input type="text" id="m-nombre" value="${m.nombre}"></div>
+    <div class="field"><label>Emoji</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="me-emoji-preview" style="font-size:28px">${m.emoji||'🎯'}</span>
+        <input type="text" id="me-emoji" value="${m.emoji||'🎯'}" placeholder="🎯" style="width:80px" oninput="document.getElementById('me-emoji-preview').textContent=this.value||'🎯'">
+      </div>
+    </div>
     <div class="field"><label>Monto objetivo ($)</label><input type="number" id="m-objetivo" value="${m.objetivo}" inputmode="numeric"></div>
-    <div class="field"><label>Ya tengo ahorrado ($)</label><input type="number" id="m-ahorrado" value="${m.ahorrado}" inputmode="numeric"></div>
-    <div class="field"><label>Ahorro mensual ($)</label><input type="number" id="m-mensual" value="${m.mensual}" inputmode="numeric"></div>
+    ${m.vinculado ? `
+      <div class="meta-saving-info" style="margin-bottom:14px">
+        <div class="meta-saving-row"><span>Base inicial</span><span>${fmt(m.baseAhorrado||0)}</span></div>
+        <div class="meta-saving-row"><span>Ahorro vinculado acumulado</span><span style="color:var(--accent)">${fmt(m.ahorroVinculado||0)}</span></div>
+        <div class="meta-saving-row" style="padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span style="font-weight:500;color:var(--text)">Falta para la meta</span><span style="color:${restante>0?'var(--yellow)':'var(--green)'};font-weight:600">${restante>0?fmt(restante):'🎉 Completada'}</span></div>
+      </div>
+      <div class="field"><label>Ajustar base inicial ($)</label><input type="number" id="m-ahorrado" value="${m.baseAhorrado||0}" inputmode="numeric"></div>
+      <div class="info-box" style="margin-top:0">🔗 Meta vinculada al ahorro. Los nuevos gastos en "Ahorro" se aplicarán automáticamente.</div>
+    ` : `
+      <div class="field"><label>Ya tengo ahorrado ($)</label><input type="number" id="m-ahorrado" value="${m.ahorrado||0}" inputmode="numeric"></div>
+    `}
+    <div class="field"><label>Ahorro mensual estimado ($)</label><input type="number" id="m-mensual" value="${m.mensual||0}" inputmode="numeric"></div>
     <button class="btn-primary" onclick="saveMeta()">Guardar</button>
     <button class="btn-delete" style="width:100%;margin-top:10px" onclick="deleteMeta('${id}')">🗑️ Eliminar meta</button>
   `;
@@ -608,11 +855,37 @@ function saveMeta() {
   const nombre = document.getElementById('m-nombre').value.trim();
   if (!nombre) { alert('Ingresa un nombre'); return; }
   const d = getData();
+  const objetivo = parseFloat(document.getElementById('m-objetivo').value)||0;
+  const ahorrado = parseFloat(document.getElementById('m-ahorrado').value)||0;
+  const mensual  = parseFloat(document.getElementById('m-mensual').value)||0;
+
   if (editingMeta) {
     const m = d.metas.find(x => x.id === editingMeta);
-    if (m) { m.nombre = nombre; m.objetivo = parseFloat(document.getElementById('m-objetivo').value)||0; m.ahorrado = parseFloat(document.getElementById('m-ahorrado').value)||0; m.mensual = parseFloat(document.getElementById('m-mensual').value)||0; }
+    if (m) {
+      m.nombre = nombre;
+      m.emoji = document.getElementById('me-emoji') ? document.getElementById('me-emoji').value : (m.emoji||'🎯');
+      m.objetivo = objetivo;
+      m.mensual = mensual;
+      if (m.vinculado) {
+        m.baseAhorrado = ahorrado;
+      } else {
+        m.ahorrado = ahorrado;
+      }
+    }
   } else {
-    d.metas.push({ id: Date.now().toString(), nombre, objetivo: parseFloat(document.getElementById('m-objetivo').value)||0, ahorrado: parseFloat(document.getElementById('m-ahorrado').value)||0, mensual: parseFloat(document.getElementById('m-mensual').value)||0 });
+    const vinculado = document.getElementById('m-vinculado') ? document.getElementById('m-vinculado').checked : false;
+    const emoji = document.getElementById('m-emoji') ? document.getElementById('m-emoji').value : '🎯';
+    d.metas.push({
+      id: Date.now().toString(),
+      nombre,
+      emoji: emoji || '🎯',
+      objetivo,
+      ahorrado: vinculado ? 0 : ahorrado,
+      baseAhorrado: vinculado ? ahorrado : 0,
+      ahorroVinculado: 0,
+      mensual,
+      vinculado,
+    });
   }
   save(d);
   closeSheet();
@@ -626,6 +899,104 @@ function deleteMeta(id) {
   save(d);
   closeSheet();
   showTab('metas');
+}
+
+// ── SHEET: CATEGORÍAS PERSONALIZADAS ─────────────────────────────────────────
+function openAddCat() {
+  editingCat = null;
+  selectedEmoji = '🎯';
+  selectedColor = CAT_COLORS[0];
+  document.getElementById('sheet-content').innerHTML = `
+    <div class="sheet-title">Nueva categoría</div>
+    <div class="field"><label>Nombre</label><input type="text" id="c-nombre" placeholder="Ej: Mascota, Gym, Netflix..."></div>
+    <div class="field"><label>Ícono (emoji)</label>
+      <div class="emoji-grid" id="emoji-grid">
+        ${CAT_EMOJIS.map(e=>`<div class="emoji-opt${e===selectedEmoji?' selected':''}" onclick="selectEmoji('${e}')">${e}</div>`).join('')}
+      </div>
+      <input type="text" id="c-emoji" value="${selectedEmoji}" placeholder="o escribe un emoji" style="margin-top:8px" oninput="selectedEmoji=this.value||'🎯'">
+    </div>
+    <div class="field"><label>Color</label>
+      <div class="color-grid">
+        ${CAT_COLORS.map((col,i)=>`<div class="color-opt${i===0?' selected':''}" style="background:${col}" onclick="selectColor(${i})"></div>`).join('')}
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveCat()">Guardar categoría</button>
+  `;
+  openSheet();
+}
+
+function openEditCat(id) {
+  const d = getData();
+  const cat = d.customCats.find(c => c.id === id);
+  if (!cat) return;
+  editingCat = id;
+  selectedEmoji = cat.icon;
+  selectedColor = cat.color;
+  document.getElementById('sheet-content').innerHTML = `
+    <div class="sheet-title">Editar categoría</div>
+    <div class="field"><label>Nombre</label><input type="text" id="c-nombre" value="${cat.name}"></div>
+    <div class="field"><label>Ícono (emoji)</label>
+      <div class="emoji-grid">
+        ${CAT_EMOJIS.map(e=>`<div class="emoji-opt${e===cat.icon?' selected':''}" onclick="selectEmoji('${e}')">${e}</div>`).join('')}
+      </div>
+      <input type="text" id="c-emoji" value="${cat.icon}" placeholder="o escribe un emoji" style="margin-top:8px" oninput="selectedEmoji=this.value||'🎯'">
+    </div>
+    <div class="field"><label>Color</label>
+      <div class="color-grid">
+        ${CAT_COLORS.map((col,i)=>`<div class="color-opt${col===cat.color?' selected':''}" style="background:${col}" onclick="selectColor(${i})"></div>`).join('')}
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveCat()">Guardar</button>
+    <button class="btn-delete" style="width:100%;margin-top:10px" onclick="deleteCat('${id}')">🗑️ Eliminar categoría</button>
+  `;
+  openSheet();
+}
+
+function selectEmoji(e) {
+  selectedEmoji = e;
+  document.querySelectorAll('.emoji-opt').forEach(el => el.classList.remove('selected'));
+  event.target.classList.add('selected');
+  const input = document.getElementById('c-emoji');
+  if (input) input.value = e;
+}
+
+function selectColor(idx) {
+  selectedColor = CAT_COLORS[idx];
+  document.querySelectorAll('.color-opt').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.color-opt')[idx].classList.add('selected');
+}
+
+function saveCat() {
+  const nombre = document.getElementById('c-nombre').value.trim();
+  if (!nombre) { alert('Ingresa un nombre'); return; }
+  const emojiInput = document.getElementById('c-emoji');
+  const icon = (emojiInput ? emojiInput.value : selectedEmoji) || selectedEmoji || '📌';
+  const d = getData();
+
+  if (editingCat) {
+    const cat = d.customCats.find(c => c.id === editingCat);
+    if (cat) { cat.name = nombre; cat.icon = icon; cat.color = selectedColor; }
+  } else {
+    d.customCats.push({
+      id: 'cat_' + Date.now().toString(),
+      name: nombre,
+      icon,
+      color: selectedColor,
+      es: 'gasto',
+    });
+  }
+  save(d);
+  closeSheet();
+  showTab('config');
+}
+
+function deleteCat(id) {
+  if (!confirm('¿Eliminar esta categoría? Los movimientos con esta categoría quedarán sin categoría.')) return;
+  const d = getData();
+  d.customCats = d.customCats.filter(c => c.id !== id);
+  save(d);
+  closeSheet();
+  showTab('config');
 }
 
 // ── MES ───────────────────────────────────────────────────────────────────────
