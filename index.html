@@ -216,10 +216,60 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+// Persistencia LOCAL: la sesión se guarda en el dispositivo
+// Firebase la lee al instante sin ir al servidor → login instantáneo
 const auth = getAuth(app);
 const db = getFirestore(app);
 let currentUser = null;
 let syncTimeout = null;
+let appReady = false;
+
+// ── SESIÓN CACHEADA: mostrar app al instante si ya había sesión ──────────────
+// Guardamos el uid y datos básicos del user en localStorage
+// para mostrar la app sin esperar a Firebase la próxima vez
+const CACHE_KEY = 'presupuesto_session';
+function getCachedSession() {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch(e) { return null; }
+}
+function setCachedSession(user) {
+  if (user) {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      uid: user.uid,
+      displayName: user.displayName,
+      email: user.email,
+      photoURL: user.photoURL,
+    }));
+  } else {
+    localStorage.removeItem(CACHE_KEY);
+  }
+}
+
+function showApp(user) {
+  window.currentUser = user;
+  currentUser = user;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('nav').style.display = 'flex';
+  document.getElementById('fab').style.display = 'flex';
+  document.getElementById('hdr-month').title = user.displayName || user.email;
+}
+
+function hideApp() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('nav').style.display = 'none';
+  document.getElementById('fab').style.display = 'none';
+}
+
+// ── INICIO INSTANTÁNEO: si hay sesión cacheada, mostrar app de inmediato ─────
+const cached = getCachedSession();
+if (cached) {
+  // Mostrar app al instante con datos locales sin esperar Firebase
+  showApp(cached);
+  checkAndCopyLastMonthBudget();
+  showTab('resumen');
+  appReady = true;
+}
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 window.signInWithGoogle = async function() {
@@ -229,6 +279,7 @@ window.signInWithGoogle = async function() {
   status.textContent = 'Conectando...';
   try {
     const provider = new GoogleAuthProvider();
+    // Usar redirect en móvil es más rápido que popup
     await signInWithPopup(auth, provider);
   } catch(e) {
     btn.style.opacity = '1';
@@ -238,25 +289,32 @@ window.signInWithGoogle = async function() {
 };
 
 window.doSignOut = async function() {
+  setCachedSession(null);
   await signOut(auth);
 };
 
+// Firebase confirma la sesión en segundo plano (no bloquea la UI)
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   if (user) {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    document.getElementById('nav').style.display = 'flex';
-    document.getElementById('fab').style.display = 'flex';
-    // Update user info in header
-    document.getElementById('hdr-month').title = user.displayName || user.email;
-    // Load data from Firestore
-    await loadFromFirestore();
-    checkAndCopyLastMonthBudget();
-    showTab('resumen');
+    setCachedSession(user); // actualizar cache con datos frescos
+    showApp(user);
+    // Solo sincronizar Firestore si la app no estaba ya lista (primera carga)
+    if (!appReady) {
+      await loadFromFirestore();
+      checkAndCopyLastMonthBudget();
+      showTab('resumen');
+      appReady = true;
+    } else {
+      // Ya está mostrando datos locales, sincronizar en segundo plano silencioso
+      syncFromFirestoreBackground();
+    }
   } else {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app').style.display = 'none';
+    // Solo ocultar si no hay sesión cacheada válida
+    if (!getCachedSession()) {
+      hideApp();
+    }
+    appReady = false;
   }
 });
 
@@ -268,12 +326,10 @@ async function loadFromFirestore() {
     const snap = await getDoc(ref);
     if (snap.exists()) {
       const remote = snap.data();
-      // Merge: remote wins, but keep local currentMonth preference
       const local = loadLocal();
       const merged = { ...remote, currentMonth: local.currentMonth || remote.currentMonth };
       saveLocal(merged);
     } else {
-      // First time: upload local data
       const local = loadLocal();
       if (Object.keys(local).length > 0) {
         await saveToFirestore(local);
@@ -281,6 +337,30 @@ async function loadFromFirestore() {
     }
   } catch(e) {
     console.warn('Error loading from Firestore:', e);
+  }
+}
+
+// Sincronización silenciosa en segundo plano (sin bloquear UI)
+async function syncFromFirestoreBackground() {
+  if (!currentUser) return;
+  try {
+    const ref = doc(db, 'usuarios', currentUser.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const remote = snap.data();
+      const local = loadLocal();
+      // Solo actualizar si el remoto tiene más datos (evitar sobreescribir cambios locales recientes)
+      const remoteCount = (remote.txs || []).length + (remote.metas || []).length;
+      const localCount  = (local.txs  || []).length + (local.metas  || []).length;
+      if (remoteCount > localCount) {
+        const merged = { ...remote, currentMonth: local.currentMonth || remote.currentMonth };
+        saveLocal(merged);
+        // Refrescar UI silenciosamente
+        showTab(window._currentTab || 'resumen');
+      }
+    }
+  } catch(e) {
+    // Fallo silencioso, no afecta al usuario
   }
 }
 
@@ -489,6 +569,7 @@ function updateHeader() {
 // ── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(tab) {
   currentTab = tab;
+  window._currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   const fab = document.getElementById('fab');
@@ -1452,11 +1533,13 @@ function deleteDeudor(id) {
   showTab('cobros');
 }
 // ── INIT ──────────────────────────────────────────────────────────────────────
-// Auth handles init — app shown only after login
-// Hide app and nav until auth resolves
-document.getElementById('app').style.display = 'none';
-document.getElementById('nav').style.display = 'none';
-document.getElementById('fab').style.display = 'none';
+// Auth handles init
+// Si no hay sesión cacheada, ocultar app hasta que Firebase confirme
+if (!getCachedSession()) {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('nav').style.display = 'none';
+  document.getElementById('fab').style.display = 'none';
+}
 
 // ── PRESUPUESTO: COPIAR MES ANTERIOR ─────────────────────────────────────────
 function getPrevMonthKey(key) {
