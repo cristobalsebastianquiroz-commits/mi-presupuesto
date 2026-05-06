@@ -200,9 +200,124 @@
   .resumen-cobro-pill .val { font-size: 17px; font-weight: 600; font-family: "DM Mono", monospace; margin-bottom: 2px; }
   .resumen-cobro-pill .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 </style>
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBdozpKZrxC63eil14drCAJ1txISA702W0",
+  authDomain: "mi-presupuesto-d12de.firebaseapp.com",
+  projectId: "mi-presupuesto-d12de",
+  storageBucket: "mi-presupuesto-d12de.firebasestorage.app",
+  messagingSenderId: "418712208787",
+  appId: "1:418712208787:web:2b4d769ba39c1c780c9466"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+let currentUser = null;
+let syncTimeout = null;
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+window.signInWithGoogle = async function() {
+  const btn = document.getElementById('btn-google');
+  const status = document.getElementById('login-status');
+  btn.style.opacity = '0.6';
+  status.textContent = 'Conectando...';
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch(e) {
+    btn.style.opacity = '1';
+    status.textContent = 'Error al iniciar sesión. Intenta de nuevo.';
+    console.error(e);
+  }
+};
+
+window.doSignOut = async function() {
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('nav').style.display = 'flex';
+    document.getElementById('fab').style.display = 'flex';
+    // Update user info in header
+    document.getElementById('hdr-month').title = user.displayName || user.email;
+    // Load data from Firestore
+    await loadFromFirestore();
+    checkAndCopyLastMonthBudget();
+    showTab('resumen');
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+// ── FIRESTORE SYNC ────────────────────────────────────────────────────────────
+async function loadFromFirestore() {
+  if (!currentUser) return;
+  try {
+    const ref = doc(db, 'usuarios', currentUser.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const remote = snap.data();
+      // Merge: remote wins, but keep local currentMonth preference
+      const local = loadLocal();
+      const merged = { ...remote, currentMonth: local.currentMonth || remote.currentMonth };
+      saveLocal(merged);
+    } else {
+      // First time: upload local data
+      const local = loadLocal();
+      if (Object.keys(local).length > 0) {
+        await saveToFirestore(local);
+      }
+    }
+  } catch(e) {
+    console.warn('Error loading from Firestore:', e);
+  }
+}
+
+async function saveToFirestore(data) {
+  if (!currentUser) return;
+  try {
+    const ref = doc(db, 'usuarios', currentUser.uid);
+    await setDoc(ref, data);
+  } catch(e) {
+    console.warn('Error saving to Firestore:', e);
+  }
+}
+
+// Debounced sync: waits 1.5s after last change before uploading
+window.scheduleSyncToFirestore = function() {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    const d = loadLocal();
+    saveToFirestore(d);
+  }, 1500);
+};
+</script>
 </head>
 <body>
-<div id="app">
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px">
+  <div style="font-size:52px;margin-bottom:16px">💰</div>
+  <div style="font-size:24px;font-weight:700;margin-bottom:6px">Mi Presupuesto</div>
+  <div style="font-size:14px;color:var(--muted);margin-bottom:40px;text-align:center">Tu dinero, ordenado.<br>Inicia sesión para sincronizar tus datos.</div>
+  <button id="btn-google" onclick="signInWithGoogle()" style="display:flex;align-items:center;gap:12px;background:white;color:#1e293b;border:none;border-radius:14px;padding:14px 24px;font-family:DM Sans,sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.3);width:100%;max-width:300px;justify-content:center">
+    <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Continuar con Google
+  </button>
+  <div id="login-status" style="margin-top:16px;font-size:13px;color:var(--muted)"></div>
+</div>
+
+<div id="app" style="display:none">
   <div id="header">
     <div class="header-month" id="hdr-month">—</div>
     <div class="header-balance" id="hdr-balance">$0</div>
@@ -274,8 +389,13 @@ const CAT_EMOJIS = ['🏋️','✈️','🎓','💊','🐾','📚','💻','🎮'
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
-function load() { try { return JSON.parse(localStorage.getItem('presupuesto_v1') || '{}'); } catch(e){ return {}; } }
-function save(d) { localStorage.setItem('presupuesto_v1', JSON.stringify(d)); }
+function loadLocal() { try { return JSON.parse(localStorage.getItem('presupuesto_v1') || '{}'); } catch(e){ return {}; } }
+function saveLocal(d) { localStorage.setItem('presupuesto_v1', JSON.stringify(d)); }
+function load() { return loadLocal(); }
+function save(d) {
+  saveLocal(d);
+  if (typeof window.scheduleSyncToFirestore === 'function') window.scheduleSyncToFirestore();
+}
 
 function getData() {
   let d = load();
@@ -560,8 +680,9 @@ function renderConfig() {
   const mes = monthLabel(monthKey(d));
   const allCats = getAllCats();
 
-  let html = `<div style="padding-top:4px">
-  <div class="card"><div class="card-title">Mes activo</div>`;
+  let html = `<div style="padding-top:4px">`;
+  html += renderUserCard();
+  html += `<div class="card"><div class="card-title">Mes activo</div>`;
 
   // Selector de mes
   const now = new Date();
@@ -1331,7 +1452,67 @@ function deleteDeudor(id) {
   showTab('cobros');
 }
 // ── INIT ──────────────────────────────────────────────────────────────────────
-showTab('resumen');
+// Auth handles init — app shown only after login
+// Hide app and nav until auth resolves
+document.getElementById('app').style.display = 'none';
+document.getElementById('nav').style.display = 'none';
+document.getElementById('fab').style.display = 'none';
+
+// ── PRESUPUESTO: COPIAR MES ANTERIOR ─────────────────────────────────────────
+function getPrevMonthKey(key) {
+  const [y, m] = key.split('-').map(Number);
+  const d = new Date(y, m - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function checkAndCopyLastMonthBudget() {
+  const d = getData();
+  const mk = monthKey(d);
+  if (!mk) return;
+  const currentPres = d.presupuestos[mk] || {};
+  const hasPres = Object.values(currentPres).some(v => v > 0);
+  if (hasPres) return; // Ya tiene presupuesto este mes
+
+  const prevKey = getPrevMonthKey(mk);
+  const prevPres = d.presupuestos[prevKey] || {};
+  const hasPrev = Object.values(prevPres).some(v => v > 0);
+  if (!hasPrev) return; // No hay mes anterior
+
+  // Copiar automáticamente
+  d.presupuestos[mk] = { ...prevPres };
+  save(d);
+  // Mostrar notificación suave
+  setTimeout(() => {
+    const banner = document.createElement('div');
+    banner.innerHTML = `📋 Presupuesto copiado del mes anterior · <span onclick="this.parentElement.remove()" style="cursor:pointer;text-decoration:underline">Cerrar</span>`;
+    banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid #38bdf8;color:#f1f5f9;padding:10px 18px;border-radius:12px;font-size:13px;z-index:999;max-width:380px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.4)';
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 5000);
+  }, 800);
+}
+
+// ── CUENTA DE USUARIO EN AJUSTES ──────────────────────────────────────────────
+function renderUserCard() {
+  if (!window.currentUser) return '';
+  const u = window.currentUser;
+  return `<div class="card" style="margin-bottom:12px">
+    <div class="card-title">Mi cuenta</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      ${u.photoURL ? `<img src="${u.photoURL}" style="width:42px;height:42px;border-radius:50%;border:2px solid var(--border)">` : `<div style="width:42px;height:42px;border-radius:50%;background:rgba(56,189,248,.2);display:flex;align-items:center;justify-content:center;font-size:20px">👤</div>`}
+      <div>
+        <div style="font-size:14px;font-weight:600">${u.displayName || 'Usuario'}</div>
+        <div style="font-size:12px;color:var(--muted)">${u.email}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div>
+      <span style="font-size:12px;color:var(--muted)">Datos sincronizados con Firebase</span>
+    </div>
+    <button onclick="doSignOut()" style="width:100%;padding:10px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer">Cerrar sesión</button>
+  </div>`;
+}
+window.currentUser = null;
+
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js")}</script>
 </body>
