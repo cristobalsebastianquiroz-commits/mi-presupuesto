@@ -1597,6 +1597,84 @@ function renderUserCard() {
 window.currentUser = null;
 
 </script>
-<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js")}</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+
+    // ── Detectar nueva versión disponible ────────────────────────────────────
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      newSW.addEventListener('statechange', () => {
+        // Hay una nueva versión instalada y lista
+        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdateBanner();
+        }
+      });
+    });
+
+    // Verificar actualizaciones cada vez que la app vuelve al primer plano
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        reg.update(); // comprueba silenciosamente si hay una versión nueva
+      }
+    });
+
+  });
+
+  // ── Escuchar mensajes del Service Worker ─────────────────────────────────
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_VERSION') {
+      console.log('App versión:', e.data.version);
+    }
+  });
+
+  // ── Cuando el SW nuevo toma el control, recargar automáticamente ──────────
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload(); // recarga con la versión nueva
+    }
+  });
+}
+
+// ── Banner de actualización disponible ───────────────────────────────────────
+function showUpdateBanner() {
+  // Evitar duplicados
+  if (document.getElementById('update-banner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'update-banner';
+  banner.style.cssText = `
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px; background: #1e3a5f;
+    border-bottom: 2px solid #38bdf8; color: #f1f5f9;
+    padding: 12px 20px; z-index: 9999;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: DM Sans, sans-serif; font-size: 13px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  `;
+  banner.innerHTML = `
+    <span>🆕 Nueva versión disponible</span>
+    <button onclick="applyUpdate()" style="
+      background: #38bdf8; color: #0f172a; border: none;
+      border-radius: 8px; padding: 6px 14px;
+      font-family: DM Sans, sans-serif; font-size: 13px;
+      font-weight: 600; cursor: pointer;
+    ">Actualizar</button>
+  `;
+  document.body.appendChild(banner);
+}
+
+// Forzar activación del nuevo SW y recargar
+function applyUpdate() {
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (reg?.waiting) {
+      reg.waiting.postMessage('SKIP_WAITING');
+    }
+    window.location.reload();
+  });
+}
+</script>
 </body>
 </html>
