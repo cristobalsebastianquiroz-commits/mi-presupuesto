@@ -424,6 +424,47 @@
   }
   .resumen-cobro-pill .val { font-size: 16px; font-weight: 600; font-family: 'Lora', serif; margin-bottom: 3px; }
   .resumen-cobro-pill .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+
+  /* ── MEDIO DE PAGO ── */
+  .pago-toggle { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 14px; }
+  .pago-btn {
+    padding: 10px 4px; border-radius: 12px;
+    border: 1.5px solid var(--border);
+    background: var(--bg); color: var(--muted);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    transition: all .2s; text-align: center; line-height: 1.4;
+  }
+  .pago-btn .pago-icon { font-size: 18px; display: block; margin-bottom: 2px; }
+  .pago-btn.active-efectivo { background: rgba(74,124,89,.12); border-color: var(--green); color: var(--green); }
+  .pago-btn.active-debito   { background: rgba(184,92,56,.12);  border-color: var(--accent); color: var(--accent); }
+  .pago-btn.active-credito  { background: rgba(124,100,151,.14); border-color: var(--purple); color: var(--purple); }
+
+  /* Badge inline en lista de tx */
+  .pago-badge {
+    display: inline-block; font-size: 9px; padding: 1px 6px;
+    border-radius: 99px; font-weight: 600; margin-left: 4px;
+    vertical-align: middle; letter-spacing: .2px;
+  }
+  .pago-badge.efectivo { background: rgba(74,124,89,.12);  color: var(--green);  border: 1px solid rgba(74,124,89,.2); }
+  .pago-badge.debito   { background: rgba(184,92,56,.1);   color: var(--accent); border: 1px solid rgba(184,92,56,.2); }
+  .pago-badge.credito  { background: rgba(124,100,151,.12);color: var(--purple); border: 1px solid rgba(124,100,151,.2); }
+
+  /* Card reporte medios de pago */
+  .medio-pago-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 0; border-bottom: 1px solid var(--border);
+  }
+  .medio-pago-row:last-child { border-bottom: none; }
+  .medio-pago-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .medio-pago-info { flex: 1; }
+  .medio-pago-name { font-size: 14px; font-weight: 500; }
+  .medio-pago-count { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .medio-pago-amt { font-size: 16px; font-weight: 600; font-family: 'Lora', serif; }
 </style>
 <!-- Firebase -->
 <script type="module">
@@ -896,6 +937,53 @@ function renderResumen() {
     html += `</div>`;
   }
 
+  // Reporte por medio de pago
+  const gastosTxs = txs.filter(t => t.cat !== 'ingreso');
+  if (gastosTxs.length > 0) {
+    const medios = [
+      { key: 'efectivo', icon: '💵', label: 'Efectivo',  bg: 'var(--green-bg)',              color: 'var(--green)'  },
+      { key: 'debito',   icon: '💳', label: 'Débito',    bg: 'rgba(184,92,56,.1)',             color: 'var(--accent)' },
+      { key: 'credito',  icon: '🏦', label: 'Crédito',   bg: 'rgba(124,100,151,.12)',          color: 'var(--purple)' },
+    ];
+    const sinMedio = gastosTxs.filter(t => !t.pago);
+    html += `<div class="card"><div class="card-title">Gastos por medio de pago</div>`;
+
+    let hayDatos = false;
+    medios.forEach(m => {
+      const mTxs = gastosTxs.filter(t => t.pago === m.key);
+      if (mTxs.length === 0) return;
+      hayDatos = true;
+      const total = mTxs.reduce((a,t) => a + t.monto, 0);
+      const pct = gastos > 0 ? (total / gastos * 100) : 0;
+      html += `<div class="medio-pago-row">
+        <div class="medio-pago-icon" style="background:${m.bg}">${m.icon}</div>
+        <div class="medio-pago-info">
+          <div class="medio-pago-name">${m.label}</div>
+          <div class="medio-pago-count">${mTxs.length} movimiento${mTxs.length!==1?'s':''} · ${pct.toFixed(0)}% del total</div>
+          <div class="prog-wrap" style="margin:6px 0 0">
+            <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${m.color}"></div></div>
+          </div>
+        </div>
+        <div class="medio-pago-amt" style="color:${m.color}">${fmt(total)}</div>
+      </div>`;
+    });
+    if (sinMedio.length > 0) {
+      const total = sinMedio.reduce((a,t) => a + t.monto, 0);
+      html += `<div class="medio-pago-row">
+        <div class="medio-pago-icon" style="background:var(--surface2)">❓</div>
+        <div class="medio-pago-info">
+          <div class="medio-pago-name" style="color:var(--muted)">Sin clasificar</div>
+          <div class="medio-pago-count">${sinMedio.length} movimiento${sinMedio.length!==1?'s':''}</div>
+        </div>
+        <div class="medio-pago-amt" style="color:var(--muted)">${fmt(total)}</div>
+      </div>`;
+    }
+    if (!hayDatos && sinMedio.length === 0) {
+      html += `<div style="text-align:center;padding:16px;font-size:13px;color:var(--muted)">Registra gastos para ver el reporte</div>`;
+    }
+    html += `</div>`;
+  }
+
   return html;
 }
 
@@ -922,9 +1010,11 @@ function renderGastos() {
     <div class="card" style="padding:0 16px">`;
     items.forEach(t => {
       const cat = getCat(t.cat);
+      const pagoLabels = { efectivo:'💵 Efectivo', debito:'💳 Débito', credito:'🏦 Crédito' };
+      const pagoBadge = (t.cat !== 'ingreso' && t.pago) ? `<span class="pago-badge ${t.pago}">${pagoLabels[t.pago]||t.pago}</span>` : '';
       html += `<div class="tx-item" onclick="openEditTx('${t.id}')">
         <div class="tx-dot" style="background:${cat.color}">${cat.icon}</div>
-        <div class="tx-info"><div class="tx-name">${t.desc||cat.name}</div><div class="tx-cat">${cat.name}</div></div>
+        <div class="tx-info"><div class="tx-name">${t.desc||cat.name} ${pagoBadge}</div><div class="tx-cat">${cat.name}</div></div>
         <div class="tx-amt ${t.cat==='ingreso'?'ing':'gas'}">${t.cat==='ingreso'?'+':'-'}${fmt(t.monto)}</div>
       </div>`;
     });
@@ -1140,18 +1230,46 @@ function openAddSheet() {
         ${allCats.filter(c=>c.id!=='ingreso').map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
       </select>
     </div>
+    <div id="f-pago-wrap">
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Medio de pago</label>
+      <div class="pago-toggle">
+        <button class="pago-btn active-efectivo" id="pago-efectivo" onclick="setPago('efectivo')">
+          <span class="pago-icon">💵</span>Efectivo
+        </button>
+        <button class="pago-btn" id="pago-debito" onclick="setPago('debito')">
+          <span class="pago-icon">💳</span>Débito
+        </button>
+        <button class="pago-btn" id="pago-credito" onclick="setPago('credito')">
+          <span class="pago-icon">🏦</span>Crédito
+        </button>
+      </div>
+    </div>
     <div class="field"><label>Fecha</label><input type="date" id="f-fecha" value="${today}"></div>
     <button class="btn-primary" onclick="saveTx()">Guardar</button>
   `;
+  txPago = 'efectivo';
   openSheet();
 }
 
 let txType = 'gas';
+let txPago = 'efectivo';
+
 function setType(t) {
   txType = t;
   document.getElementById('btn-gas').className = 'type-btn' + (t==='gas'?' active-gas':'');
   document.getElementById('btn-ing').className = 'type-btn' + (t==='ing'?' active-ing':'');
   document.getElementById('f-cat-wrap').style.display = t==='gas' ? 'block' : 'none';
+  // Ocultar medio de pago para ingresos
+  const pw = document.getElementById('f-pago-wrap');
+  if (pw) pw.style.display = t==='gas' ? 'block' : 'none';
+}
+
+function setPago(p) {
+  txPago = p;
+  ['efectivo','debito','credito'].forEach(x => {
+    const btn = document.getElementById('pago-'+x);
+    if (btn) btn.className = 'pago-btn' + (x===p ? ' active-'+x : '');
+  });
 }
 
 function saveTx() {
@@ -1170,6 +1288,7 @@ function saveTx() {
     cat: catId,
     fecha: fechaLabel,
     month: monthKey(d),
+    pago: txType === 'ing' ? null : txPago,
   });
 
   // Si es un gasto de ahorro, actualizar metas vinculadas automáticamente
@@ -1202,16 +1321,47 @@ function openEditTx(id) {
   const t = d.txs.find(x => x.id === id);
   if (!t) return;
   const cat = getCat(t.cat);
+  const pagoInfo = { efectivo: {icon:'💵',label:'Efectivo'}, debito: {icon:'💳',label:'Débito'}, credito: {icon:'🏦',label:'Crédito'} };
+  const pagoKey = t.pago || null;
+  const pagoHtml = (t.cat !== 'ingreso' && pagoKey && pagoInfo[pagoKey]) ? `
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px">
+      <span style="font-size:16px">${pagoInfo[pagoKey].icon}</span>
+      <span class="pago-badge ${pagoKey}">${pagoInfo[pagoKey].label}</span>
+    </div>` : '';
+
   document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">Editar movimiento</div>
-    <div class="card" style="margin-bottom:16px">
-      <div style="font-size:28px;text-align:center;margin-bottom:6px">${cat.icon}</div>
-      <div style="text-align:center;font-size:20px;font-weight:600;color:${t.cat==='ingreso'?'var(--green)':'var(--red)'}">${t.cat==='ingreso'?'+':'-'}${fmt(t.monto)}</div>
-      <div style="text-align:center;font-size:13px;color:var(--muted);margin-top:4px">${t.desc||cat.name} · ${t.fecha||''}</div>
+    <div class="sheet-title">Detalle del movimiento</div>
+    <div class="card" style="margin-bottom:16px;text-align:center">
+      <div style="font-size:32px;margin-bottom:6px">${cat.icon}</div>
+      <div style="font-size:22px;font-weight:600;font-family:'Lora',serif;color:${t.cat==='ingreso'?'var(--green)':'var(--red)'}">${t.cat==='ingreso'?'+':'-'}${fmt(t.monto)}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">${t.desc||cat.name}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">${cat.name} · ${t.fecha||''}</div>
+      ${pagoHtml}
     </div>
+    ${t.cat !== 'ingreso' ? `
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Cambiar medio de pago</label>
+      <div class="pago-toggle">
+        <button class="pago-btn ${pagoKey==='efectivo'?'active-efectivo':''}" id="ep-efectivo" onclick="editSetPago('${id}','efectivo')"><span class="pago-icon">💵</span>Efectivo</button>
+        <button class="pago-btn ${pagoKey==='debito'?'active-debito':''}"   id="ep-debito"   onclick="editSetPago('${id}','debito')"><span class="pago-icon">💳</span>Débito</button>
+        <button class="pago-btn ${pagoKey==='credito'?'active-credito':''}" id="ep-credito"  onclick="editSetPago('${id}','credito')"><span class="pago-icon">🏦</span>Crédito</button>
+      </div>
+    </div>` : ''}
     <button class="btn-delete" style="width:100%" onclick="deleteTx('${id}')">🗑️ Eliminar este movimiento</button>
   `;
   openSheet();
+}
+
+function editSetPago(txId, pago) {
+  const d = getData();
+  const t = d.txs.find(x => x.id === txId);
+  if (t) { t.pago = pago; save(d); }
+  ['efectivo','debito','credito'].forEach(x => {
+    const btn = document.getElementById('ep-'+x);
+    if (btn) btn.className = 'pago-btn' + (x===pago ? ' active-'+x : '');
+  });
+  // Refrescar el badge en la card
+  openEditTx(txId);
 }
 
 function deleteTx(id) {
