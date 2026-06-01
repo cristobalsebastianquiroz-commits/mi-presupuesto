@@ -66,7 +66,7 @@
   .prog-fill.green { background: var(--green); }
   .prog-fill.yellow { background: var(--yellow); }
   .prog-fill.red { background: var(--red); }
-  .prog-fill.accent { background: var(--accent); }
+  .prog-fill.blue { background: var(--accent); }
 
   /* ── CATEGORY ITEMS ── */
   .cat-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
@@ -93,7 +93,7 @@
   /* ── MODAL / SHEET ── */
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; opacity: 0; pointer-events: none; transition: opacity .25s; }
   .overlay.open { opacity: 1; pointer-events: all; }
-  .sheet { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%); width: 100%; max-width: 430px; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px 20px calc(24px + var(--safe)); z-index: 201; transition: transform .3s cubic-bezier(.32,1,.6,1); max-height: 90dvh; overflow-y: auto; }
+  .sheet { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%); width: 100%; max-width: 430px; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px 20px calc(24px + var(--safe)); z-index: 201; transition: transform .3s cubic-bezier(.32,1,.6,1); max-height: 92dvh; overflow-y: auto; }
   .sheet.open { transform: translateX(-50%) translateY(0); }
   .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 99px; margin: 0 auto 20px; }
   .sheet-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
@@ -109,38 +109,23 @@
   .type-btn.active-ing { background: rgba(74,222,128,.15); border-color: var(--green); color: var(--green); }
   .type-btn.active-gas { background: rgba(248,113,113,.15); border-color: var(--red); color: var(--red); }
   .btn-primary { width: 100%; padding: 14px; background: var(--accent); color: #0f172a; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 6px; }
-  .btn-secondary { width: 100%; padding: 12px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 8px; }
   .btn-delete { background: rgba(248,113,113,.15); color: var(--red); border: 1px solid rgba(248,113,113,.3); border-radius: 10px; padding: 10px 16px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; }
 
   /* ── METAS ── */
-  .meta-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); cursor: pointer; transition: border-color .2s; }
-  .meta-card:hover { border-color: var(--accent); }
+  .meta-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); cursor: pointer; }
   .meta-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
   .meta-name { font-size: 15px; font-weight: 500; }
   .meta-pct { font-size: 22px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--accent); }
   .meta-nums { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 8px; }
-  .meta-badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 500; margin-top: 4px; }
-  .meta-badge.linked { background: rgba(56,189,248,.15); color: var(--accent); border: 1px solid rgba(56,189,248,.3); }
-  .meta-badge.manual { background: rgba(148,163,184,.1); color: var(--muted); border: 1px solid var(--border); }
-  .meta-saving-info { margin-top: 10px; padding: 10px 12px; background: var(--surface2); border-radius: 10px; border: 1px solid var(--border); }
-  .meta-saving-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 3px 0; }
-  .meta-saving-row span:first-child { color: var(--muted); }
-  .meta-saving-row span:last-child { font-weight: 500; font-family: 'DM Mono', monospace; }
-
-  /* ── EMOJI PICKER ── */
-  .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 8px; max-height: 140px; overflow-y: auto; }
-  .emoji-opt { padding: 8px; border-radius: 8px; font-size: 20px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
-  .emoji-opt:hover { background: var(--surface2); }
-  .emoji-opt.selected { border-color: var(--accent); background: rgba(56,189,248,.1); }
-  .color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; }
-  .color-opt { width: 100%; aspect-ratio: 1; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
-  .color-opt.selected { border-color: white; transform: scale(1.1); }
+  .meta-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.25); border-radius: 6px; padding: 3px 8px; font-size: 11px; color: var(--accent); margin-top: 6px; }
+  .meta-badge.linked { background: rgba(74,222,128,.12); border-color: rgba(74,222,128,.25); color: var(--green); }
 
   /* ── SETTINGS ── */
   .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
   .setting-row:last-child { border-bottom: none; }
   .setting-label { font-size: 14px; }
-  .setting-val { font-size: 13px; color: var(--accent); font-weight: 500; cursor: pointer; }
+  .setting-val { font-size: 13px; color: var(--accent); font-weight: 500; }
   .month-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
   .month-btn { padding: 10px 6px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; text-align: center; }
   .month-btn.active { background: rgba(56,189,248,.15); border-color: var(--accent); color: var(--accent); font-weight: 500; }
@@ -160,244 +145,50 @@
   .month-chip { flex-shrink: 0; padding: 6px 14px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
   .month-chip.active { background: rgba(56,189,248,.15); border-color: var(--accent); color: var(--accent); font-weight: 500; }
 
-  /* ── CAT MANAGE ── */
+  /* ── CATEGORÍAS PERSONALIZADAS ── */
+  .emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-top: 8px; }
+  .emoji-btn { padding: 10px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); font-size: 20px; cursor: pointer; text-align: center; transition: all .15s; }
+  .emoji-btn.selected { border-color: var(--accent); background: rgba(56,189,248,.15); transform: scale(1.1); }
+  .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; }
+  .color-swatch { height: 32px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; transition: all .15s; }
+  .color-swatch.selected { border-color: white; transform: scale(1.1); }
+
+  /* ── AHORRO VINCULADO ── */
+  .savings-info { background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.2); border-radius: 12px; padding: 12px 14px; margin-top: 10px; }
+  .savings-info-title { font-size: 12px; color: var(--green); font-weight: 500; margin-bottom: 4px; }
+  .savings-info-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ── DESGLOSE META ── */
+  .meta-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(51,65,85,.5); font-size: 13px; }
+  .meta-detail-row:last-child { border-bottom: none; }
+  .meta-detail-label { color: var(--muted); }
+  .meta-detail-val { font-weight: 600; font-family: 'DM Mono', monospace; }
+
+  /* ── CHIP CATEGORIA EN AJUSTES ── */
   .cat-manage-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
   .cat-manage-item:last-child { border-bottom: none; }
-  .cat-manage-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+  .cat-manage-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
   .cat-manage-name { flex: 1; font-size: 14px; }
-  .cat-manage-actions { display: flex; gap: 8px; }
-  .btn-icon { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; color: var(--muted); font-size: 14px; transition: all .15s; }
-  .btn-icon:hover { background: var(--surface2); color: var(--text); }
-  .btn-icon.del:hover { color: var(--red); }
+  .cat-manage-actions { display: flex; gap: 6px; }
+  .icon-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; color: var(--muted); }
+  .icon-btn.danger { color: var(--red); border-color: rgba(248,113,113,.3); }
 
-  /* ── INFO BOX ── */
-  .info-box { background: rgba(56,189,248,.08); border: 1px solid rgba(56,189,248,.2); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 12px; color: var(--muted); line-height: 1.6; }
-  .info-box strong { color: var(--accent); }
+  /* toggle switch */
+  .toggle-wrap { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 14px; }
+  .toggle-label { font-size: 13px; color: var(--text); }
+  .toggle { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--surface2); border-radius: 99px; border: 1px solid var(--border); cursor: pointer; transition: .3s; }
+  .slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: .3s; }
+  input:checked + .slider { background: rgba(74,222,128,.2); border-color: var(--green); }
+  input:checked + .slider:before { transform: translateX(18px); background: var(--green); }
 
-  /* ── DEUDORES ── */
-  .deudor-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid var(--border); cursor: pointer; transition: border-color .2s; }
-  .deudor-card:hover { border-color: var(--accent); }
-  .deudor-card.pagado { opacity: .55; border-style: dashed; }
-  .deudor-top { display: flex; align-items: center; gap: 12px; }
-  .deudor-avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; flex-shrink: 0; background: rgba(56,189,248,.15); color: var(--accent); }
-  .deudor-info { flex: 1; min-width: 0; }
-  .deudor-nombre { font-size: 15px; font-weight: 600; }
-  .deudor-desc { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .deudor-monto { text-align: right; }
-  .deudor-total { font-size: 18px; font-weight: 600; font-family: "DM Mono", monospace; color: var(--yellow); }
-  .deudor-total.cobrado { color: var(--green); }
-  .deudor-fecha { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .deudor-abonos { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
-  .abono-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
-  .abono-row span:first-child { color: var(--muted); }
-  .abono-row span:last-child { color: var(--green); font-family: "DM Mono", monospace; }
-  .deudor-status { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 3px 8px; border-radius: 99px; font-weight: 500; margin-top: 8px; }
-  .deudor-status.pendiente { background: rgba(251,191,36,.12); color: var(--yellow); border: 1px solid rgba(251,191,36,.25); }
-  .deudor-status.cobrado { background: rgba(74,222,128,.12); color: var(--green); border: 1px solid rgba(74,222,128,.25); }
-  .deudor-status.parcial { background: rgba(56,189,248,.12); color: var(--accent); border: 1px solid rgba(56,189,248,.25); }
-  .resumen-cobro { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-  .resumen-cobro-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
-  .resumen-cobro-pill .val { font-size: 17px; font-weight: 600; font-family: "DM Mono", monospace; margin-bottom: 2px; }
-  .resumen-cobro-pill .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  /* resaltar meta vinculada */
+  .meta-card.has-link { border-color: rgba(74,222,128,.3); }
 </style>
-<!-- Firebase -->
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBdozpKZrxC63eil14drCAJ1txISA702W0",
-  authDomain: "mi-presupuesto-d12de.firebaseapp.com",
-  projectId: "mi-presupuesto-d12de",
-  storageBucket: "mi-presupuesto-d12de.firebasestorage.app",
-  messagingSenderId: "418712208787",
-  appId: "1:418712208787:web:2b4d769ba39c1c780c9466"
-};
-
-const app = initializeApp(firebaseConfig);
-// Persistencia LOCAL: la sesión se guarda en el dispositivo
-// Firebase la lee al instante sin ir al servidor → login instantáneo
-const auth = getAuth(app);
-const db = getFirestore(app);
-let currentUser = null;
-let syncTimeout = null;
-let appReady = false;
-
-// ── SESIÓN CACHEADA: mostrar app al instante si ya había sesión ──────────────
-// Guardamos el uid y datos básicos del user en localStorage
-// para mostrar la app sin esperar a Firebase la próxima vez
-const CACHE_KEY = 'presupuesto_session';
-function getCachedSession() {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch(e) { return null; }
-}
-function setCachedSession(user) {
-  if (user) {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      uid: user.uid,
-      displayName: user.displayName,
-      email: user.email,
-      photoURL: user.photoURL,
-    }));
-  } else {
-    localStorage.removeItem(CACHE_KEY);
-  }
-}
-
-function showApp(user) {
-  window.currentUser = user;
-  currentUser = user;
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('nav').style.display = 'flex';
-  document.getElementById('fab').style.display = 'flex';
-  document.getElementById('hdr-month').title = user.displayName || user.email;
-}
-
-function hideApp() {
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('nav').style.display = 'none';
-  document.getElementById('fab').style.display = 'none';
-}
-
-// ── INICIO INSTANTÁNEO: si hay sesión cacheada, mostrar app de inmediato ─────
-const cached = getCachedSession();
-if (cached) {
-  // Mostrar app al instante con datos locales sin esperar Firebase
-  showApp(cached);
-  checkAndCopyLastMonthBudget();
-  showTab('resumen');
-  appReady = true;
-}
-
-// ── AUTH ──────────────────────────────────────────────────────────────────────
-window.signInWithGoogle = async function() {
-  const btn = document.getElementById('btn-google');
-  const status = document.getElementById('login-status');
-  btn.style.opacity = '0.6';
-  status.textContent = 'Conectando...';
-  try {
-    const provider = new GoogleAuthProvider();
-    // Usar redirect en móvil es más rápido que popup
-    await signInWithPopup(auth, provider);
-  } catch(e) {
-    btn.style.opacity = '1';
-    status.textContent = 'Error al iniciar sesión. Intenta de nuevo.';
-    console.error(e);
-  }
-};
-
-window.doSignOut = async function() {
-  setCachedSession(null);
-  await signOut(auth);
-};
-
-// Firebase confirma la sesión en segundo plano (no bloquea la UI)
-onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
-  if (user) {
-    setCachedSession(user); // actualizar cache con datos frescos
-    showApp(user);
-    // Solo sincronizar Firestore si la app no estaba ya lista (primera carga)
-    if (!appReady) {
-      await loadFromFirestore();
-      checkAndCopyLastMonthBudget();
-      showTab('resumen');
-      appReady = true;
-    } else {
-      // Ya está mostrando datos locales, sincronizar en segundo plano silencioso
-      syncFromFirestoreBackground();
-    }
-  } else {
-    // Solo ocultar si no hay sesión cacheada válida
-    if (!getCachedSession()) {
-      hideApp();
-    }
-    appReady = false;
-  }
-});
-
-// ── FIRESTORE SYNC ────────────────────────────────────────────────────────────
-async function loadFromFirestore() {
-  if (!currentUser) return;
-  try {
-    const ref = doc(db, 'usuarios', currentUser.uid);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      const remote = snap.data();
-      const local = loadLocal();
-      const merged = { ...remote, currentMonth: local.currentMonth || remote.currentMonth };
-      saveLocal(merged);
-    } else {
-      const local = loadLocal();
-      if (Object.keys(local).length > 0) {
-        await saveToFirestore(local);
-      }
-    }
-  } catch(e) {
-    console.warn('Error loading from Firestore:', e);
-  }
-}
-
-// Sincronización silenciosa en segundo plano (sin bloquear UI)
-async function syncFromFirestoreBackground() {
-  if (!currentUser) return;
-  try {
-    const ref = doc(db, 'usuarios', currentUser.uid);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      const remote = snap.data();
-      const local = loadLocal();
-      // Solo actualizar si el remoto tiene más datos (evitar sobreescribir cambios locales recientes)
-      const remoteCount = (remote.txs || []).length + (remote.metas || []).length;
-      const localCount  = (local.txs  || []).length + (local.metas  || []).length;
-      if (remoteCount > localCount) {
-        const merged = { ...remote, currentMonth: local.currentMonth || remote.currentMonth };
-        saveLocal(merged);
-        // Refrescar UI silenciosamente
-        showTab(window._currentTab || 'resumen');
-      }
-    }
-  } catch(e) {
-    // Fallo silencioso, no afecta al usuario
-  }
-}
-
-async function saveToFirestore(data) {
-  if (!currentUser) return;
-  try {
-    const ref = doc(db, 'usuarios', currentUser.uid);
-    await setDoc(ref, data);
-  } catch(e) {
-    console.warn('Error saving to Firestore:', e);
-  }
-}
-
-// Debounced sync: waits 1.5s after last change before uploading
-window.scheduleSyncToFirestore = function() {
-  if (syncTimeout) clearTimeout(syncTimeout);
-  syncTimeout = setTimeout(() => {
-    const d = loadLocal();
-    saveToFirestore(d);
-  }, 1500);
-};
-</script>
 </head>
 <body>
-<!-- LOGIN SCREEN -->
-<div id="login-screen" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px">
-  <div style="font-size:52px;margin-bottom:16px">💰</div>
-  <div style="font-size:24px;font-weight:700;margin-bottom:6px">Mi Presupuesto</div>
-  <div style="font-size:14px;color:var(--muted);margin-bottom:40px;text-align:center">Tu dinero, ordenado.<br>Inicia sesión para sincronizar tus datos.</div>
-  <button id="btn-google" onclick="signInWithGoogle()" style="display:flex;align-items:center;gap:12px;background:white;color:#1e293b;border:none;border-radius:14px;padding:14px 24px;font-family:DM Sans,sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.3);width:100%;max-width:300px;justify-content:center">
-    <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-    Continuar con Google
-  </button>
-  <div id="login-status" style="margin-top:16px;font-size:13px;color:var(--muted)"></div>
-</div>
-
-<div id="app" style="display:none">
+<div id="app">
   <div id="header">
     <div class="header-month" id="hdr-month">—</div>
     <div class="header-balance" id="hdr-balance">$0</div>
@@ -417,10 +208,6 @@ window.scheduleSyncToFirestore = function() {
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="3" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21"/><line x1="3" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></svg>
       Metas
     </button>
-    <button class="nav-btn" onclick="showTab('cobros')" id="tab-cobros">
-      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.42 0-8-1.79-8-4V6c0-2.21 3.58-4 8-4s8 1.79 8 4v8c0 2.21-3.58 4-8 4z"/></svg>
-      Cobros
-    </button>
     <button class="nav-btn" onclick="showTab('config')" id="tab-config">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
       Ajustes
@@ -439,43 +226,30 @@ window.scheduleSyncToFirestore = function() {
 </div>
 
 <script>
-// ── CATEGORÍAS BASE (no borrable, siempre presentes) ─────────────────────────
-const BASE_CATS = [
-  { id:'ahorro',    name:'Ahorro',       icon:'💰', color:'rgba(167,139,250,.2)',  es:'gasto',   base:true },
-  { id:'vivienda',  name:'Vivienda',     icon:'🏠', color:'rgba(56,189,248,.2)',   es:'gasto',   base:true },
-  { id:'alimento',  name:'Alimentación', icon:'🍽️', color:'rgba(74,222,128,.2)',   es:'gasto',   base:true },
-  { id:'transp',    name:'Transporte',   icon:'🚗', color:'rgba(251,191,36,.2)',   es:'gasto',   base:true },
-  { id:'entret',    name:'Ocio',         icon:'🎬', color:'rgba(167,139,250,.2)',  es:'gasto',   base:true },
-  { id:'deudas',    name:'Deudas',       icon:'💳', color:'rgba(248,113,113,.2)',  es:'gasto',   base:true },
-  { id:'ingreso',   name:'Ingreso',      icon:'📥', color:'rgba(74,222,128,.2)',   es:'ingreso', base:true },
+// ── CATEGORÍAS POR DEFECTO ────────────────────────────────────────────────────
+const DEFAULT_CATS = [
+  { id:'ahorro',   name:'Ahorro',       icon:'💰', color:'rgba(167,139,250,.2)', es:'gasto',   isDefault: true },
+  { id:'vivienda', name:'Vivienda',     icon:'🏠', color:'rgba(56,189,248,.2)',  es:'gasto',   isDefault: true },
+  { id:'alimento', name:'Alimentación', icon:'🍽️', color:'rgba(74,222,128,.2)',  es:'gasto',   isDefault: true },
+  { id:'transp',   name:'Transporte',   icon:'🚗', color:'rgba(251,191,36,.2)',  es:'gasto',   isDefault: true },
+  { id:'entret',   name:'Ocio',         icon:'🎬', color:'rgba(167,139,250,.2)', es:'gasto',   isDefault: true },
+  { id:'deudas',   name:'Deudas',       icon:'💳', color:'rgba(248,113,113,.2)', es:'gasto',   isDefault: true },
+  { id:'ingreso',  name:'Ingreso',      icon:'📥', color:'rgba(74,222,128,.2)',  es:'ingreso', isDefault: true },
 ];
 
-// Paleta de colores para categorías personalizadas
-const CAT_COLORS = [
-  'rgba(56,189,248,.25)',   // azul
-  'rgba(74,222,128,.25)',   // verde
-  'rgba(251,191,36,.25)',   // amarillo
-  'rgba(248,113,113,.25)',  // rojo
-  'rgba(167,139,250,.25)',  // morado
-  'rgba(244,114,182,.25)',  // rosa
-  'rgba(251,146,60,.25)',   // naranja
-  'rgba(34,211,238,.25)',   // cyan
-  'rgba(163,230,53,.25)',   // lima
-  'rgba(209,213,219,.25)',  // gris
+const EMOJI_OPTIONS = ['🏠','🍽️','🚗','💰','💳','🎬','📚','🏋️','✈️','🎮','🛒','💊','👗','🐾','🎵','🌿','☕','🍺','🎁','💼','🏥','⚡','📱','🖥️','🎓','🧴','🏖️','🍕','🛡️','🚀'];
+const COLOR_OPTIONS = [
+  'rgba(56,189,248,.25)', 'rgba(74,222,128,.25)', 'rgba(248,113,113,.25)',
+  'rgba(251,191,36,.25)', 'rgba(167,139,250,.25)', 'rgba(251,146,60,.25)',
+  'rgba(236,72,153,.25)', 'rgba(20,184,166,.25)',  'rgba(99,102,241,.25)',
+  'rgba(156,163,175,.25)'
 ];
-
-const CAT_EMOJIS = ['🏋️','✈️','🎓','💊','🐾','📚','💻','🎮','🛍️','☕','🎵','🏥','💇','🔧','🎁','🌿','🍺','🚀','🏊','🎨','📱','🏡','👶','🐶','⚡','🌊','🎯','💎','🎪','🎭'];
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
-function loadLocal() { try { return JSON.parse(localStorage.getItem('presupuesto_v1') || '{}'); } catch(e){ return {}; } }
-function saveLocal(d) { localStorage.setItem('presupuesto_v1', JSON.stringify(d)); }
-function load() { return loadLocal(); }
-function save(d) {
-  saveLocal(d);
-  if (typeof window.scheduleSyncToFirestore === 'function') window.scheduleSyncToFirestore();
-}
+function load() { try { return JSON.parse(localStorage.getItem('presupuesto_v2') || '{}'); } catch(e){ return {}; } }
+function save(d) { localStorage.setItem('presupuesto_v2', JSON.stringify(d)); }
 
 function getData() {
   let d = load();
@@ -483,44 +257,62 @@ function getData() {
   if (!d.presupuestos) d.presupuestos = {};
   if (!d.metas) d.metas = [];
   if (!d.customCats) d.customCats = [];
-  if (!d.deudores) d.deudores = [];
+  if (!d.lastSeenMonth) d.lastSeenMonth = null;
+
+  const now = new Date();
+  const realMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
   if (!d.currentMonth) {
-    const now = new Date();
-    d.currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    d.currentMonth = realMonth;
   }
+
+  // ── AUTO-COPIA AL NUEVO MES ───────────────────────────────────────────────
+  // Si el mes real cambió desde la última vez que se abrió la app,
+  // y el nuevo mes no tiene presupuesto aún → copia del mes anterior automáticamente.
+  if (d.lastSeenMonth && d.lastSeenMonth !== realMonth) {
+    const prevKey = d.lastSeenMonth;
+    const newKey  = realMonth;
+    const prevPres = d.presupuestos[prevKey];
+
+    if (prevPres && !d.presupuestos[newKey]) {
+      // Copia los presupuestos del mes anterior al nuevo mes
+      d.presupuestos[newKey] = Object.assign({}, prevPres);
+      d.currentMonth = newKey;
+      d._newMonthCopied = true; // flag para mostrar aviso en UI
+    } else if (!d.presupuestos[newKey]) {
+      d.currentMonth = newKey;
+    }
+  }
+
+  d.lastSeenMonth = realMonth;
+  save(d);
   return d;
 }
 
-// Obtener TODAS las categorías (base + personalizadas)
-function getAllCats() {
-  const d = getData();
-  return [...BASE_CATS, ...d.customCats];
+function getAllCats(d) {
+  return [...DEFAULT_CATS, ...(d.customCats || [])];
 }
 
 let currentTab = 'resumen';
 let editingMeta = null;
 let editingCat = null;
-let selectedEmoji = '🎯';
-let selectedColor = CAT_COLORS[0];
+let selectedEmoji = '⭐';
+let selectedColor = COLOR_OPTIONS[0];
+let txType = 'gas';
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
-function fmt(n) {
-  return '$' + Math.abs(Math.round(n)).toLocaleString('es-CL');
-}
-function fmtSigned(n) {
-  return (n >= 0 ? '+' : '-') + '$' + Math.abs(Math.round(n)).toLocaleString('es-CL');
-}
+function fmt(n) { return '$' + Math.abs(Math.round(n)).toLocaleString('es-CL'); }
+function fmtSigned(n) { return (n >= 0 ? '+' : '-') + '$' + Math.abs(Math.round(n)).toLocaleString('es-CL'); }
 function monthKey(d) { return d.currentMonth || ''; }
 function monthLabel(key) {
   if (!key) return '';
   const [y, m] = key.split('-');
   return MONTHS[parseInt(m)-1] + ' ' + y;
 }
-function getMonthTxs(d) {
-  return d.txs.filter(t => t.month === monthKey(d));
-}
-function getCat(id) {
-  return getAllCats().find(c => c.id === id) || BASE_CATS[0];
+function getMonthTxs(d) { return d.txs.filter(t => t.month === monthKey(d)); }
+function getCat(id, d) {
+  const cats = d ? getAllCats(d) : DEFAULT_CATS;
+  return cats.find(c => c.id === id) || DEFAULT_CATS[0];
 }
 
 function getTotals(d) {
@@ -530,27 +322,18 @@ function getTotals(d) {
   return { ingresos, gastos, balance: ingresos - gastos };
 }
 
-// Calcular cuánto se ha ahorrado REAL en el mes actual (categoría "ahorro")
-function getAhorroReal(d) {
-  const txs = getMonthTxs(d);
-  return txs.filter(t => t.cat === 'ahorro').reduce((a,t) => a + t.monto, 0);
-}
-
-// Calcular total ahorrado histórico (todos los meses) en la categoría ahorro
-function getAhorroHistorico(d) {
-  return d.txs.filter(t => t.cat === 'ahorro').reduce((a,t) => a + t.monto, 0);
-}
-
-// Obtener total aportado a una meta específica (ahorros vinculados)
-function getAportesMeta(d, metaId) {
-  // Si la meta tiene aportación manual (campo ahorrado), suma ese + ahorros históricos si está vinculada
-  const m = d.metas.find(x => x.id === metaId);
-  if (!m) return 0;
-  if (m.vinculado) {
-    // Vinculada al ahorro real: base manual + ahorro acumulado desde creación
-    return (m.baseAhorrado || 0) + (m.ahorroVinculado || 0);
+// ── AHORRO VINCULADO A METAS ──────────────────────────────────────────────────
+// Calcula el ahorro acumulado real de una meta:
+// Si la meta tiene linkedCatId, suma todos los movimientos de esa categoría
+// Luego suma también m.ahorradoBase (ahorro manual ingresado)
+function getAhorroMeta(meta, d) {
+  let total = meta.ahorradoBase || 0;
+  if (meta.linkedCatId) {
+    // Suma todas las transacciones de esa categoría en todos los meses
+    const catTxs = d.txs.filter(t => t.cat === meta.linkedCatId);
+    total += catTxs.reduce((a,t) => a + t.monto, 0);
   }
-  return m.ahorrado || 0;
+  return total;
 }
 
 // ── HEADER ───────────────────────────────────────────────────────────────────
@@ -569,18 +352,37 @@ function updateHeader() {
 // ── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(tab) {
   currentTab = tab;
-  window._currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   const fab = document.getElementById('fab');
   fab.style.display = (tab === 'resumen' || tab === 'gastos') ? 'flex' : 'none';
   updateHeader();
   const c = document.getElementById('content');
-  if (tab === 'resumen') c.innerHTML = renderResumen();
+
+  // Aviso de copia automática de presupuesto
+  const d = getData();
+  let bannerHtml = '';
+  if (d._newMonthCopied && tab === 'resumen') {
+    bannerHtml = `<div id="copy-banner" style="background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--accent)">📋 Presupuesto copiado</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Los presupuestos del mes anterior se copiaron a ${monthLabel(monthKey(d))}.</div>
+      </div>
+      <button onclick="dismissNewMonthBanner()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">×</button>
+    </div>`;
+  }
+
+  if (tab === 'resumen') c.innerHTML = bannerHtml + renderResumen();
   else if (tab === 'gastos') c.innerHTML = renderGastos();
   else if (tab === 'metas') c.innerHTML = renderMetas();
-  else if (tab === 'cobros') c.innerHTML = renderCobros();
   else if (tab === 'config') c.innerHTML = renderConfig();
+}
+
+function dismissNewMonthBanner() {
+  const d = getData();
+  delete d._newMonthCopied;
+  save(d);
+  document.getElementById('copy-banner')?.remove();
 }
 
 // ── RESUMEN ──────────────────────────────────────────────────────────────────
@@ -589,14 +391,13 @@ function renderResumen() {
   const { ingresos, gastos, balance } = getTotals(d);
   const pres = d.presupuestos[monthKey(d)] || {};
   const txs = getMonthTxs(d);
-  const allCats = getAllCats();
+  const allCats = getAllCats(d);
 
   let html = `<div class="summary-grid">
     <div class="pill"><div class="pill-label">Ingresos</div><div class="pill-val green">${fmt(ingresos)}</div></div>
     <div class="pill"><div class="pill-label">Gastos</div><div class="pill-val red">${fmt(gastos)}</div></div>
   </div>`;
 
-  // Gasto por categoría
   html += `<div class="card"><div class="card-title">Gastos por categoría</div>`;
   const catIds = allCats.filter(c => c.id !== 'ingreso');
   let hasAny = false;
@@ -622,7 +423,6 @@ function renderResumen() {
   if (!hasAny) html += `<div class="empty"><div class="empty-icon">📊</div><p>Sin gastos este mes.<br>Toca + para agregar.</p></div>`;
   html += `</div>`;
 
-  // Tasa de ahorro
   if (ingresos > 0) {
     const tasa = (balance / ingresos * 100);
     const color = tasa >= 20 ? 'green' : tasa >= 10 ? 'yellow' : 'red';
@@ -634,12 +434,32 @@ function renderResumen() {
     </div>`;
   }
 
-  // Últimas transacciones
+  // Metas con progreso (resumen rápido)
+  if (d.metas.length > 0) {
+    html += `<div class="card"><div class="card-title">Progreso de metas</div>`;
+    d.metas.slice(0,3).forEach(m => {
+      const ahorrado = getAhorroMeta(m, d);
+      const pct = m.objetivo > 0 ? Math.min(ahorrado / m.objetivo * 100, 100) : 0;
+      const restante = Math.max(m.objetivo - ahorrado, 0);
+      const color = pct >= 100 ? 'green' : 'blue';
+      html += `<div style="margin-bottom:14px" onclick="showTab('metas')" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:500">${m.icono||'🎯'} ${m.nombre}</span>
+          <span style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace">${fmt(ahorrado)} / ${fmt(m.objetivo)}</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill ${color}" style="width:${pct}%"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${pct>=100?'🎉 ¡Meta alcanzada!':'Faltan '+fmt(restante)}</div>
+      </div>`;
+    });
+    if (d.metas.length > 3) html += `<div style="font-size:12px;color:var(--accent);text-align:center;padding:4px 0" onclick="showTab('metas')">Ver todas las metas →</div>`;
+    html += `</div>`;
+  }
+
   const last = [...txs].reverse().slice(0, 5);
   if (last.length > 0) {
     html += `<div class="card"><div class="card-title">Últimos movimientos</div>`;
     last.forEach(t => {
-      const cat = getCat(t.cat);
+      const cat = getCat(t.cat, d);
       html += `<div class="tx-item">
         <div class="tx-dot" style="background:${cat.color}">${cat.icon}</div>
         <div class="tx-info"><div class="tx-name">${t.desc||cat.name}</div><div class="tx-cat">${cat.name} · ${t.fecha||''}</div></div>
@@ -656,25 +476,21 @@ function renderResumen() {
 function renderGastos() {
   const d = getData();
   const txs = getMonthTxs(d).slice().reverse();
-
-  let html = ``;
   if (txs.length === 0) {
     return `<div class="empty" style="margin-top:60px"><div class="empty-icon">📋</div><p>Sin movimientos este mes.<br>Toca + para registrar.</p></div>`;
   }
-
-  // Agrupar por fecha
+  let html = '';
   const byDate = {};
   txs.forEach(t => {
     const k = t.fecha || 'Sin fecha';
     if (!byDate[k]) byDate[k] = [];
     byDate[k].push(t);
   });
-
   Object.entries(byDate).forEach(([fecha, items]) => {
     html += `<div style="font-size:12px;color:var(--muted);padding:14px 4px 6px;text-transform:uppercase;letter-spacing:.6px">${fecha}</div>
     <div class="card" style="padding:0 16px">`;
     items.forEach(t => {
-      const cat = getCat(t.cat);
+      const cat = getCat(t.cat, d);
       html += `<div class="tx-item" onclick="openEditTx('${t.id}')">
         <div class="tx-dot" style="background:${cat.color}">${cat.icon}</div>
         <div class="tx-info"><div class="tx-name">${t.desc||cat.name}</div><div class="tx-cat">${cat.name}</div></div>
@@ -689,66 +505,45 @@ function renderGastos() {
 // ── METAS ────────────────────────────────────────────────────────────────────
 function renderMetas() {
   const d = getData();
-  const ahorroHistorico = getAhorroHistorico(d);
-
+  const allCats = getAllCats(d);
   let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-top:4px">
     <span style="font-size:16px;font-weight:600">Mis metas</span>
     <button onclick="openAddMeta()" style="background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);color:var(--accent);border-radius:10px;padding:7px 14px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">+ Nueva</button>
   </div>`;
 
-  // Resumen de ahorro disponible
-  if (ahorroHistorico > 0) {
-    html += `<div class="card" style="margin-bottom:14px;background:rgba(56,189,248,.06);border-color:rgba(56,189,248,.2)">
-      <div class="card-title" style="color:var(--accent)">Ahorro total acumulado</div>
-      <div style="font-size:24px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent)">${fmt(ahorroHistorico)}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">Registrado en categoría Ahorro · todos los meses</div>
-    </div>`;
-  }
-
   if (d.metas.length === 0) {
-    return html + `<div class="empty" style="margin-top:20px"><div class="empty-icon">🎯</div><p>Sin metas todavía.<br>Crea una para empezar.</p></div>`;
+    return html + `<div class="empty" style="margin-top:40px"><div class="empty-icon">🎯</div><p>Sin metas todavía.<br>Crea una para empezar.</p></div>`;
   }
 
-  // Calcular cuánto ahorro ya está "comprometido" en metas vinculadas
-  let ahorroComprometido = 0;
   d.metas.forEach(m => {
-    if (m.vinculado) ahorroComprometido += (m.ahorroVinculado || 0);
-  });
+    const ahorrado = getAhorroMeta(m, d);
+    const pct = m.objetivo > 0 ? Math.min(ahorrado / m.objetivo * 100, 100) : 0;
+    const color = pct >= 100 ? 'green' : 'blue';
+    const restante = Math.max(m.objetivo - ahorrado, 0);
+    const linkedCat = m.linkedCatId ? allCats.find(c => c.id === m.linkedCatId) : null;
 
-  d.metas.forEach(m => {
-    const totalAhorrado = m.vinculado
-      ? (m.baseAhorrado || 0) + (m.ahorroVinculado || 0)
-      : (m.ahorrado || 0);
-    const pct = m.objetivo > 0 ? Math.min(totalAhorrado / m.objetivo * 100, 100) : 0;
-    const barColor = pct >= 100 ? 'green' : 'accent';
-    const restante = Math.max(m.objetivo - totalAhorrado, 0);
-    const mesesRestantes = m.mensual > 0 ? Math.ceil(restante / m.mensual) : null;
+    // Calcular aporte del mes actual
+    let aporteEsteMes = 0;
+    if (m.linkedCatId) {
+      aporteEsteMes = getMonthTxs(d).filter(t => t.cat === m.linkedCatId).reduce((a,t) => a+t.monto, 0);
+    }
 
-    html += `<div class="meta-card" onclick="openEditMeta('${m.id}')">
+    html += `<div class="meta-card ${linkedCat ? 'has-link' : ''}" onclick="openEditMeta('${m.id}')">
       <div class="meta-top">
         <div>
-          <div class="meta-name">${m.emoji || '🎯'} ${m.nombre}</div>
-          <span class="meta-badge ${m.vinculado ? 'linked' : 'manual'}">${m.vinculado ? '🔗 Vinculada al ahorro' : '✏️ Manual'}</span>
+          <div class="meta-name">${m.icono||'🎯'} ${m.nombre}</div>
+          ${linkedCat ? `<div class="meta-badge linked">🔗 Vinculada a ${linkedCat.icon} ${linkedCat.name}</div>` : (m.mensual > 0 ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">Ahorro mensual: ${fmt(m.mensual)}</div>` : '')}
         </div>
         <div class="meta-pct">${pct.toFixed(0)}%</div>
       </div>
-      <div class="prog-bar"><div class="prog-fill ${barColor}" style="width:${pct}%"></div></div>
+      <div class="prog-bar"><div class="prog-fill ${color}" style="width:${pct}%"></div></div>
       <div class="meta-nums">
-        <span>${fmt(totalAhorrado)} ahorrado</span>
-        <span>Objetivo: ${fmt(m.objetivo)}</span>
+        <span>${fmt(ahorrado)} ahorrado</span>
+        <span>Meta: ${fmt(m.objetivo)}</span>
       </div>
-      <div class="meta-saving-info" style="margin-top:10px">
-        ${m.vinculado ? `
-          <div class="meta-saving-row"><span>Base inicial</span><span>${fmt(m.baseAhorrado||0)}</span></div>
-          <div class="meta-saving-row"><span>Ahorro vinculado</span><span style="color:var(--accent)">${fmt(m.ahorroVinculado||0)}</span></div>
-          <div class="meta-saving-row" style="padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span style="font-weight:500;color:var(--text)">Falta para la meta</span><span style="color:${restante>0?'var(--yellow)':'var(--green)'};font-weight:600">${restante > 0 ? fmt(restante) : '🎉 ¡Completada!'}</span></div>
-        ` : `
-          <div class="meta-saving-row"><span>Ahorrado</span><span>${fmt(m.ahorrado||0)}</span></div>
-          <div class="meta-saving-row" style="padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span style="font-weight:500;color:var(--text)">Falta para la meta</span><span style="color:${restante>0?'var(--yellow)':'var(--green)'};font-weight:600">${restante > 0 ? fmt(restante) : '🎉 ¡Completada!'}</span></div>
-        `}
-        ${mesesRestantes && restante > 0 ? `<div class="meta-saving-row" style="padding-top:4px"><span>Estimado si ahorras ${fmt(m.mensual)}/mes</span><span>${mesesRestantes} meses</span></div>` : ''}
-      </div>
-      ${pct >= 100 ? `<div style="margin-top:10px;font-size:13px;color:var(--green);font-weight:500;text-align:center">🎉 ¡Meta alcanzada!</div>` : ''}
+      ${linkedCat && aporteEsteMes > 0 ? `<div style="margin-top:8px;font-size:12px;color:var(--green)">✅ Este mes: +${fmt(aporteEsteMes)}</div>` : ''}
+      ${restante > 0 ? `<div style="margin-top:6px;font-size:12px;color:var(--muted)">Faltan <strong style="color:var(--text)">${fmt(restante)}</strong>${m.mensual > 0 ? ' · ⏳ '+Math.ceil(restante/m.mensual)+' meses' : ''}</div>` : ''}
+      ${pct >= 100 ? `<div style="margin-top:8px;font-size:13px;color:var(--green);font-weight:500">🎉 ¡Meta alcanzada!</div>` : ''}
     </div>`;
   });
   return html;
@@ -759,13 +554,11 @@ function renderConfig() {
   const d = getData();
   const pres = d.presupuestos[monthKey(d)] || {};
   const mes = monthLabel(monthKey(d));
-  const allCats = getAllCats();
+  const allCats = getAllCats(d);
 
-  let html = `<div style="padding-top:4px">`;
-  html += renderUserCard();
-  html += `<div class="card"><div class="card-title">Mes activo</div>`;
+  let html = `<div style="padding-top:4px">
+  <div class="card"><div class="card-title">Mes activo</div>`;
 
-  // Selector de mes
   const now = new Date();
   const months6 = [];
   for (let i = -1; i <= 4; i++) {
@@ -779,91 +572,36 @@ function renderConfig() {
   });
   html += `</div></div>`;
 
-  // Categorías personalizadas
-  html += `<div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div class="card-title" style="margin-bottom:0">Categorías</div>
-      <button onclick="openAddCat()" style="background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);color:var(--accent);border-radius:8px;padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer">+ Nueva</button>
-    </div>`;
-
-  // Categorías base (solo lectura)
-  html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Predeterminadas</div>`;
-  BASE_CATS.filter(c => c.id !== 'ingreso').forEach(cat => {
-    html += `<div class="cat-manage-item">
-      <div class="cat-manage-icon" style="background:${cat.color}">${cat.icon}</div>
-      <span class="cat-manage-name">${cat.name}</span>
-      <span style="font-size:11px;color:var(--muted)">Base</span>
-    </div>`;
-  });
-
-  // Categorías personalizadas
-  if (d.customCats && d.customCats.length > 0) {
-    html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px">Personalizadas</div>`;
-    d.customCats.forEach(cat => {
-      html += `<div class="cat-manage-item">
-        <div class="cat-manage-icon" style="background:${cat.color}">${cat.icon}</div>
-        <span class="cat-manage-name">${cat.name}</span>
-        <div class="cat-manage-actions">
-          <button class="btn-icon" onclick="openEditCat('${cat.id}')">✏️</button>
-          <button class="btn-icon del" onclick="deleteCat('${cat.id}')">🗑️</button>
-        </div>
-      </div>`;
-    });
-  }
-  html += `</div>`;
-
-  // Presupuestos
-  const totalPres = Object.values(pres).reduce((a, v) => a + (v || 0), 0);
-  const { ingresos } = getTotals(d);
-  const libre = ingresos - totalPres;
-  const pctUsado = ingresos > 0 ? Math.min(totalPres / ingresos * 100, 100) : 0;
-  const colorBarra = pctUsado > 100 ? 'red' : pctUsado > 85 ? 'yellow' : 'green';
-
+  // Presupuestos (ahora incluye categorías personalizadas)
   html += `<div class="card"><div class="card-title">Presupuesto para ${mes}</div>`;
-
-  // Resumen total arriba
-  if (totalPres > 0 || ingresos > 0) {
-    html += `<div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid var(--border)">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
-        <div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Presupuestado</div>
-          <div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red)">${fmt(totalPres)}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Ingreso</div>
-          <div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--green)">${ingresos > 0 ? fmt(ingresos) : '—'}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">${libre >= 0 ? 'Disponible' : 'Déficit'}</div>
-          <div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:${libre >= 0 ? 'var(--accent)' : 'var(--red)'}">${ingresos > 0 ? fmt(Math.abs(libre)) : '—'}</div>
-        </div>
-      </div>
-      ${ingresos > 0 ? `
-        <div class="prog-bar" style="height:8px">
-          <div class="prog-fill ${colorBarra}" style="width:${pctUsado}%"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px">
-          <span>${pctUsado.toFixed(0)}% del ingreso presupuestado</span>
-          <span style="color:${libre>=0?'var(--green)':'var(--red)'};font-weight:500">${libre >= 0 ? 'Superávit ✓' : '⚠️ Excede ingreso'}</span>
-        </div>
-      ` : `<div style="font-size:12px;color:var(--muted);text-align:center;padding:4px 0">Registra un ingreso este mes para ver la comparación</div>`}
-    </div>`;
-  }
-
   allCats.filter(c=>c.id!=='ingreso').forEach(cat => {
     html += `<div class="setting-row">
       <span class="setting-label">${cat.icon} ${cat.name}</span>
       <span class="setting-val" onclick="openEditPres('${cat.id}')">${pres[cat.id]?fmt(pres[cat.id]):'Fijar'}</span>
     </div>`;
   });
+  html += `</div>`;
 
-  if (totalPres > 0) {
-    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 0;margin-top:4px;border-top:1px solid var(--border)">
-      <span style="font-size:13px;font-weight:600">Total presupuestado</span>
-      <span style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red)">${fmt(totalPres)}</span>
+  // Gestión de categorías personalizadas
+  html += `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span class="card-title" style="margin:0">Categorías personalizadas</span>
+      <button onclick="openAddCat()" style="background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);color:var(--accent);border-radius:8px;padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer">+ Agregar</button>
     </div>`;
+  if (d.customCats.length === 0) {
+    html += `<div style="font-size:13px;color:var(--muted);text-align:center;padding:10px 0">Sin categorías personalizadas.<br>Agrega las que necesites.</div>`;
+  } else {
+    d.customCats.forEach(cat => {
+      html += `<div class="cat-manage-item">
+        <div class="cat-manage-icon" style="background:${cat.color}">${cat.icon}</div>
+        <span class="cat-manage-name">${cat.name}</span>
+        <div class="cat-manage-actions">
+          <button class="icon-btn" onclick="openEditCat('${cat.id}')">✏️</button>
+          <button class="icon-btn danger" onclick="deleteCat('${cat.id}')">🗑️</button>
+        </div>
+      </div>`;
+    });
   }
-
   html += `</div>`;
 
   // Datos
@@ -878,8 +616,9 @@ function renderConfig() {
 
 // ── SHEET: AGREGAR MOVIMIENTO ─────────────────────────────────────────────────
 function openAddSheet() {
-  const allCats = getAllCats();
   const today = new Date().toISOString().split('T')[0];
+  const d = getData();
+  const allCats = getAllCats(d);
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-title">Nuevo movimiento</div>
     <div class="type-toggle">
@@ -896,10 +635,10 @@ function openAddSheet() {
     <div class="field"><label>Fecha</label><input type="date" id="f-fecha" value="${today}"></div>
     <button class="btn-primary" onclick="saveTx()">Guardar</button>
   `;
+  txType = 'gas';
   openSheet();
 }
 
-let txType = 'gas';
 function setType(t) {
   txType = t;
   document.getElementById('btn-gas').className = 'type-btn' + (t==='gas'?' active-gas':'');
@@ -914,39 +653,17 @@ function saveTx() {
   const fecha = document.getElementById('f-fecha').value;
   const [y,m,day] = fecha.split('-');
   const fechaLabel = `${parseInt(day)} ${MONTHS[parseInt(m)-1].slice(0,3)} ${y}`;
-  const catId = txType === 'ing' ? 'ingreso' : document.getElementById('f-cat').value;
-
   d.txs.push({
     id: Date.now().toString(),
     monto,
     desc: document.getElementById('f-desc').value.trim(),
-    cat: catId,
+    cat: txType === 'ing' ? 'ingreso' : document.getElementById('f-cat').value,
     fecha: fechaLabel,
     month: monthKey(d),
   });
-
-  // Si es un gasto de ahorro, actualizar metas vinculadas automáticamente
-  if (catId === 'ahorro') {
-    actualizarMetasVinculadas(d, monto);
-  }
-
   save(d);
   closeSheet();
   showTab(currentTab);
-}
-
-// Distribuir ahorro nuevo entre metas vinculadas (en orden de creación)
-function actualizarMetasVinculadas(d, montoNuevo) {
-  let disponible = montoNuevo;
-  d.metas.forEach(m => {
-    if (!m.vinculado || disponible <= 0) return;
-    const totalActual = (m.baseAhorrado || 0) + (m.ahorroVinculado || 0);
-    const restante = Math.max(m.objetivo - totalActual, 0);
-    if (restante <= 0) return;
-    const aportar = Math.min(disponible, restante);
-    m.ahorroVinculado = (m.ahorroVinculado || 0) + aportar;
-    disponible -= aportar;
-  });
 }
 
 // ── SHEET: EDITAR TX ──────────────────────────────────────────────────────────
@@ -954,13 +671,14 @@ function openEditTx(id) {
   const d = getData();
   const t = d.txs.find(x => x.id === id);
   if (!t) return;
-  const cat = getCat(t.cat);
+  const cat = getCat(t.cat, d);
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-title">Editar movimiento</div>
     <div class="card" style="margin-bottom:16px">
       <div style="font-size:28px;text-align:center;margin-bottom:6px">${cat.icon}</div>
       <div style="text-align:center;font-size:20px;font-weight:600;color:${t.cat==='ingreso'?'var(--green)':'var(--red)'}">${t.cat==='ingreso'?'+':'-'}${fmt(t.monto)}</div>
       <div style="text-align:center;font-size:13px;color:var(--muted);margin-top:4px">${t.desc||cat.name} · ${t.fecha||''}</div>
+      <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:2px">${cat.name}</div>
     </div>
     <button class="btn-delete" style="width:100%" onclick="deleteTx('${id}')">🗑️ Eliminar este movimiento</button>
   `;
@@ -979,7 +697,7 @@ function deleteTx(id) {
 // ── SHEET: DETALLE CATEGORÍA ──────────────────────────────────────────────────
 function openCatDetail(catId) {
   const d = getData();
-  const cat = getCat(catId);
+  const cat = getCat(catId, d);
   const txs = getMonthTxs(d).filter(t => t.cat === catId);
   const total = txs.reduce((a,t) => a+t.monto, 0);
   const pres = (d.presupuestos[monthKey(d)] || {})[catId] || 0;
@@ -1009,7 +727,7 @@ function openCatDetail(catId) {
 // ── SHEET: PRESUPUESTO ────────────────────────────────────────────────────────
 function openEditPres(catId) {
   const d = getData();
-  const cat = getCat(catId);
+  const cat = getCat(catId, d);
   const pres = (d.presupuestos[monthKey(d)] || {})[catId] || 0;
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-title">${cat.icon} Presupuesto ${cat.name}</div>
@@ -1032,64 +750,57 @@ function savePresupuesto(catId) {
 // ── SHEET: METAS ──────────────────────────────────────────────────────────────
 function openAddMeta() {
   editingMeta = null;
+  const d = getData();
+  const allCats = getAllCats(d);
+  // Categorías de ahorro disponibles para vincular (excluye ingreso)
+  const savingCats = allCats.filter(c => c.id !== 'ingreso');
+
   document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">Nueva meta 🎯</div>
-    <div class="info-box">
-      <strong>💡 ¿Vincular al ahorro?</strong><br>
-      Si activas la vinculación, cada vez que registres un gasto en la categoría <strong>Ahorro</strong>, el monto se descontará automáticamente de esta meta.
+    <div class="sheet-title">Nueva meta</div>
+    <div class="field">
+      <label>Icono</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="meta-emoji-picker">
+        ${['🎯','🏖️','🚗','🏠','📚','✈️','💻','💍','👶','🏋️','🎓','🛡️'].map(e =>
+          `<button onclick="selectMetaEmoji('${e}',this)" style="font-size:22px;padding:8px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);cursor:pointer">${e}</button>`
+        ).join('')}
+      </div>
     </div>
     <div class="field"><label>Nombre de la meta</label><input type="text" id="m-nombre" placeholder="Ej: Fondo de emergencia"></div>
-    <div class="field"><label>Emoji</label>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span id="m-emoji-preview" style="font-size:28px">🎯</span>
-        <input type="text" id="m-emoji" value="🎯" placeholder="🎯" style="width:80px" oninput="document.getElementById('m-emoji-preview').textContent=this.value||'🎯'">
-      </div>
-      <div class="emoji-grid">
-        ${['🎯','🏖️','🚗','🏠','✈️','💻','🎓','💊','🐾','📚','💎','🎁','🌿','🎵','🏋️','🍺','🚀','🏊','👶','🔧'].map(e=>`<div class="emoji-opt" onclick="pickEmoji('${e}','new')">${e}</div>`).join('')}
-      </div>
-    </div>
     <div class="field"><label>Monto objetivo ($)</label><input type="number" id="m-objetivo" placeholder="0" inputmode="numeric"></div>
-    <div class="field"><label>Base inicial ya ahorrada ($)</label><input type="number" id="m-ahorrado" placeholder="0" inputmode="numeric"></div>
+    <div class="field"><label>Ya tengo ahorrado ($)</label><input type="number" id="m-ahorrado" placeholder="0" inputmode="numeric"></div>
     <div class="field"><label>Ahorro mensual estimado ($)</label><input type="number" id="m-mensual" placeholder="0" inputmode="numeric"></div>
-    <div style="display:flex;align-items:center;gap:10px;padding:14px;background:var(--surface2);border-radius:12px;margin-bottom:14px">
-      <div style="flex:1">
-        <div style="font-size:14px;font-weight:500">🔗 Vincular al ahorro real</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">Los gastos en "Ahorro" se aplicarán a esta meta automáticamente</div>
+
+    <div style="border-top:1px solid var(--border);margin:10px 0 14px;padding-top:14px">
+      <div class="toggle-wrap">
+        <span class="toggle-label">🔗 Vincular a una categoría de ahorro</span>
+        <label class="toggle"><input type="checkbox" id="m-link-toggle" onchange="toggleMetaLink(this)"><span class="slider"></span></label>
       </div>
-      <label style="position:relative;display:inline-block;width:44px;height:24px">
-        <input type="checkbox" id="m-vinculado" style="opacity:0;width:0;height:0">
-        <span onclick="toggleSwitch('m-vinculado')" style="position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:99px;transition:.3s" id="sw-vinculado"></span>
-      </label>
+      <div id="m-link-section" style="display:none">
+        <div class="savings-info">
+          <div class="savings-info-title">¿Cómo funciona?</div>
+          <div class="savings-info-text">Al vincular una categoría, los movimientos que registres en ella se descontarán automáticamente de tu meta. Por ejemplo: vincula la categoría "Ahorro" y cada gasto que registres ahí avanzará hacia tu objetivo.</div>
+        </div>
+        <div class="field" style="margin-top:12px"><label>Categoría vinculada</label>
+          <select id="m-linked-cat">
+            ${savingCats.map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
     </div>
     <button class="btn-primary" onclick="saveMeta()">Guardar meta</button>
   `;
+  window._metaEmoji = '🎯';
   openSheet();
 }
 
-function pickEmoji(e, ctx) {
-  if (ctx === 'new') {
-    document.getElementById('m-emoji').value = e;
-    document.getElementById('m-emoji-preview').textContent = e;
-    document.querySelectorAll('.emoji-opt').forEach(el => el.classList.remove('selected'));
-    event.target.classList.add('selected');
-  } else {
-    document.getElementById('me-emoji').value = e;
-    document.getElementById('me-emoji-preview').textContent = e;
-    document.querySelectorAll('.emoji-opt').forEach(el => el.classList.remove('selected'));
-    event.target.classList.add('selected');
-  }
+function selectMetaEmoji(emoji, btn) {
+  window._metaEmoji = emoji;
+  document.querySelectorAll('#meta-emoji-picker button').forEach(b => b.style.borderColor = 'var(--border)');
+  btn.style.borderColor = 'var(--accent)';
 }
 
-function toggleSwitch(id) {
-  const cb = document.getElementById(id);
-  cb.checked = !cb.checked;
-  const sw = document.getElementById('sw-' + id.replace('m-',''));
-  sw.style.background = cb.checked ? 'var(--accent)' : 'var(--border)';
-  if (cb.checked) {
-    sw.innerHTML = `<span style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;left:24px;top:3px;transition:.3s"></span>`;
-  } else {
-    sw.innerHTML = `<span style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;left:3px;top:3px;transition:.3s"></span>`;
-  }
+function toggleMetaLink(checkbox) {
+  document.getElementById('m-link-section').style.display = checkbox.checked ? 'block' : 'none';
 }
 
 function openEditMeta(id) {
@@ -1097,72 +808,104 @@ function openEditMeta(id) {
   const m = d.metas.find(x => x.id === id);
   if (!m) return;
   editingMeta = id;
-  const totalAhorrado = m.vinculado
-    ? (m.baseAhorrado || 0) + (m.ahorroVinculado || 0)
-    : (m.ahorrado || 0);
-  const restante = Math.max(m.objetivo - totalAhorrado, 0);
+  const allCats = getAllCats(d);
+  const savingCats = allCats.filter(c => c.id !== 'ingreso');
+  const ahorrado = getAhorroMeta(m, d);
+  const restante = Math.max(m.objetivo - ahorrado, 0);
+  const pct = m.objetivo > 0 ? Math.min(ahorrado / m.objetivo * 100, 100) : 0;
+
+  // Calcular aportes por mes
+  let aportesMeses = '';
+  if (m.linkedCatId) {
+    const byMonth = {};
+    d.txs.filter(t => t.cat === m.linkedCatId).forEach(t => {
+      if (!byMonth[t.month]) byMonth[t.month] = 0;
+      byMonth[t.month] += t.monto;
+    });
+    const entries = Object.entries(byMonth).sort((a,b) => b[0].localeCompare(a[0])).slice(0,4);
+    if (entries.length > 0) {
+      aportesMeses = `<div style="margin-top:10px"><div class="card-title" style="margin-bottom:8px">Aportes por mes</div>`;
+      entries.forEach(([key, val]) => {
+        aportesMeses += `<div class="meta-detail-row"><span class="meta-detail-label">${monthLabel(key)}</span><span class="meta-detail-val" style="color:var(--green)">+${fmt(val)}</span></div>`;
+      });
+      aportesMeses += `</div>`;
+    }
+  }
+
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-title">Editar meta</div>
+
+    <!-- Resumen de progreso -->
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:26px">${m.icono||'🎯'}</span>
+        <span style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)">${pct.toFixed(0)}%</span>
+      </div>
+      <div class="prog-bar" style="height:8px"><div class="prog-fill blue" style="width:${pct}%"></div></div>
+      <div class="meta-detail-row" style="margin-top:10px"><span class="meta-detail-label">Total ahorrado</span><span class="meta-detail-val" style="color:var(--green)">${fmt(ahorrado)}</span></div>
+      ${m.ahorradoBase > 0 ? `<div class="meta-detail-row"><span class="meta-detail-label">Ahorro manual</span><span class="meta-detail-val">${fmt(m.ahorradoBase)}</span></div>` : ''}
+      <div class="meta-detail-row"><span class="meta-detail-label">Meta</span><span class="meta-detail-val">${fmt(m.objetivo)}</span></div>
+      <div class="meta-detail-row"><span class="meta-detail-label">Falta para la meta</span><span class="meta-detail-val" style="color:var(--red)">${fmt(restante)}</span></div>
+      ${aportesMeses}
+      ${pct >= 100 ? `<div style="margin-top:10px;font-size:13px;color:var(--green);font-weight:500;text-align:center">🎉 ¡Meta alcanzada!</div>` : ''}
+    </div>
+
     <div class="field"><label>Nombre</label><input type="text" id="m-nombre" value="${m.nombre}"></div>
-    <div class="field"><label>Emoji</label>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span id="me-emoji-preview" style="font-size:28px">${m.emoji||'🎯'}</span>
-        <input type="text" id="me-emoji" value="${m.emoji||'🎯'}" placeholder="🎯" style="width:80px" oninput="document.getElementById('me-emoji-preview').textContent=this.value||'🎯'">
+    <div class="field"><label>Monto objetivo ($)</label><input type="number" id="m-objetivo" value="${m.objetivo}" inputmode="numeric"></div>
+    <div class="field"><label>Ahorro manual inicial ($)</label><input type="number" id="m-ahorrado" value="${m.ahorradoBase||0}" inputmode="numeric"></div>
+    <div class="field"><label>Ahorro mensual estimado ($)</label><input type="number" id="m-mensual" value="${m.mensual||0}" inputmode="numeric"></div>
+
+    <div style="border-top:1px solid var(--border);margin:10px 0 14px;padding-top:14px">
+      <div class="toggle-wrap">
+        <span class="toggle-label">🔗 Vincular a categoría</span>
+        <label class="toggle"><input type="checkbox" id="m-link-toggle" ${m.linkedCatId?'checked':''} onchange="toggleMetaLink(this)"><span class="slider"></span></label>
+      </div>
+      <div id="m-link-section" style="display:${m.linkedCatId?'block':'none'}">
+        <div class="savings-info">
+          <div class="savings-info-title">¿Cómo funciona?</div>
+          <div class="savings-info-text">Los movimientos de la categoría vinculada se suman automáticamente a esta meta.</div>
+        </div>
+        <div class="field" style="margin-top:12px"><label>Categoría vinculada</label>
+          <select id="m-linked-cat">
+            ${savingCats.map(c=>`<option value="${c.id}" ${m.linkedCatId===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}
+          </select>
+        </div>
       </div>
     </div>
-    <div class="field"><label>Monto objetivo ($)</label><input type="number" id="m-objetivo" value="${m.objetivo}" inputmode="numeric"></div>
-    ${m.vinculado ? `
-      <div class="meta-saving-info" style="margin-bottom:14px">
-        <div class="meta-saving-row"><span>Base inicial</span><span>${fmt(m.baseAhorrado||0)}</span></div>
-        <div class="meta-saving-row"><span>Ahorro vinculado acumulado</span><span style="color:var(--accent)">${fmt(m.ahorroVinculado||0)}</span></div>
-        <div class="meta-saving-row" style="padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span style="font-weight:500;color:var(--text)">Falta para la meta</span><span style="color:${restante>0?'var(--yellow)':'var(--green)'};font-weight:600">${restante>0?fmt(restante):'🎉 Completada'}</span></div>
-      </div>
-      <div class="field"><label>Ajustar base inicial ($)</label><input type="number" id="m-ahorrado" value="${m.baseAhorrado||0}" inputmode="numeric"></div>
-      <div class="info-box" style="margin-top:0">🔗 Meta vinculada al ahorro. Los nuevos gastos en "Ahorro" se aplicarán automáticamente.</div>
-    ` : `
-      <div class="field"><label>Ya tengo ahorrado ($)</label><input type="number" id="m-ahorrado" value="${m.ahorrado||0}" inputmode="numeric"></div>
-    `}
-    <div class="field"><label>Ahorro mensual estimado ($)</label><input type="number" id="m-mensual" value="${m.mensual||0}" inputmode="numeric"></div>
+
     <button class="btn-primary" onclick="saveMeta()">Guardar</button>
     <button class="btn-delete" style="width:100%;margin-top:10px" onclick="deleteMeta('${id}')">🗑️ Eliminar meta</button>
   `;
+  window._metaEmoji = m.icono || '🎯';
   openSheet();
 }
 
 function saveMeta() {
   const nombre = document.getElementById('m-nombre').value.trim();
   if (!nombre) { alert('Ingresa un nombre'); return; }
+  const linked = document.getElementById('m-link-toggle').checked;
+  const linkedCatId = linked ? document.getElementById('m-linked-cat').value : null;
   const d = getData();
-  const objetivo = parseFloat(document.getElementById('m-objetivo').value)||0;
-  const ahorrado = parseFloat(document.getElementById('m-ahorrado').value)||0;
-  const mensual  = parseFloat(document.getElementById('m-mensual').value)||0;
 
   if (editingMeta) {
     const m = d.metas.find(x => x.id === editingMeta);
     if (m) {
       m.nombre = nombre;
-      m.emoji = document.getElementById('me-emoji') ? document.getElementById('me-emoji').value : (m.emoji||'🎯');
-      m.objetivo = objetivo;
-      m.mensual = mensual;
-      if (m.vinculado) {
-        m.baseAhorrado = ahorrado;
-      } else {
-        m.ahorrado = ahorrado;
-      }
+      m.objetivo = parseFloat(document.getElementById('m-objetivo').value)||0;
+      m.ahorradoBase = parseFloat(document.getElementById('m-ahorrado').value)||0;
+      m.mensual = parseFloat(document.getElementById('m-mensual').value)||0;
+      m.linkedCatId = linkedCatId;
+      m.icono = window._metaEmoji || m.icono || '🎯';
     }
   } else {
-    const vinculado = document.getElementById('m-vinculado') ? document.getElementById('m-vinculado').checked : false;
-    const emoji = document.getElementById('m-emoji') ? document.getElementById('m-emoji').value : '🎯';
     d.metas.push({
       id: Date.now().toString(),
       nombre,
-      emoji: emoji || '🎯',
-      objetivo,
-      ahorrado: vinculado ? 0 : ahorrado,
-      baseAhorrado: vinculado ? ahorrado : 0,
-      ahorroVinculado: 0,
-      mensual,
-      vinculado,
+      icono: window._metaEmoji || '🎯',
+      objetivo: parseFloat(document.getElementById('m-objetivo').value)||0,
+      ahorradoBase: parseFloat(document.getElementById('m-ahorrado').value)||0,
+      mensual: parseFloat(document.getElementById('m-mensual').value)||0,
+      linkedCatId,
     });
   }
   save(d);
@@ -1182,25 +925,9 @@ function deleteMeta(id) {
 // ── SHEET: CATEGORÍAS PERSONALIZADAS ─────────────────────────────────────────
 function openAddCat() {
   editingCat = null;
-  selectedEmoji = '🎯';
-  selectedColor = CAT_COLORS[0];
-  document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">Nueva categoría</div>
-    <div class="field"><label>Nombre</label><input type="text" id="c-nombre" placeholder="Ej: Mascota, Gym, Netflix..."></div>
-    <div class="field"><label>Ícono (emoji)</label>
-      <div class="emoji-grid" id="emoji-grid">
-        ${CAT_EMOJIS.map(e=>`<div class="emoji-opt${e===selectedEmoji?' selected':''}" onclick="selectEmoji('${e}')">${e}</div>`).join('')}
-      </div>
-      <input type="text" id="c-emoji" value="${selectedEmoji}" placeholder="o escribe un emoji" style="margin-top:8px" oninput="selectedEmoji=this.value||'🎯'">
-    </div>
-    <div class="field"><label>Color</label>
-      <div class="color-grid">
-        ${CAT_COLORS.map((col,i)=>`<div class="color-opt${i===0?' selected':''}" style="background:${col}" onclick="selectColor(${i})"></div>`).join('')}
-      </div>
-    </div>
-    <button class="btn-primary" onclick="saveCat()">Guardar categoría</button>
-  `;
-  openSheet();
+  selectedEmoji = '⭐';
+  selectedColor = COLOR_OPTIONS[0];
+  renderCatSheet('Nueva categoría');
 }
 
 function openEditCat(id) {
@@ -1210,55 +937,55 @@ function openEditCat(id) {
   editingCat = id;
   selectedEmoji = cat.icon;
   selectedColor = cat.color;
+  renderCatSheet('Editar categoría', cat);
+}
+
+function renderCatSheet(title, cat) {
   document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">Editar categoría</div>
-    <div class="field"><label>Nombre</label><input type="text" id="c-nombre" value="${cat.name}"></div>
-    <div class="field"><label>Ícono (emoji)</label>
-      <div class="emoji-grid">
-        ${CAT_EMOJIS.map(e=>`<div class="emoji-opt${e===cat.icon?' selected':''}" onclick="selectEmoji('${e}')">${e}</div>`).join('')}
-      </div>
-      <input type="text" id="c-emoji" value="${cat.icon}" placeholder="o escribe un emoji" style="margin-top:8px" oninput="selectedEmoji=this.value||'🎯'">
-    </div>
-    <div class="field"><label>Color</label>
-      <div class="color-grid">
-        ${CAT_COLORS.map((col,i)=>`<div class="color-opt${col===cat.color?' selected':''}" style="background:${col}" onclick="selectColor(${i})"></div>`).join('')}
+    <div class="sheet-title">${title}</div>
+    <div class="field">
+      <label>Icono</label>
+      <div class="emoji-grid" id="emoji-grid">
+        ${EMOJI_OPTIONS.map(e => `<button class="emoji-btn ${e===selectedEmoji?'selected':''}" onclick="selectEmoji('${e}',this)">${e}</button>`).join('')}
       </div>
     </div>
-    <button class="btn-primary" onclick="saveCat()">Guardar</button>
-    <button class="btn-delete" style="width:100%;margin-top:10px" onclick="deleteCat('${id}')">🗑️ Eliminar categoría</button>
+    <div class="field">
+      <label>Color de fondo</label>
+      <div class="color-grid" id="color-grid">
+        ${COLOR_OPTIONS.map(c => `<div class="color-swatch ${c===selectedColor?'selected':''}" style="background:${c}" onclick="selectColor('${c.replace(/'/g,'"')}',this)"></div>`).join('')}
+      </div>
+    </div>
+    <div class="field"><label>Nombre de la categoría</label><input type="text" id="cat-nombre" value="${cat?cat.name:''}" placeholder="Ej: Mascotas"></div>
+    ${editingCat ? `<button class="btn-delete" style="width:100%;margin-bottom:10px" onclick="deleteCat('${editingCat}')">🗑️ Eliminar categoría</button>` : ''}
+    <button class="btn-primary" onclick="saveCat()">Guardar categoría</button>
   `;
   openSheet();
 }
 
-function selectEmoji(e) {
-  selectedEmoji = e;
-  document.querySelectorAll('.emoji-opt').forEach(el => el.classList.remove('selected'));
-  event.target.classList.add('selected');
-  const input = document.getElementById('c-emoji');
-  if (input) input.value = e;
+function selectEmoji(emoji, btn) {
+  selectedEmoji = emoji;
+  document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
 }
 
-function selectColor(idx) {
-  selectedColor = CAT_COLORS[idx];
-  document.querySelectorAll('.color-opt').forEach(el => el.classList.remove('selected'));
-  document.querySelectorAll('.color-opt')[idx].classList.add('selected');
+function selectColor(color, el) {
+  selectedColor = color;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
 }
 
 function saveCat() {
-  const nombre = document.getElementById('c-nombre').value.trim();
+  const nombre = document.getElementById('cat-nombre').value.trim();
   if (!nombre) { alert('Ingresa un nombre'); return; }
-  const emojiInput = document.getElementById('c-emoji');
-  const icon = (emojiInput ? emojiInput.value : selectedEmoji) || selectedEmoji || '📌';
   const d = getData();
-
   if (editingCat) {
     const cat = d.customCats.find(c => c.id === editingCat);
-    if (cat) { cat.name = nombre; cat.icon = icon; cat.color = selectedColor; }
+    if (cat) { cat.name = nombre; cat.icon = selectedEmoji; cat.color = selectedColor; }
   } else {
     d.customCats.push({
-      id: 'cat_' + Date.now().toString(),
+      id: 'custom_' + Date.now(),
       name: nombre,
-      icon,
+      icon: selectedEmoji,
       color: selectedColor,
       es: 'gasto',
     });
@@ -1269,9 +996,11 @@ function saveCat() {
 }
 
 function deleteCat(id) {
-  if (!confirm('¿Eliminar esta categoría? Los movimientos con esta categoría quedarán sin categoría.')) return;
+  if (!confirm('¿Eliminar esta categoría? Los movimientos vinculados no se eliminarán.')) return;
   const d = getData();
   d.customCats = d.customCats.filter(c => c.id !== id);
+  // Limpiar metas vinculadas a esta cat
+  d.metas.forEach(m => { if (m.linkedCatId === id) m.linkedCatId = null; });
   save(d);
   closeSheet();
   showTab('config');
@@ -1280,15 +1009,53 @@ function deleteCat(id) {
 // ── MES ───────────────────────────────────────────────────────────────────────
 function setMonth(key) {
   const d = getData();
+  const prevKey = d.currentMonth;
   d.currentMonth = key;
   save(d);
+
+  // Si el mes destino no tiene presupuesto pero el anterior sí, ofrecer copiar
+  const hasDest = d.presupuestos[key] && Object.keys(d.presupuestos[key]).length > 0;
+  const hasPrev = d.presupuestos[prevKey] && Object.keys(d.presupuestos[prevKey]).length > 0;
+  if (!hasDest && hasPrev && key !== prevKey) {
+    openCopyBudgetSheet(prevKey, key);
+  } else {
+    showTab('config');
+  }
+}
+
+function openCopyBudgetSheet(fromKey, toKey) {
+  const d = getData();
+  const pres = d.presupuestos[fromKey] || {};
+  const allCats = getAllCats(d);
+  const items = Object.entries(pres)
+    .filter(([id, v]) => v > 0)
+    .map(([id, v]) => { const cat = getCat(id, d); return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)"><span>${cat.icon} ${cat.name}</span><span style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(v)}</span></div>`; })
+    .join('');
+
+  document.getElementById('sheet-content').innerHTML = `
+    <div class="sheet-title">📋 Copiar presupuesto</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">
+      El mes <strong style="color:var(--text)">${monthLabel(toKey)}</strong> no tiene presupuesto aún.<br>¿Deseas copiar los montos de <strong style="color:var(--text)">${monthLabel(fromKey)}</strong>?
+    </div>
+    <div class="card" style="margin-bottom:16px;padding:8px 16px">${items || '<div style="color:var(--muted);font-size:13px;text-align:center;padding:8px 0">Sin ítems</div>'}</div>
+    <button class="btn-primary" onclick="confirmCopyBudget('${fromKey}','${toKey}')">✅ Copiar presupuesto</button>
+    <button class="btn-secondary" style="width:100%;margin-top:10px" onclick="closeSheet();showTab('config')">No, empezar en blanco</button>
+  `;
+  openSheet();
+}
+
+function confirmCopyBudget(fromKey, toKey) {
+  const d = getData();
+  d.presupuestos[toKey] = Object.assign({}, d.presupuestos[fromKey] || {});
+  save(d);
+  closeSheet();
   showTab('config');
 }
 
 // ── BORRAR TODO ───────────────────────────────────────────────────────────────
 function confirmClear() {
   if (confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) {
-    localStorage.removeItem('presupuesto_v1');
+    localStorage.removeItem('presupuesto_v2');
     showTab('resumen');
   }
 }
@@ -1297,384 +1064,15 @@ function confirmClear() {
 function openSheet() {
   document.getElementById('overlay').classList.add('open');
   document.getElementById('sheet').classList.add('open');
-  txType = 'gas';
 }
 function closeSheet() {
   document.getElementById('overlay').classList.remove('open');
   document.getElementById('sheet').classList.remove('open');
 }
 
-
-// ── COBROS (Personas que me deben) ───────────────────────────────────────────
-function renderCobros() {
-  const d = getData();
-  const deudores = d.deudores || [];
-
-  const totalPendiente = deudores.reduce((a, x) => {
-    if (x.cobrado) return a;
-    const abonado = (x.abonos || []).reduce((s, ab) => s + ab.monto, 0);
-    return a + Math.max(x.monto - abonado, 0);
-  }, 0);
-  const totalCobrado = deudores.reduce((a, x) => {
-    if (!x.cobrado) return a;
-    return a + x.monto;
-  }, 0);
-  const countPendiente = deudores.filter(x => !x.cobrado).length;
-
-  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-top:4px">
-    <span style="font-size:16px;font-weight:600">💸 Me deben</span>
-    <button onclick="openAddDeudor()" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);color:var(--yellow);border-radius:10px;padding:7px 14px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">+ Agregar</button>
-  </div>`;
-
-  if (deudores.length > 0) {
-    html += `<div class="resumen-cobro">
-      <div class="resumen-cobro-pill">
-        <div class="val" style="color:var(--yellow)">${fmt(totalPendiente)}</div>
-        <div class="lbl">Por cobrar</div>
-      </div>
-      <div class="resumen-cobro-pill">
-        <div class="val" style="color:var(--green)">${fmt(totalCobrado)}</div>
-        <div class="lbl">Cobrado</div>
-      </div>
-      <div class="resumen-cobro-pill">
-        <div class="val" style="color:var(--muted)">${countPendiente}</div>
-        <div class="lbl">Pendientes</div>
-      </div>
-    </div>`;
-  }
-
-  if (deudores.length === 0) {
-    return html + `<div class="empty" style="margin-top:30px"><div class="empty-icon">🤝</div><p>Sin deudas registradas.<br>Toca + para agregar.</p></div>`;
-  }
-
-  // Pendientes primero
-  const pendientes = deudores.filter(x => !x.cobrado);
-  const cobrados   = deudores.filter(x => x.cobrado);
-
-  if (pendientes.length > 0) {
-    html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:4px 2px 8px">Pendientes</div>`;
-    pendientes.forEach(x => { html += renderDeudorCard(x); });
-  }
-
-  if (cobrados.length > 0) {
-    html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:14px 2px 8px">Cobrados ✓</div>`;
-    cobrados.forEach(x => { html += renderDeudorCard(x); });
-  }
-
-  return html;
-}
-
-function renderDeudorCard(x) {
-  const abonado = (x.abonos || []).reduce((s, ab) => s + ab.monto, 0);
-  const restante = Math.max(x.monto - abonado, 0);
-  const pct = x.monto > 0 ? Math.min((abonado / x.monto) * 100, 100) : 0;
-  const inicial = x.nombre.trim().charAt(0).toUpperCase();
-
-  let statusClass = 'pendiente', statusLabel = '⏳ Pendiente';
-  if (x.cobrado) { statusClass = 'cobrado'; statusLabel = '✓ Cobrado'; }
-  else if (abonado > 0) { statusClass = 'parcial'; statusLabel = `💧 Abonado ${fmt(abonado)}`; }
-
-  let html = `<div class="deudor-card${x.cobrado?' pagado':''}" onclick="openEditDeudor('${x.id}')">
-    <div class="deudor-top">
-      <div class="deudor-avatar">${inicial}</div>
-      <div class="deudor-info">
-        <div class="deudor-nombre">${x.nombre}</div>
-        ${x.desc ? `<div class="deudor-desc">${x.desc}</div>` : ''}
-        <span class="deudor-status ${statusClass}">${statusLabel}</span>
-      </div>
-      <div class="deudor-monto">
-        <div class="deudor-total${x.cobrado?' cobrado':''}">${fmt(restante > 0 ? restante : x.monto)}</div>
-        <div class="deudor-fecha">${x.fecha || ''}</div>
-      </div>
-    </div>`;
-
-  if (!x.cobrado && x.monto > 0 && abonado > 0) {
-    html += `<div style="margin-top:12px">
-      <div class="prog-bar"><div class="prog-fill accent" style="width:${pct}%"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px">
-        <span>Abonado: ${fmt(abonado)}</span><span>Total: ${fmt(x.monto)}</span>
-      </div>
-    </div>`;
-  }
-
-  if (x.abonos && x.abonos.length > 0 && !x.cobrado) {
-    html += `<div class="deudor-abonos">`;
-    x.abonos.slice().reverse().forEach(ab => {
-      html += `<div class="abono-row"><span>🟢 ${ab.fecha || 'Abono'}</span><span>+${fmt(ab.monto)}</span></div>`;
-    });
-    html += `</div>`;
-  }
-
-  html += `</div>`;
-  return html;
-}
-
-function openAddDeudor() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">💸 Nueva deuda</div>
-    <div class="field"><label>Nombre de la persona</label><input type="text" id="d-nombre" placeholder="Ej: Juan Pérez"></div>
-    <div class="field"><label>Motivo / descripción</label><input type="text" id="d-desc" placeholder="Ej: Préstamo para comida, Cuota viaje..."></div>
-    <div class="field"><label>Monto total ($)</label><input type="number" id="d-monto" placeholder="0" inputmode="numeric"></div>
-    <div class="field"><label>Fecha del préstamo</label><input type="date" id="d-fecha" value="${today}"></div>
-    <button class="btn-primary" onclick="saveDeudor()">Guardar</button>
-  `;
-  openSheet();
-}
-
-function openEditDeudor(id) {
-  const d = getData();
-  const x = d.deudores.find(e => e.id === id);
-  if (!x) return;
-  const abonado = (x.abonos || []).reduce((s, ab) => s + ab.monto, 0);
-  const restante = Math.max(x.monto - abonado, 0);
-
-  let abonosHtml = '';
-  if (x.abonos && x.abonos.length > 0) {
-    abonosHtml = `<div style="margin-bottom:14px">
-      <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Historial de abonos</div>
-      <div class="card" style="padding:0 16px;margin-bottom:0">`;
-    x.abonos.slice().reverse().forEach(ab => {
-      abonosHtml += `<div class="abono-row" style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <span>${ab.fecha || '—'} · ${ab.nota || 'Abono'}</span>
-        <span>+${fmt(ab.monto)}</span>
-      </div>`;
-    });
-    abonosHtml += `</div></div>`;
-  }
-
-  document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">✏️ ${x.nombre}</div>
-    <div class="summary-grid" style="margin-bottom:16px">
-      <div class="pill"><div class="pill-label">Deuda total</div><div class="pill-val" style="color:var(--yellow)">${fmt(x.monto)}</div></div>
-      <div class="pill"><div class="pill-label">${restante > 0 ? 'Pendiente' : '¡Cobrado!'}</div><div class="pill-val" style="color:${restante>0?'var(--red)':'var(--green)'}">${fmt(restante > 0 ? restante : x.monto)}</div></div>
-    </div>
-    ${!x.cobrado && restante > 0 ? `
-    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid var(--border)">
-      <div style="font-size:13px;font-weight:600;margin-bottom:10px">Registrar abono</div>
-      <div class="field" style="margin-bottom:8px"><label>Monto del abono ($)</label><input type="number" id="ab-monto" placeholder="0" inputmode="numeric"></div>
-      <div class="field" style="margin-bottom:8px"><label>Nota</label><input type="text" id="ab-nota" placeholder="Ej: Me pagó en efectivo..."></div>
-      <button onclick="saveAbono('${id}')" style="width:100%;padding:11px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:var(--green);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">✓ Registrar abono</button>
-    </div>
-    ` : ''}
-    ${abonosHtml}
-    ${!x.cobrado ? `<button onclick="marcarCobrado('${id}')" style="width:100%;padding:12px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:var(--green);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px">🎉 Marcar como cobrado</button>` : `<button onclick="marcarPendiente('${id}')" style="width:100%;padding:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:var(--yellow);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;margin-bottom:10px">↩️ Reabrir deuda</button>`}
-    <button class="btn-delete" style="width:100%" onclick="deleteDeudor('${id}')">🗑️ Eliminar registro</button>
-  `;
-  openSheet();
-}
-
-function saveDeudor() {
-  const nombre = document.getElementById('d-nombre').value.trim();
-  if (!nombre) { alert('Ingresa el nombre de la persona'); return; }
-  const monto = parseFloat(document.getElementById('d-monto').value);
-  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  const fecha = document.getElementById('d-fecha').value;
-  const [y, m, day] = fecha.split('-');
-  const fechaLabel = `${parseInt(day)} ${MONTHS[parseInt(m)-1].slice(0,3)} ${y}`;
-  const d = getData();
-  d.deudores.push({
-    id: Date.now().toString(),
-    nombre,
-    desc: document.getElementById('d-desc').value.trim(),
-    monto,
-    fecha: fechaLabel,
-    cobrado: false,
-    abonos: [],
-  });
-  save(d);
-  closeSheet();
-  showTab('cobros');
-}
-
-function saveAbono(id) {
-  const monto = parseFloat(document.getElementById('ab-monto').value);
-  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  const nota = document.getElementById('ab-nota').value.trim();
-  const today = new Date();
-  const fechaLabel = `${today.getDate()} ${MONTHS[today.getMonth()].slice(0,3)} ${today.getFullYear()}`;
-  const d = getData();
-  const x = d.deudores.find(e => e.id === id);
-  if (!x) return;
-  if (!x.abonos) x.abonos = [];
-  x.abonos.push({ monto, nota, fecha: fechaLabel });
-  // Si el abono cubre el restante, marcar como cobrado automáticamente
-  const abonado = x.abonos.reduce((s, ab) => s + ab.monto, 0);
-  if (abonado >= x.monto) x.cobrado = true;
-  save(d);
-  closeSheet();
-  showTab('cobros');
-}
-
-function marcarCobrado(id) {
-  const d = getData();
-  const x = d.deudores.find(e => e.id === id);
-  if (x) x.cobrado = true;
-  save(d);
-  closeSheet();
-  showTab('cobros');
-}
-
-function marcarPendiente(id) {
-  const d = getData();
-  const x = d.deudores.find(e => e.id === id);
-  if (x) x.cobrado = false;
-  save(d);
-  closeSheet();
-  showTab('cobros');
-}
-
-function deleteDeudor(id) {
-  if (!confirm('¿Eliminar este registro?')) return;
-  const d = getData();
-  d.deudores = d.deudores.filter(e => e.id !== id);
-  save(d);
-  closeSheet();
-  showTab('cobros');
-}
 // ── INIT ──────────────────────────────────────────────────────────────────────
-// Auth handles init
-// Si no hay sesión cacheada, ocultar app hasta que Firebase confirme
-if (!getCachedSession()) {
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('nav').style.display = 'none';
-  document.getElementById('fab').style.display = 'none';
-}
-
-// ── PRESUPUESTO: COPIAR MES ANTERIOR ─────────────────────────────────────────
-function getPrevMonthKey(key) {
-  const [y, m] = key.split('-').map(Number);
-  const d = new Date(y, m - 2, 1);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-}
-
-function checkAndCopyLastMonthBudget() {
-  const d = getData();
-  const mk = monthKey(d);
-  if (!mk) return;
-  const currentPres = d.presupuestos[mk] || {};
-  const hasPres = Object.values(currentPres).some(v => v > 0);
-  if (hasPres) return; // Ya tiene presupuesto este mes
-
-  const prevKey = getPrevMonthKey(mk);
-  const prevPres = d.presupuestos[prevKey] || {};
-  const hasPrev = Object.values(prevPres).some(v => v > 0);
-  if (!hasPrev) return; // No hay mes anterior
-
-  // Copiar automáticamente
-  d.presupuestos[mk] = { ...prevPres };
-  save(d);
-  // Mostrar notificación suave
-  setTimeout(() => {
-    const banner = document.createElement('div');
-    banner.innerHTML = `📋 Presupuesto copiado del mes anterior · <span onclick="this.parentElement.remove()" style="cursor:pointer;text-decoration:underline">Cerrar</span>`;
-    banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid #38bdf8;color:#f1f5f9;padding:10px 18px;border-radius:12px;font-size:13px;z-index:999;max-width:380px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.4)';
-    document.body.appendChild(banner);
-    setTimeout(() => banner.remove(), 5000);
-  }, 800);
-}
-
-// ── CUENTA DE USUARIO EN AJUSTES ──────────────────────────────────────────────
-function renderUserCard() {
-  if (!window.currentUser) return '';
-  const u = window.currentUser;
-  return `<div class="card" style="margin-bottom:12px">
-    <div class="card-title">Mi cuenta</div>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-      ${u.photoURL ? `<img src="${u.photoURL}" style="width:42px;height:42px;border-radius:50%;border:2px solid var(--border)">` : `<div style="width:42px;height:42px;border-radius:50%;background:rgba(56,189,248,.2);display:flex;align-items:center;justify-content:center;font-size:20px">👤</div>`}
-      <div>
-        <div style="font-size:14px;font-weight:600">${u.displayName || 'Usuario'}</div>
-        <div style="font-size:12px;color:var(--muted)">${u.email}</div>
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div>
-      <span style="font-size:12px;color:var(--muted)">Datos sincronizados con Firebase</span>
-    </div>
-    <button onclick="doSignOut()" style="width:100%;padding:10px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer">Cerrar sesión</button>
-  </div>`;
-}
-window.currentUser = null;
-
+showTab('resumen');
 </script>
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').then(reg => {
-
-    // ── Detectar nueva versión disponible ────────────────────────────────────
-    reg.addEventListener('updatefound', () => {
-      const newSW = reg.installing;
-      newSW.addEventListener('statechange', () => {
-        // Hay una nueva versión instalada y lista
-        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-          showUpdateBanner();
-        }
-      });
-    });
-
-    // Verificar actualizaciones cada vez que la app vuelve al primer plano
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        reg.update(); // comprueba silenciosamente si hay una versión nueva
-      }
-    });
-
-  });
-
-  // ── Escuchar mensajes del Service Worker ─────────────────────────────────
-  navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data?.type === 'SW_VERSION') {
-      console.log('App versión:', e.data.version);
-    }
-  });
-
-  // ── Cuando el SW nuevo toma el control, recargar automáticamente ──────────
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) {
-      refreshing = true;
-      window.location.reload(); // recarga con la versión nueva
-    }
-  });
-}
-
-// ── Banner de actualización disponible ───────────────────────────────────────
-function showUpdateBanner() {
-  // Evitar duplicados
-  if (document.getElementById('update-banner')) return;
-
-  const banner = document.createElement('div');
-  banner.id = 'update-banner';
-  banner.style.cssText = `
-    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
-    width: 100%; max-width: 430px; background: #1e3a5f;
-    border-bottom: 2px solid #38bdf8; color: #f1f5f9;
-    padding: 12px 20px; z-index: 9999;
-    display: flex; justify-content: space-between; align-items: center;
-    font-family: DM Sans, sans-serif; font-size: 13px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.4);
-  `;
-  banner.innerHTML = `
-    <span>🆕 Nueva versión disponible</span>
-    <button onclick="applyUpdate()" style="
-      background: #38bdf8; color: #0f172a; border: none;
-      border-radius: 8px; padding: 6px 14px;
-      font-family: DM Sans, sans-serif; font-size: 13px;
-      font-weight: 600; cursor: pointer;
-    ">Actualizar</button>
-  `;
-  document.body.appendChild(banner);
-}
-
-// Forzar activación del nuevo SW y recargar
-function applyUpdate() {
-  navigator.serviceWorker.getRegistration().then(reg => {
-    if (reg?.waiting) {
-      reg.waiting.postMessage('SKIP_WAITING');
-    }
-    window.location.reload();
-  });
-}
-</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js")}</script>
 </body>
 </html>
