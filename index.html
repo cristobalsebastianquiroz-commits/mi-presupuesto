@@ -465,6 +465,30 @@
   .medio-pago-name { font-size: 14px; font-weight: 500; }
   .medio-pago-count { font-size: 11px; color: var(--muted); margin-top: 1px; }
   .medio-pago-amt { font-size: 16px; font-weight: 600; font-family: 'Lora', serif; }
+
+  /* ── RECURRENTES ── */
+  .recur-card {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 14px 16px; margin-bottom: 10px;
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .recur-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .recur-info { flex: 1; min-width: 0; }
+  .recur-name { font-size: 14px; font-weight: 500; }
+  .recur-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .recur-amt { font-size: 15px; font-weight: 600; font-family: 'Lora', serif; text-align: right; }
+  .recur-badge {
+    display: inline-block; font-size: 9px; padding: 2px 7px;
+    border-radius: 99px; font-weight: 600; letter-spacing: .3px;
+    background: rgba(184,92,56,.1); color: var(--accent);
+    border: 1px solid rgba(184,92,56,.2);
+  }
+  /* Nota en tx */
+  .tx-nota {
+    font-size: 11px; color: var(--muted); margin-top: 2px;
+    font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
 </style>
 <!-- Firebase -->
 <script type="module">
@@ -772,6 +796,8 @@ function getData() {
   if (!d.metas) d.metas = [];
   if (!d.customCats) d.customCats = [];
   if (!d.deudores) d.deudores = [];
+  if (!d.recurrentes) d.recurrentes = [];
+  if (!d.recurrentesAplicados) d.recurrentesAplicados = {};
   if (!d.currentMonth) {
     const now = new Date();
     d.currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -1012,9 +1038,11 @@ function renderGastos() {
       const cat = getCat(t.cat);
       const pagoLabels = { efectivo:'💵 Efectivo', debito:'💳 Débito', credito:'🏦 Crédito' };
       const pagoBadge = (t.cat !== 'ingreso' && t.pago) ? `<span class="pago-badge ${t.pago}">${pagoLabels[t.pago]||t.pago}</span>` : '';
+      const notaHtml = t.nota ? `<div class="tx-nota">💬 ${t.nota}</div>` : '';
+      const recHtml = t.esRecurrente ? `<span style="font-size:9px;color:var(--accent)">🔁</span> ` : '';
       html += `<div class="tx-item" onclick="openEditTx('${t.id}')">
         <div class="tx-dot" style="background:${cat.color}">${cat.icon}</div>
-        <div class="tx-info"><div class="tx-name">${t.desc||cat.name} ${pagoBadge}</div><div class="tx-cat">${cat.name}</div></div>
+        <div class="tx-info"><div class="tx-name">${recHtml}${t.desc||cat.name} ${pagoBadge}</div><div class="tx-cat">${cat.name}</div>${notaHtml}</div>
         <div class="tx-amt ${t.cat==='ingreso'?'ing':'gas'}">${t.cat==='ingreso'?'+':'-'}${fmt(t.monto)}</div>
       </div>`;
     });
@@ -1209,6 +1237,33 @@ function renderConfig() {
     <div class="setting-row"><span class="setting-label" style="color:var(--red);cursor:pointer" onclick="confirmClear()">Borrar todos los datos</span><span>🗑️</span></div>
   </div>`;
 
+  // Recurrentes
+  const recurrentes = d.recurrentes || [];
+  html += `<div class="card"><div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+    <span>Movimientos recurrentes</span>
+    <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">${recurrentes.length} activo${recurrentes.length!==1?'s':''}</span>
+  </div>`;
+  if (recurrentes.length === 0) {
+    html += `<div style="text-align:center;padding:16px;font-size:13px;color:var(--muted)">Sin recurrentes. Al crear un movimiento activa<br>"Repetir cada mes".</div>`;
+  } else {
+    recurrentes.forEach(r => {
+      const cat = getCat(r.cat);
+      const pagoLabels = { efectivo:'💵', debito:'💳', credito:'🏦' };
+      html += `<div class="recur-card">
+        <div class="recur-icon" style="background:${cat.color}">${cat.icon}</div>
+        <div class="recur-info">
+          <div class="recur-name">${r.desc||cat.name}</div>
+          <div class="recur-meta">${cat.name} · ${pagoLabels[r.pago]||''} ${r.pago||''} ${r.nota?'· '+r.nota:''}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="recur-amt" style="color:${r.tipo==='ing'?'var(--green)':'var(--red)'}">${r.tipo==='ing'?'+':'-'}${fmt(r.monto)}</div>
+          <button onclick="deleteRecurrente('${r.id}')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px;margin-top:2px">×</button>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
   html += `</div>`;
   return html;
 }
@@ -1223,8 +1278,15 @@ function openAddSheet() {
       <button class="type-btn active-gas" id="btn-gas" onclick="setType('gas')">▼ Gasto</button>
       <button class="type-btn" id="btn-ing" onclick="setType('ing')">▲ Ingreso</button>
     </div>
-    <div class="field"><label>Monto ($)</label><input type="number" id="f-monto" placeholder="0" inputmode="numeric"></div>
-    <div class="field"><label>Descripción</label><input type="text" id="f-desc" placeholder="Ej: Supermercado Lider"></div>
+    <div class="field"><label>Monto ($)</label>
+      <input type="number" id="f-monto" placeholder="0" inputmode="numeric">
+    </div>
+    <div class="field"><label>Descripción</label>
+      <input type="text" id="f-desc" placeholder="Ej: Supermercado Lider">
+    </div>
+    <div class="field"><label>Nota (opcional)</label>
+      <input type="text" id="f-nota" placeholder="Ej: con descuento, cuota 3/12...">
+    </div>
     <div class="field" id="f-cat-wrap"><label>Categoría</label>
       <select id="f-cat">
         ${allCats.filter(c=>c.id!=='ingreso').map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
@@ -1233,18 +1295,26 @@ function openAddSheet() {
     <div id="f-pago-wrap">
       <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Medio de pago</label>
       <div class="pago-toggle">
-        <button class="pago-btn active-efectivo" id="pago-efectivo" onclick="setPago('efectivo')">
-          <span class="pago-icon">💵</span>Efectivo
-        </button>
-        <button class="pago-btn" id="pago-debito" onclick="setPago('debito')">
-          <span class="pago-icon">💳</span>Débito
-        </button>
-        <button class="pago-btn" id="pago-credito" onclick="setPago('credito')">
-          <span class="pago-icon">🏦</span>Crédito
-        </button>
+        <button class="pago-btn active-efectivo" id="pago-efectivo" onclick="setPago('efectivo')"><span class="pago-icon">💵</span>Efectivo</button>
+        <button class="pago-btn" id="pago-debito" onclick="setPago('debito')"><span class="pago-icon">💳</span>Débito</button>
+        <button class="pago-btn" id="pago-credito" onclick="setPago('credito')"><span class="pago-icon">🏦</span>Crédito</button>
       </div>
     </div>
-    <div class="field"><label>Fecha</label><input type="date" id="f-fecha" value="${today}"></div>
+    <div class="field"><label>Fecha</label>
+      <input type="date" id="f-fecha" value="${today}">
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:12px;margin-bottom:14px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">🔁 Repetir cada mes</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Se agregará automáticamente al inicio de cada mes</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
+        <input type="checkbox" id="f-recurrente" style="opacity:0;width:0;height:0">
+        <span onclick="toggleRecSwitch()" style="position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:99px;transition:.3s" id="sw-recurrente">
+          <span style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;left:3px;top:3px;transition:.3s"></span>
+        </span>
+      </label>
+    </div>
     <button class="btn-primary" onclick="saveTx()">Guardar</button>
   `;
   txPago = 'efectivo';
@@ -1254,12 +1324,21 @@ function openAddSheet() {
 let txType = 'gas';
 let txPago = 'efectivo';
 
+function toggleRecSwitch() {
+  const cb = document.getElementById('f-recurrente');
+  cb.checked = !cb.checked;
+  const sw = document.getElementById('sw-recurrente');
+  sw.style.background = cb.checked ? 'var(--accent)' : 'var(--border)';
+  sw.innerHTML = cb.checked
+    ? `<span style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;left:23px;top:3px;transition:.3s"></span>`
+    : `<span style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;left:3px;top:3px;transition:.3s"></span>`;
+}
+
 function setType(t) {
   txType = t;
   document.getElementById('btn-gas').className = 'type-btn' + (t==='gas'?' active-gas':'');
   document.getElementById('btn-ing').className = 'type-btn' + (t==='ing'?' active-ing':'');
   document.getElementById('f-cat-wrap').style.display = t==='gas' ? 'block' : 'none';
-  // Ocultar medio de pago para ingresos
   const pw = document.getElementById('f-pago-wrap');
   if (pw) pw.style.display = t==='gas' ? 'block' : 'none';
 }
@@ -1280,8 +1359,10 @@ function saveTx() {
   const [y,m,day] = fecha.split('-');
   const fechaLabel = `${parseInt(day)} ${MONTHS[parseInt(m)-1].slice(0,3)} ${y}`;
   const catId = txType === 'ing' ? 'ingreso' : document.getElementById('f-cat').value;
+  const nota = (document.getElementById('f-nota') ? document.getElementById('f-nota').value.trim() : '') || '';
+  const esRecurrente = document.getElementById('f-recurrente') ? document.getElementById('f-recurrente').checked : false;
 
-  d.txs.push({
+  const tx = {
     id: Date.now().toString(),
     monto,
     desc: document.getElementById('f-desc').value.trim(),
@@ -1289,12 +1370,25 @@ function saveTx() {
     fecha: fechaLabel,
     month: monthKey(d),
     pago: txType === 'ing' ? null : txPago,
-  });
+    nota: nota || null,
+  };
+  d.txs.push(tx);
 
-  // Si es un gasto de ahorro, actualizar metas vinculadas automáticamente
-  if (catId === 'ahorro') {
-    actualizarMetasVinculadas(d, monto);
+  // Guardar como recurrente si se marcó
+  if (esRecurrente) {
+    d.recurrentes.push({
+      id: 'rec_' + Date.now().toString(),
+      monto,
+      desc: tx.desc,
+      cat: catId,
+      pago: tx.pago,
+      nota: tx.nota,
+      tipo: txType,
+      creadoEn: monthKey(d),
+    });
   }
+
+  if (catId === 'ahorro') actualizarMetasVinculadas(d, monto);
 
   save(d);
   closeSheet();
@@ -1315,53 +1409,155 @@ function actualizarMetasVinculadas(d, montoNuevo) {
   });
 }
 
+// ── RECURRENTES: aplicar al inicio de un mes ──────────────────────────────────
+function aplicarRecurrentesMes(d, mk) {
+  if (!d.recurrentes || d.recurrentes.length === 0) return false;
+  if (d.recurrentesAplicados[mk]) return false; // ya aplicados
+
+  const now = new Date();
+  const [y, m] = mk.split('-').map(Number);
+  const diaLabel = `1 ${MONTHS[m-1].slice(0,3)} ${y}`;
+
+  let aplicados = 0;
+  d.recurrentes.forEach(r => {
+    if (r.creadoEn === mk) return; // no aplicar en el mismo mes que se creó
+    d.txs.push({
+      id: `rec_${r.id}_${mk}`,
+      monto: r.monto,
+      desc: r.desc,
+      cat: r.cat,
+      fecha: diaLabel,
+      month: mk,
+      pago: r.pago,
+      nota: r.nota,
+      esRecurrente: true,
+      recurrenteId: r.id,
+    });
+    aplicados++;
+    if (r.cat === 'ahorro') actualizarMetasVinculadas(d, r.monto);
+  });
+
+  d.recurrentesAplicados[mk] = true;
+  return aplicados > 0;
+}
+
 // ── SHEET: EDITAR TX ──────────────────────────────────────────────────────────
 function openEditTx(id) {
   const d = getData();
   const t = d.txs.find(x => x.id === id);
   if (!t) return;
+  const allCats = getAllCats();
   const cat = getCat(t.cat);
-  const pagoInfo = { efectivo: {icon:'💵',label:'Efectivo'}, debito: {icon:'💳',label:'Débito'}, credito: {icon:'🏦',label:'Crédito'} };
-  const pagoKey = t.pago || null;
-  const pagoHtml = (t.cat !== 'ingreso' && pagoKey && pagoInfo[pagoKey]) ? `
-    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px">
-      <span style="font-size:16px">${pagoInfo[pagoKey].icon}</span>
-      <span class="pago-badge ${pagoKey}">${pagoInfo[pagoKey].label}</span>
-    </div>` : '';
+  const isIngreso = t.cat === 'ingreso';
+  const pagoKey = t.pago || 'efectivo';
+
+  // Convertir fechaLabel → date input value
+  let fechaInput = '';
+  try {
+    const meses = { 'Ene':0,'Feb':1,'Mar':2,'Abr':3,'May':4,'Jun':5,'Jul':6,'Ago':7,'Sep':8,'Oct':9,'Nov':10,'Dic':11 };
+    const parts = (t.fecha||'').split(' ');
+    if (parts.length === 3) {
+      const dd = String(parts[0]).padStart(2,'0');
+      const mm = String((meses[parts[1]]??0) + 1).padStart(2,'0');
+      const yy = parts[2];
+      fechaInput = `${yy}-${mm}-${dd}`;
+    }
+  } catch(e) {}
 
   document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">Detalle del movimiento</div>
-    <div class="card" style="margin-bottom:16px;text-align:center">
-      <div style="font-size:32px;margin-bottom:6px">${cat.icon}</div>
-      <div style="font-size:22px;font-weight:600;font-family:'Lora',serif;color:${t.cat==='ingreso'?'var(--green)':'var(--red)'}">${t.cat==='ingreso'?'+':'-'}${fmt(t.monto)}</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:4px">${t.desc||cat.name}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:2px">${cat.name} · ${t.fecha||''}</div>
-      ${pagoHtml}
+    <div class="sheet-title">Editar movimiento</div>
+
+    <div class="type-toggle">
+      <button class="type-btn ${!isIngreso?'active-gas':''}" id="ebtn-gas" onclick="eSetType('gas','${id}')">▼ Gasto</button>
+      <button class="type-btn ${isIngreso?'active-ing':''}" id="ebtn-ing" onclick="eSetType('ing','${id}')">▲ Ingreso</button>
     </div>
-    ${t.cat !== 'ingreso' ? `
-    <div style="margin-bottom:14px">
-      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Cambiar medio de pago</label>
+
+    <div class="field"><label>Monto ($)</label>
+      <input type="number" id="ef-monto" value="${t.monto}" inputmode="numeric">
+    </div>
+    <div class="field"><label>Descripción</label>
+      <input type="text" id="ef-desc" value="${t.desc||''}">
+    </div>
+    <div class="field"><label>Nota (opcional)</label>
+      <input type="text" id="ef-nota" value="${t.nota||''}" placeholder="Ej: cuota 3/12, con descuento...">
+    </div>
+    <div class="field" id="ef-cat-wrap" ${isIngreso?'style="display:none"':''}>
+      <label>Categoría</label>
+      <select id="ef-cat">
+        ${allCats.filter(c=>c.id!=='ingreso').map(c=>`<option value="${c.id}" ${c.id===t.cat?'selected':''}>${c.icon} ${c.name}</option>`).join('')}
+      </select>
+    </div>
+    <div id="ef-pago-wrap" ${isIngreso?'style="display:none"':''}>
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Medio de pago</label>
       <div class="pago-toggle">
-        <button class="pago-btn ${pagoKey==='efectivo'?'active-efectivo':''}" id="ep-efectivo" onclick="editSetPago('${id}','efectivo')"><span class="pago-icon">💵</span>Efectivo</button>
-        <button class="pago-btn ${pagoKey==='debito'?'active-debito':''}"   id="ep-debito"   onclick="editSetPago('${id}','debito')"><span class="pago-icon">💳</span>Débito</button>
-        <button class="pago-btn ${pagoKey==='credito'?'active-credito':''}" id="ep-credito"  onclick="editSetPago('${id}','credito')"><span class="pago-icon">🏦</span>Crédito</button>
+        <button class="pago-btn ${pagoKey==='efectivo'?'active-efectivo':''}" id="epago-efectivo" onclick="eSetPago('efectivo')"><span class="pago-icon">💵</span>Efectivo</button>
+        <button class="pago-btn ${pagoKey==='debito'?'active-debito':''}"   id="epago-debito"   onclick="eSetPago('debito')"><span class="pago-icon">💳</span>Débito</button>
+        <button class="pago-btn ${pagoKey==='credito'?'active-credito':''}" id="epago-credito"  onclick="eSetPago('credito')"><span class="pago-icon">🏦</span>Crédito</button>
       </div>
-    </div>` : ''}
-    <button class="btn-delete" style="width:100%" onclick="deleteTx('${id}')">🗑️ Eliminar este movimiento</button>
+    </div>
+    <div class="field"><label>Fecha</label>
+      <input type="date" id="ef-fecha" value="${fechaInput}">
+    </div>
+    ${t.esRecurrente ? `<div class="info-box">🔁 Este movimiento fue generado automáticamente por un recurrente.</div>` : ''}
+    <button class="btn-primary" onclick="saveEditTx('${id}')">Guardar cambios</button>
+    <button class="btn-delete" style="width:100%;margin-top:10px" onclick="deleteTx('${id}')">🗑️ Eliminar este movimiento</button>
   `;
+  window._editPago = pagoKey;
+  window._editTipo = isIngreso ? 'ing' : 'gas';
   openSheet();
 }
 
-function editSetPago(txId, pago) {
-  const d = getData();
-  const t = d.txs.find(x => x.id === txId);
-  if (t) { t.pago = pago; save(d); }
+let _editPago = 'efectivo';
+let _editTipo = 'gas';
+
+function eSetType(t, id) {
+  window._editTipo = t;
+  document.getElementById('ebtn-gas').className = 'type-btn' + (t==='gas'?' active-gas':'');
+  document.getElementById('ebtn-ing').className = 'type-btn' + (t==='ing'?' active-ing':'');
+  document.getElementById('ef-cat-wrap').style.display = t==='gas' ? 'block' : 'none';
+  document.getElementById('ef-pago-wrap').style.display = t==='gas' ? 'block' : 'none';
+}
+
+function eSetPago(p) {
+  window._editPago = p;
   ['efectivo','debito','credito'].forEach(x => {
-    const btn = document.getElementById('ep-'+x);
-    if (btn) btn.className = 'pago-btn' + (x===pago ? ' active-'+x : '');
+    const btn = document.getElementById('epago-'+x);
+    if (btn) btn.className = 'pago-btn' + (x===p ? ' active-'+x : '');
   });
-  // Refrescar el badge en la card
-  openEditTx(txId);
+}
+
+function saveEditTx(id) {
+  const monto = parseFloat(document.getElementById('ef-monto').value);
+  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+  const d = getData();
+  const t = d.txs.find(x => x.id === id);
+  if (!t) return;
+
+  const tipo = window._editTipo || (t.cat === 'ingreso' ? 'ing' : 'gas');
+  const catId = tipo === 'ing' ? 'ingreso' : document.getElementById('ef-cat').value;
+
+  const fechaVal = document.getElementById('ef-fecha').value;
+  let fechaLabel = t.fecha || '';
+  if (fechaVal) {
+    const [y,m,day] = fechaVal.split('-');
+    fechaLabel = `${parseInt(day)} ${MONTHS[parseInt(m)-1].slice(0,3)} ${y}`;
+  }
+
+  t.monto = monto;
+  t.desc = document.getElementById('ef-desc').value.trim();
+  t.nota = document.getElementById('ef-nota').value.trim() || null;
+  t.cat = catId;
+  t.fecha = fechaLabel;
+  t.pago = tipo === 'ing' ? null : (window._editPago || t.pago);
+
+  save(d);
+  closeSheet();
+  showTab(currentTab);
+}
+
+function editSetPago(txId, pago) {
+  window._editPago = pago;
+  eSetPago(pago);
 }
 
 function deleteTx(id) {
@@ -1678,6 +1874,26 @@ function deleteCat(id) {
 function setMonth(key) {
   const d = getData();
   d.currentMonth = key;
+  // Aplicar recurrentes si es un mes nuevo
+  const aplicados = aplicarRecurrentesMes(d, key);
+  save(d);
+  if (aplicados) {
+    setTimeout(() => {
+      const banner = document.createElement('div');
+      const count = d.recurrentes.length;
+      banner.innerHTML = `🔁 ${count} movimiento${count!==1?'s':''} recurrente${count!==1?'s':''} aplicado${count!==1?'s':''} · <span onclick="this.parentElement.remove()" style="cursor:pointer;text-decoration:underline">Cerrar</span>`;
+      banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);color:var(--text);padding:10px 18px;border-radius:12px;font-size:13px;z-index:999;max-width:380px;text-align:center;box-shadow:0 4px 20px rgba(44,36,22,.15)';
+      document.body.appendChild(banner);
+      setTimeout(() => banner.remove(), 5000);
+    }, 600);
+  }
+  showTab('config');
+}
+
+function deleteRecurrente(id) {
+  if (!confirm('¿Eliminar este recurrente? No afecta los movimientos ya registrados.')) return;
+  const d = getData();
+  d.recurrentes = d.recurrentes.filter(r => r.id !== id);
   save(d);
   showTab('config');
 }
