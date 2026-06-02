@@ -489,6 +489,73 @@
     font-size: 11px; color: var(--muted); margin-top: 2px;
     font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+
+  /* ── MODO OSCURO ── */
+  body.dark {
+    --bg:       #0f1a12;
+    --surface:  #1a2b1e;
+    --surface2: #223028;
+    --border:   #2e4234;
+    --text:     #e8f0e9;
+    --muted:    #7a9e82;
+    --accent:   #c8784a;
+    --accent2:  #3d2e20;
+    --green:    #5aad70;
+    --green-bg: rgba(90,173,112,.15);
+    --red:      #e05252;
+    --red-bg:   rgba(224,82,82,.12);
+    --yellow:   #d4a017;
+    --yellow-bg:rgba(212,160,23,.14);
+    --purple:   #9b80c0;
+  }
+
+  /* ── BARRA DE BÚSQUEDA ── */
+  .search-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 10px 14px; margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .search-bar input {
+    flex: 1; background: none; border: none; outline: none;
+    font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px;
+    color: var(--text);
+  }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-clear { color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; }
+
+  /* ── COMPARATIVA ── */
+  .comp-month-row {
+    display: flex; align-items: center; gap: 10px; padding: 12px 0;
+    border-bottom: 1px solid var(--border); cursor: pointer;
+    transition: opacity .15s;
+  }
+  .comp-month-row:last-child { border-bottom: none; }
+  .comp-month-label { width: 70px; font-size: 13px; font-weight: 500; flex-shrink: 0; }
+  .comp-bars { flex: 1; }
+  .comp-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .comp-bar-bg { flex: 1; height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .comp-bar-fill { height: 100%; border-radius: 99px; transition: width .4s ease; }
+  .comp-val { font-size: 11px; font-weight: 600; font-family: 'Lora', serif; width: 70px; text-align: right; flex-shrink: 0; }
+
+  /* ── GRÁFICO SVG ── */
+  .chart-wrap { overflow-x: auto; padding-bottom: 4px; }
+  .chart-wrap::-webkit-scrollbar { height: 3px; }
+  .chart-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  /* ── DESGLOSE CRÉDITO ── */
+  .credito-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .credito-item:last-child { border-bottom: none; }
+  .credito-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── DARK MODE TOGGLE ── */
+  .dark-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+  }
 </style>
 <!-- Firebase -->
 <script type="module">
@@ -559,6 +626,7 @@ if (cached) {
   checkAndCopyLastMonthBudget();
   showTab('resumen');
   appReady = true;
+  setTimeout(checkAutoMonthClose, 1500);
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
@@ -595,6 +663,7 @@ onAuthStateChanged(auth, async (user) => {
       checkAndCopyLastMonthBudget();
       showTab('resumen');
       appReady = true;
+      setTimeout(checkAutoMonthClose, 1500);
     } else {
       // Ya está mostrando datos locales, sincronizar en segundo plano silencioso
       syncFromFirestoreBackground();
@@ -711,13 +780,18 @@ window.scheduleSyncToFirestore = function() {
 
 <div id="app" style="display:none">
   <div id="header">
-    <div class="header-month" id="hdr-month">—</div>
-    <div class="header-balance" id="hdr-balance">$0</div>
-    <div class="header-sub" id="hdr-sub">Cargando...</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div class="header-month" id="hdr-month">—</div>
+        <div class="header-balance" id="hdr-balance">$0</div>
+        <div class="header-sub" id="hdr-sub">Cargando...</div>
+      </div>
+      <button onclick="toggleDarkMode()" id="btn-dark" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 10px;font-size:16px;cursor:pointer;margin-top:4px;flex-shrink:0" title="Modo oscuro">🌙</button>
+    </div>
   </div>
   <div id="content"></div>
   <nav id="nav">
-    <button class="nav-btn active" onclick="showTab('resumen')" id="tab-resumen">
+    <button class="nav-btn" onclick="showTab('resumen')" id="tab-resumen">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       Resumen
     </button>
@@ -725,18 +799,20 @@ window.scheduleSyncToFirestore = function() {
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
       Movimientos
     </button>
+    <button class="nav-btn" onclick="showTab('comparar')" id="tab-comparar">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Comparar
+    </button>
     <button class="nav-btn" onclick="showTab('metas')" id="tab-metas">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="3" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21"/><line x1="3" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></svg>
       Metas
-    </button>
-    <button class="nav-btn" onclick="showTab('cobros')" id="tab-cobros">
-      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.42 0-8-1.79-8-4V6c0-2.21 3.58-4 8-4s8 1.79 8 4v8c0 2.21-3.58 4-8 4z"/></svg>
-      Cobros
     </button>
     <button class="nav-btn" onclick="showTab('config')" id="tab-config">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
       Ajustes
     </button>
+    <!-- cobros tab oculto: accesible desde Ajustes -->
+    <button id="tab-cobros" style="display:none"></button>
   </nav>
   <button class="fab" id="fab" onclick="openAddSheet()">
     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -885,16 +961,22 @@ function showTab(tab) {
   currentTab = tab;
   window._currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');
+  const tabBtn = document.getElementById('tab-'+tab);
+  if (tabBtn) tabBtn.classList.add('active');
+  // Marcar resumen activo por defecto si no hay tab activo
+  else document.getElementById('tab-resumen').classList.add('active');
+
   const fab = document.getElementById('fab');
   fab.style.display = (tab === 'resumen' || tab === 'gastos') ? 'flex' : 'none';
   updateHeader();
   const c = document.getElementById('content');
-  if (tab === 'resumen') c.innerHTML = renderResumen();
-  else if (tab === 'gastos') c.innerHTML = renderGastos();
-  else if (tab === 'metas') c.innerHTML = renderMetas();
-  else if (tab === 'cobros') c.innerHTML = renderCobros();
-  else if (tab === 'config') c.innerHTML = renderConfig();
+  if (tab === 'resumen')   c.innerHTML = renderResumen();
+  else if (tab === 'gastos')   c.innerHTML = renderGastos();
+  else if (tab === 'comparar') c.innerHTML = renderComparar();
+  else if (tab === 'metas')    c.innerHTML = renderMetas();
+  else if (tab === 'cobros')   c.innerHTML = renderCobros();
+  else if (tab === 'config')   c.innerHTML = renderConfig();
+  c.scrollTop = 0;
 }
 
 // ── RESUMEN ──────────────────────────────────────────────────────────────────
@@ -1014,13 +1096,30 @@ function renderResumen() {
 }
 
 // ── MOVIMIENTOS ──────────────────────────────────────────────────────────────
-function renderGastos() {
-  const d = getData();
-  const txs = getMonthTxs(d).slice().reverse();
+let _searchQuery = '';
 
-  let html = ``;
+function renderGastos(query) {
+  const d = getData();
+  const allTxs = getMonthTxs(d).slice().reverse();
+  const q = (query !== undefined ? query : _searchQuery).toLowerCase().trim();
+  const txs = q ? allTxs.filter(t => {
+    const cat = getCat(t.cat);
+    return (t.desc||'').toLowerCase().includes(q)
+      || cat.name.toLowerCase().includes(q)
+      || (t.nota||'').toLowerCase().includes(q)
+      || (t.fecha||'').toLowerCase().includes(q);
+  }) : allTxs;
+
+  let html = `<div class="search-bar">
+    <span style="font-size:16px;color:var(--muted)">🔍</span>
+    <input type="text" placeholder="Buscar movimientos..." value="${q}"
+      oninput="_searchQuery=this.value; document.getElementById('content').innerHTML=renderGastos(this.value)"
+      id="search-input">
+    ${q ? `<span class="search-clear" onclick="_searchQuery='';document.getElementById('content').innerHTML=renderGastos('')">×</span>` : ''}
+  </div>`;
+
   if (txs.length === 0) {
-    return `<div class="empty" style="margin-top:60px"><div class="empty-icon">📋</div><p>Sin movimientos este mes.<br>Toca + para registrar.</p></div>`;
+    return html + `<div class="empty" style="margin-top:40px"><div class="empty-icon">${q?'🔎':'📋'}</div><p>${q?`Sin resultados para "<b>${q}</b>"`:' Sin movimientos este mes.<br>Toca + para registrar.'}</p></div>`;
   }
 
   // Agrupar por fecha
@@ -1051,7 +1150,132 @@ function renderGastos() {
   return html;
 }
 
-// ── METAS ────────────────────────────────────────────────────────────────────
+// ── COMPARATIVA ENTRE MESES ──────────────────────────────────────────────────
+function renderComparar() {
+  const d = getData();
+
+  // Obtener todos los meses con datos, ordenados
+  const mesesConDatos = [...new Set(d.txs.map(t => t.month))]
+    .filter(Boolean).sort();
+
+  if (mesesConDatos.length === 0) {
+    return `<div class="empty" style="margin-top:80px"><div class="empty-icon">📊</div><p>Sin datos aún.<br>Registra movimientos en al menos un mes.</p></div>`;
+  }
+
+  // Calcular totales por mes
+  const resumenMeses = mesesConDatos.map(mk => {
+    const txs = d.txs.filter(t => t.month === mk);
+    const ingresos = txs.filter(t => t.cat === 'ingreso').reduce((a,t)=>a+t.monto,0);
+    const gastos   = txs.filter(t => t.cat !== 'ingreso').reduce((a,t)=>a+t.monto,0);
+    const credito  = txs.filter(t => t.cat !== 'ingreso' && t.pago === 'credito').reduce((a,t)=>a+t.monto,0);
+    return { mk, ingresos, gastos, balance: ingresos - gastos, credito };
+  }).reverse(); // más reciente primero
+
+  const maxVal = Math.max(...resumenMeses.map(m => Math.max(m.ingresos, m.gastos)), 1);
+
+  // ── GRÁFICO DE BARRAS SVG ──
+  const n = Math.min(resumenMeses.length, 6);
+  const mesesGrafico = resumenMeses.slice(0, n).reverse();
+  const W = Math.max(n * 72, 280);
+  const H = 130;
+  const barW = 22;
+  const gap = W / n;
+
+  let bars = '';
+  mesesGrafico.forEach((m, i) => {
+    const x = i * gap + gap / 2;
+    const hIng = m.ingresos > 0 ? Math.max((m.ingresos / maxVal) * (H - 30), 4) : 0;
+    const hGas = m.gastos > 0   ? Math.max((m.gastos   / maxVal) * (H - 30), 4) : 0;
+    const label = monthLabel(m.mk).slice(0,3) + '\n' + m.mk.slice(0,4);
+    bars += `
+      <rect x="${x - barW - 2}" y="${H - 20 - hIng}" width="${barW}" height="${hIng}" rx="4" fill="var(--green)" opacity=".85"/>
+      <rect x="${x + 2}"         y="${H - 20 - hGas}" width="${barW}" height="${hGas}" rx="4" fill="var(--red)"   opacity=".75"/>
+      <text x="${x}" y="${H - 4}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="Plus Jakarta Sans">${MONTHS[parseInt(m.mk.slice(5))-1].slice(0,3)}</text>
+    `;
+  });
+
+  let html = `<div class="card">
+    <div class="card-title">Evolución mensual</div>
+    <div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:3px;margin-right:4px;opacity:.85"></span>Ingresos</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--red);border-radius:3px;margin-right:4px;opacity:.75"></span>Gastos</span>
+    </div>
+    <div class="chart-wrap">
+      <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;min-width:${W}px">
+        <line x1="0" y1="${H-20}" x2="${W}" y2="${H-20}" stroke="var(--border)" stroke-width="1"/>
+        ${bars}
+      </svg>
+    </div>
+  </div>`;
+
+  // ── TABLA DE MESES ──
+  html += `<div class="card"><div class="card-title">Detalle por mes</div>`;
+  resumenMeses.forEach(m => {
+    const isCurrent = m.mk === monthKey(d);
+    const balPos = m.balance >= 0;
+    const pctGas = m.ingresos > 0 ? Math.min(m.gastos / m.ingresos * 100, 100) : 0;
+    html += `<div class="comp-month-row" onclick="setMonth('${m.mk}');showTab('resumen')" style="${isCurrent?'background:rgba(184,92,56,.04);border-radius:10px;padding:12px 8px;':''}">
+      <div class="comp-month-label">
+        <div style="font-weight:${isCurrent?'600':'400'};color:${isCurrent?'var(--accent)':'var(--text)'}">${MONTHS[parseInt(m.mk.slice(5))-1].slice(0,3)}</div>
+        <div style="font-size:11px;color:var(--muted)">${m.mk.slice(0,4)}</div>
+        ${isCurrent ? `<div style="font-size:9px;color:var(--accent);font-weight:600;margin-top:2px">ACTIVO</div>` : ''}
+      </div>
+      <div class="comp-bars">
+        <div class="comp-bar-row">
+          <div class="comp-bar-bg"><div class="comp-bar-fill" style="width:${m.ingresos/maxVal*100}%;background:var(--green)"></div></div>
+          <div class="comp-val" style="color:var(--green)">${fmt(m.ingresos)}</div>
+        </div>
+        <div class="comp-bar-row">
+          <div class="comp-bar-bg"><div class="comp-bar-fill" style="width:${pctGas}%;background:var(--red)"></div></div>
+          <div class="comp-val" style="color:var(--red)">${fmt(m.gastos)}</div>
+        </div>
+        <div style="font-size:11px;color:${balPos?'var(--green)':'var(--red)'};margin-top:2px;font-weight:600;text-align:right">
+          ${balPos?'▲':'▼'} ${fmt(Math.abs(m.balance))}
+        </div>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // ── DESGLOSE CRÉDITO ──
+  const creditoTotal = resumenMeses.reduce((a,m)=>a+m.credito,0);
+  if (creditoTotal > 0) {
+    html += `<div class="card"><div class="card-title">💳 Gastos en crédito por mes</div>`;
+    const maxCred = Math.max(...resumenMeses.map(m=>m.credito),1);
+    resumenMeses.filter(m=>m.credito>0).forEach(m => {
+      const pct = m.credito / maxCred * 100;
+      html += `<div class="credito-item">
+        <div style="width:68px;font-size:12px;color:var(--muted)">${MONTHS[parseInt(m.mk.slice(5))-1].slice(0,3)} ${m.mk.slice(2,4)}</div>
+        <div style="flex:1">
+          <div class="comp-bar-bg"><div class="comp-bar-fill" style="width:${pct}%;background:var(--purple)"></div></div>
+        </div>
+        <div style="font-size:13px;font-weight:600;font-family:'Lora',serif;color:var(--purple);width:80px;text-align:right">${fmt(m.credito)}</div>
+      </div>`;
+    });
+    html += `<div style="display:flex;justify-content:space-between;padding:10px 0 0;border-top:1px solid var(--border);margin-top:4px">
+      <span style="font-size:13px;font-weight:600;color:var(--muted)">Total histórico en crédito</span>
+      <span style="font-size:15px;font-weight:600;font-family:'Lora',serif;color:var(--purple)">${fmt(creditoTotal)}</span>
+    </div></div>`;
+  }
+
+  // ── PROMEDIO MENSUAL ──
+  const n2 = resumenMeses.length;
+  if (n2 > 1) {
+    const avgIng = resumenMeses.reduce((a,m)=>a+m.ingresos,0)/n2;
+    const avgGas = resumenMeses.reduce((a,m)=>a+m.gastos,0)/n2;
+    const mejorMes = [...resumenMeses].sort((a,b)=>b.balance-a.balance)[0];
+    html += `<div class="card"><div class="card-title">Promedios (${n2} meses)</div>
+      <div class="summary-grid" style="margin-bottom:10px">
+        <div class="pill"><div class="pill-label">Ingreso prom.</div><div class="pill-val green">${fmt(avgIng)}</div></div>
+        <div class="pill"><div class="pill-label">Gasto prom.</div><div class="pill-val red">${fmt(avgGas)}</div></div>
+      </div>
+      <div style="font-size:13px;color:var(--muted)">🏆 Mejor mes: <strong style="color:var(--green)">${monthLabel(mejorMes.mk)}</strong> · Balance ${fmt(mejorMes.balance)}</div>
+    </div>`;
+  }
+
+  return html;
+}
+
 function renderMetas() {
   const d = getData();
   const ahorroHistorico = getAhorroHistorico(d);
@@ -1232,8 +1456,19 @@ function renderConfig() {
   html += `</div>`;
 
   // Datos
-  html += `<div class="card"><div class="card-title">Datos</div>
-    <div class="setting-row"><span class="setting-label">Transacciones totales</span><span style="color:var(--muted)">${d.txs.length}</span></div>
+  html += `<div class="card"><div class="card-title">Datos y preferencias</div>
+    <div class="dark-toggle">
+      <div>
+        <div style="font-size:14px;font-weight:500">Modo oscuro</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">Fondo oscuro para usar de noche</div>
+      </div>
+      <button onclick="toggleDarkMode()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:15px;cursor:pointer">
+        ${document.body.classList.contains('dark') ? '☀️ Claro' : '🌙 Oscuro'}
+      </button>
+    </div>
+    <div class="setting-row"><span class="setting-label">Movimientos totales</span><span style="color:var(--muted)">${d.txs.length}</span></div>
+    <div class="setting-row"><span class="setting-label">Meses con datos</span><span style="color:var(--muted)">${[...new Set(d.txs.map(t=>t.month).filter(Boolean))].length}</span></div>
+    <div class="setting-row"><span class="setting-label" onclick="showTab('cobros')" style="cursor:pointer;color:var(--accent)">💸 Me deben →</span></div>
     <div class="setting-row"><span class="setting-label" style="color:var(--red);cursor:pointer" onclick="confirmClear()">Borrar todos los datos</span><span>🗑️</span></div>
   </div>`;
 
@@ -1898,7 +2133,67 @@ function deleteRecurrente(id) {
   showTab('config');
 }
 
-// ── BORRAR TODO ───────────────────────────────────────────────────────────────
+// ── MODO OSCURO ───────────────────────────────────────────────────────────────
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('darkMode', isDark ? '1' : '0');
+  document.getElementById('btn-dark').textContent = isDark ? '☀️' : '🌙';
+}
+
+function initDarkMode() {
+  const saved = localStorage.getItem('darkMode');
+  if (saved === '1') {
+    document.body.classList.add('dark');
+    const btn = document.getElementById('btn-dark');
+    if (btn) btn.textContent = '☀️';
+  }
+}
+
+// ── CIERRE AUTOMÁTICO DE MES ──────────────────────────────────────────────────
+function checkAutoMonthClose() {
+  const d = getData();
+  const now = new Date();
+  const realKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const currentKey = monthKey(d);
+
+  // Si el mes activo no es el mes real del calendario, preguntar si cambiar
+  if (currentKey && currentKey !== realKey) {
+    const [cy, cm] = currentKey.split('-').map(Number);
+    const [ry, rm] = realKey.split('-').map(Number);
+    const esAnterior = (cy < ry) || (cy === ry && cm < rm);
+    if (esAnterior && !sessionStorage.getItem('monthCloseAsked_' + realKey)) {
+      sessionStorage.setItem('monthCloseAsked_' + realKey, '1');
+      setTimeout(() => {
+        const banner = document.createElement('div');
+        banner.id = 'month-close-banner';
+        const mesLabel = monthLabel(currentKey);
+        const nuevoLabel = monthLabel(realKey);
+        banner.innerHTML = `
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px">📅 Estamos en ${nuevoLabel}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Aún tienes activo ${mesLabel}. ¿Cerrar y pasar al mes actual?</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0">
+            <button onclick="document.getElementById('month-close-banner').remove()"
+              style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">Ahora no</button>
+            <button onclick="setMonth('${realKey}');document.getElementById('month-close-banner').remove()"
+              style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">Cambiar</button>
+          </div>`;
+        banner.style.cssText = `position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
+          width:calc(100% - 32px);max-width:400px;background:var(--surface);border:1px solid var(--border);
+          border-radius:16px;padding:14px 16px;z-index:999;display:flex;align-items:center;gap:12px;
+          box-shadow:0 8px 32px rgba(44,36,22,.18);`;
+        document.body.appendChild(banner);
+      }, 1200);
+    }
+  }
+
+  // Si el mes activo ES el mes real, asegurarse de que los recurrentes estén aplicados
+  if (currentKey === realKey) {
+    const aplicados = aplicarRecurrentesMes(d, realKey);
+    if (aplicados) save(d);
+  }
+}
 function confirmClear() {
   if (confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) {
     localStorage.removeItem('presupuesto_v1');
@@ -2209,6 +2504,10 @@ function renderUserCard() {
 }
 window.currentUser = null;
 
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initDarkMode();
+});
 </script>
 <script>
 if ('serviceWorker' in navigator) {
