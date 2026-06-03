@@ -2185,68 +2185,135 @@ function renderComparar() {
 
 function renderMetas() {
   const d = getData();
-  const ahorroHistorico = getAhorroHistorico(d);
+
+  // Calcular ahorro total registrado en cat ahorro (histórico)
+  const ahorroHistorico = d.txs
+    .filter(t => t.cat === 'ahorro')
+    .reduce((a, t) => a + t.monto, 0);
+
+  // Ahorro comprometido en metas
+  const ahorroEnMetas = d.metas.reduce((a, m) => {
+    return a + (m.baseAhorrado||0) + (m.ahorroVinculado||0) + (m.ahorrado||0);
+  }, 0);
 
   let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-top:4px">
-    <span style="font-size:16px;font-weight:600">Mis metas</span>
+    <span style="font-size:16px;font-weight:600;font-family:'Lora',serif">Mis metas de ahorro</span>
     <button onclick="openAddMeta()" style="background:rgba(184,92,56,.12);border:1px solid rgba(184,92,56,.3);color:var(--accent);border-radius:10px;padding:7px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;cursor:pointer;font-weight:600">+ Nueva</button>
   </div>`;
 
-  // Resumen de ahorro disponible
-  if (ahorroHistorico > 0) {
-    html += `<div class="card" style="margin-bottom:14px;background:rgba(184,92,56,.06);border-color:rgba(184,92,56,.2)">
-      <div class="card-title" style="color:var(--accent)">Ahorro total acumulado</div>
-      <div style="font-size:24px;font-weight:600;font-family:'Lora',serif;color:var(--accent)">${fmt(ahorroHistorico)}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">Registrado en categoría Ahorro · todos los meses</div>
+  // Panel resumen de ahorro
+  if (ahorroHistorico > 0 || d.metas.length > 0) {
+    html += `<div class="card" style="margin-bottom:14px">
+      <div class="card-title">Resumen de ahorro</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="pill">
+          <div class="pill-label">Total registrado</div>
+          <div class="pill-val" style="color:var(--accent)">${fmt(ahorroHistorico)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">en categoría Ahorro</div>
+        </div>
+        <div class="pill">
+          <div class="pill-label">Asignado a metas</div>
+          <div class="pill-val" style="color:var(--green)">${fmt(ahorroEnMetas)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">${d.metas.length} meta${d.metas.length!==1?'s':''}</div>
+        </div>
+      </div>
+      <div class="info-box" style="margin:0;font-size:12px">
+        💡 Al registrar un gasto en categoría <strong>Ahorro</strong>, selecciona la meta a la que quieres abonar.
+        El monto se descuenta directamente de su objetivo.
+      </div>
     </div>`;
   }
 
   if (d.metas.length === 0) {
-    return html + `<div class="empty" style="margin-top:20px"><div class="empty-icon">🎯</div><p>Sin metas todavía.<br>Crea una para empezar.</p></div>`;
+    return html + `<div class="empty" style="margin-top:20px"><div class="empty-icon">🎯</div><p>Sin metas todavía.<br>Crea una para empezar a seguir tu ahorro.</p></div>`;
   }
 
-  // Calcular cuánto ahorro ya está "comprometido" en metas vinculadas
-  let ahorroComprometido = 0;
-  d.metas.forEach(m => {
-    if (m.vinculado) ahorroComprometido += (m.ahorroVinculado || 0);
-  });
+  // Separar metas activas y completadas
+  const activas = d.metas.filter(m => !m.completada);
+  const completadas = d.metas.filter(m => m.completada);
 
-  d.metas.forEach(m => {
-    const totalAhorrado = m.vinculado
-      ? (m.baseAhorrado || 0) + (m.ahorroVinculado || 0)
-      : (m.ahorrado || 0);
+  const renderMeta = (m) => {
+    const totalAhorrado = (m.baseAhorrado||0) + (m.ahorroVinculado||0) + (m.ahorrado||0);
     const pct = m.objetivo > 0 ? Math.min(totalAhorrado / m.objetivo * 100, 100) : 0;
-    const barColor = pct >= 100 ? 'green' : 'accent';
     const restante = Math.max(m.objetivo - totalAhorrado, 0);
-    const mesesRestantes = m.mensual > 0 ? Math.ceil(restante / m.mensual) : null;
+    const mesesRestantes = (m.mensual > 0 && restante > 0) ? Math.ceil(restante / m.mensual) : null;
+    const barColor = pct >= 100 ? 'green' : pct >= 70 ? 'accent' : pct >= 40 ? 'yellow' : 'accent';
 
-    html += `<div class="meta-card" onclick="openEditMeta('${m.id}')">
+    // Calcular aportes del mes actual
+    const mesActual = monthKey(d);
+    const aporteMes = d.txs
+      .filter(t => t.cat === 'ahorro' && t.month === mesActual && t.metaId === m.id)
+      .reduce((a,t) => a+t.monto, 0);
+
+    return `<div class="meta-card" onclick="openEditMeta('${m.id}')">
       <div class="meta-top">
-        <div>
-          <div class="meta-name">${m.emoji || '🎯'} ${m.nombre}</div>
-          <span class="meta-badge ${m.vinculado ? 'linked' : 'manual'}">${m.vinculado ? '🔗 Vinculada al ahorro' : '✏️ Manual'}</span>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:600;font-family:'Lora',serif">${m.emoji||'🎯'} ${m.nombre}</div>
+          <span class="meta-badge ${m.vinculado?'linked':'manual'}">${m.vinculado?'🔗 Auto desde Ahorro':'✏️ Manual'}</span>
         </div>
-        <div class="meta-pct">${pct.toFixed(0)}%</div>
+        <div style="text-align:right">
+          <div class="meta-pct">${pct.toFixed(0)}%</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmt(totalAhorrado)} / ${fmt(m.objetivo)}</div>
+        </div>
       </div>
-      <div class="prog-bar"><div class="prog-fill ${barColor}" style="width:${pct}%"></div></div>
-      <div class="meta-nums">
-        <span>${fmt(totalAhorrado)} ahorrado</span>
-        <span>Objetivo: ${fmt(m.objetivo)}</span>
+
+      <!-- Barra de progreso -->
+      <div class="prog-bar" style="height:8px;margin:10px 0 6px">
+        <div class="prog-fill ${barColor}" style="width:${pct}%;transition:width .5s ease"></div>
       </div>
-      <div class="meta-saving-info" style="margin-top:10px">
-        ${m.vinculado ? `
-          <div class="meta-saving-row"><span>Base inicial</span><span>${fmt(m.baseAhorrado||0)}</span></div>
-          <div class="meta-saving-row"><span>Ahorro vinculado</span><span style="color:var(--accent)">${fmt(m.ahorroVinculado||0)}</span></div>
-          <div class="meta-saving-row" style="padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span style="font-weight:500;color:var(--text)">Falta para la meta</span><span style="color:${restante>0?'var(--yellow)':'var(--green)'};font-weight:600">${restante > 0 ? fmt(restante) : '🎉 ¡Completada!'}</span></div>
-        ` : `
-          <div class="meta-saving-row"><span>Ahorrado</span><span>${fmt(m.ahorrado||0)}</span></div>
-          <div class="meta-saving-row" style="padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span style="font-weight:500;color:var(--text)">Falta para la meta</span><span style="color:${restante>0?'var(--yellow)':'var(--green)'};font-weight:600">${restante > 0 ? fmt(restante) : '🎉 ¡Completada!'}</span></div>
-        `}
-        ${mesesRestantes && restante > 0 ? `<div class="meta-saving-row" style="padding-top:4px"><span>Estimado si ahorras ${fmt(m.mensual)}/mes</span><span>${mesesRestantes} meses</span></div>` : ''}
+
+      <!-- Desglose de ahorro -->
+      <div class="meta-saving-info">
+        ${m.baseAhorrado > 0 ? `
+          <div class="meta-saving-row">
+            <span>💰 Base inicial</span>
+            <span>${fmt(m.baseAhorrado)}</span>
+          </div>` : ''}
+        ${m.ahorroVinculado > 0 ? `
+          <div class="meta-saving-row">
+            <span>🔗 Abonos registrados</span>
+            <span style="color:var(--accent);font-weight:600">${fmt(m.ahorroVinculado)}</span>
+          </div>` : ''}
+        ${m.ahorrado > 0 && !m.vinculado ? `
+          <div class="meta-saving-row">
+            <span>💰 Ahorrado</span>
+            <span style="color:var(--accent);font-weight:600">${fmt(m.ahorrado)}</span>
+          </div>` : ''}
+        ${aporteMes > 0 ? `
+          <div class="meta-saving-row">
+            <span>📅 Aporte este mes</span>
+            <span style="color:var(--green);font-weight:600">+${fmt(aporteMes)}</span>
+          </div>` : ''}
+        <div class="meta-saving-row" style="padding-top:8px;border-top:1px solid var(--border);margin-top:6px">
+          <span style="font-weight:600;color:var(--text)">Falta para completar</span>
+          <span style="color:${restante>0?'var(--yellow)':'var(--green)'};font-weight:700;font-size:14px">
+            ${restante > 0 ? fmt(restante) : '🎉 ¡Meta alcanzada!'}
+          </span>
+        </div>
+        ${mesesRestantes ? `
+          <div class="meta-saving-row" style="margin-top:4px">
+            <span style="color:var(--muted)">A ${fmt(m.mensual)}/mes, llegas en</span>
+            <span style="color:var(--muted)">${mesesRestantes} mes${mesesRestantes!==1?'es':''}</span>
+          </div>` : ''}
       </div>
-      ${pct >= 100 ? `<div style="margin-top:10px;font-size:13px;color:var(--green);font-weight:500;text-align:center">🎉 ¡Meta alcanzada!</div>` : ''}
+
+      ${pct >= 100 ? `<div style="margin-top:10px;padding:8px;background:var(--green-bg);border-radius:10px;text-align:center;font-size:13px;color:var(--green);font-weight:600">🎉 ¡Meta completada! ¡Felicitaciones!</div>` : ''}
     </div>`;
-  });
+  };
+
+  // Metas activas
+  if (activas.length > 0) {
+    activas.forEach(m => { html += renderMeta(m); });
+  }
+
+  // Metas completadas (colapsadas)
+  if (completadas.length > 0) {
+    html += `<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px;padding:0 4px">
+      🏆 Completadas (${completadas.length})
+    </div>`;
+    completadas.forEach(m => { html += renderMeta(m); });
+  }
+
   return html;
 }
 
@@ -2451,12 +2518,18 @@ function openAddSheet() {
     <!-- PANEL TARJETA DE CRÉDITO (aparece solo al seleccionar Crédito) -->
     <div id="f-credito-panel" style="display:none">
       <div class="credito-panel">
-        <div class="credito-panel-title">💳 Configurar compra en tarjeta Banco de Chile</div>
+        <div class="credito-panel-title">💳 Detalles de la compra en tarjeta</div>
+        ${d.tarjetas.length > 1 ? `
+        <div class="field" style="margin-bottom:10px"><label>¿Con qué tarjeta?</label>
+          <select id="f-tc-selector" onchange="onCreditoChange()">
+            ${d.tarjetas.map(t=>`<option value="${t.id}">${t.banco} · ${t.alias||t.tipo}</option>`).join('')}
+          </select>
+        </div>` : `<input type="hidden" id="f-tc-selector" value="${d.tarjetas[0]?.id||''}">`}
         <div class="field" style="margin-bottom:10px"><label>Tipo de cuotas</label>
           <select id="tc-tipo-form" onchange="onCreditoChange()">
             <option value="contado">Sin cuotas — cargo directo próximo estado</option>
             <option value="sin_interes">Cuotas sin interés</option>
-            <option value="con_interes">Cuotas con interés (tasa vigente)</option>
+            <option value="con_interes">Cuotas con interés (tasa según tarjeta)</option>
           </select>
         </div>
         <div class="field" id="tc-ncuotas-form-wrap" style="display:none;margin-bottom:10px"><label>Número de cuotas</label>
@@ -2543,29 +2616,39 @@ function onCreditoChange() {
   const resumen = document.getElementById('tc-resumen-form');
   if (!resumen || monto <= 0) return;
 
-  const d = getData(); const tc = d.tarjeta;
-  const mantencion = Math.round(tc.mantencionUF * tc.ufValue);
+  const d = getData();
+  const tcSelId = document.getElementById('f-tc-selector')?.value;
+  const tc = (tcSelId ? d.tarjetas.find(t=>t.id===tcSelId) : null) || d.tarjetas[0];
+  window._tcFormId = tc?.id;
+
+  const mantencion = Math.round((tc.mantencionUF||0) * (tc.ufValue||38500));
+  const r = ((tc.tasaMin||1.5)/100);
   let montoCuota;
   if (tipo === 'contado' || tipo === 'sin_interes') {
     montoCuota = Math.round(monto / cuotas);
   } else {
-    const r = TC_TASA_MENSUAL_DEFAULT;
     montoCuota = Math.round(monto * (r * Math.pow(1+r,cuotas)) / (Math.pow(1+r,cuotas)-1));
   }
   const timbres = cuotas > 1 ? Math.round(monto * TIMBRES_ESTAMPILLAS * cuotas) : 0;
-  const totalReal = montoCuota * cuotas + timbres;
+  const interesTotal = tipo === 'con_interes' ? Math.round(montoCuota*cuotas - monto) : 0;
   const ciclos = getCiclosTC(tc);
   const cicloActivo = ciclos[0];
 
   resumen.innerHTML = `<div class="credito-resumen">
-    <div style="font-size:11px;font-weight:600;color:var(--purple);margin-bottom:8px">📋 Resumen del cobro</div>
-    <div class="credito-resumen-row"><span>Próximo estado de cuenta</span><span>${cicloActivo.fechaVenc}</span></div>
+    <div style="font-size:11px;font-weight:600;color:var(--purple);margin-bottom:8px">
+      📋 ${tc.banco} · ${tc.alias||tc.tipo}
+    </div>
+    <div class="credito-resumen-row"><span>Fecha de vencimiento</span><span>${cicloActivo.fechaVenc}</span></div>
     <div class="credito-resumen-row"><span>Valor cuota</span><span>${fmt(montoCuota)}/mes × ${cuotas}</span></div>
-    ${timbres > 0 ? `<div class="credito-resumen-row"><span>Timbres y estampillas</span><span>${fmt(timbres)} (1° cuota)</span></div>` : ''}
-    <div class="credito-resumen-row"><span>Mantención tarjeta ${tc.tipo}</span><span>${fmt(mantencion)}/mes</span></div>
-    <div class="credito-resumen-row highlight"><span>Pagarás en el próximo estado</span><span>${fmt(montoCuota + (cuotas>1?timbres:0) + mantencion)}</span></div>
-    ${tipo==='con_interes'?`<div style="font-size:11px;color:var(--red);margin-top:6px">⚠️ Costo extra por intereses: ${fmt(totalReal - monto)} sobre el precio original</div>`:''}
-    ${tipo==='sin_interes'?`<div style="font-size:11px;color:var(--green);margin-top:6px">✅ Sin interés — recuerda pagar el total cada mes para no perder el beneficio</div>`:''}
+    ${timbres > 0 ? `<div class="credito-resumen-row"><span>Timbres y estampillas (DL3475)</span><span>${fmt(timbres)}</span></div>` : ''}
+    ${interesTotal > 0 ? `<div class="credito-resumen-row"><span style="color:var(--red)">Interés total</span><span style="color:var(--red)">${fmt(interesTotal)}</span></div>` : ''}
+    <div class="credito-resumen-row"><span>Mantención ${tc.tipo}</span><span>${fmt(mantencion)}/mes</span></div>
+    <div class="credito-resumen-row highlight">
+      <span>Total próximo estado</span>
+      <span>${fmt(montoCuota + (cuotas>1?timbres:0) + mantencion)}</span>
+    </div>
+    ${tipo==='sin_interes' ? `<div style="font-size:11px;color:var(--green);margin-top:6px">✅ Sin interés — paga el estado completo cada mes para mantener el beneficio</div>` : ''}
+    ${interesTotal > 0 ? `<div style="font-size:11px;color:var(--red);margin-top:6px">⚠️ Financiar te cuesta <strong>${fmt(interesTotal+timbres)}</strong> extra (${((interesTotal/monto)*100).toFixed(1)}% del precio)</div>` : ''}
   </div>`;
 }
 
@@ -2625,18 +2708,17 @@ function saveTx() {
   if (txPago === 'credito' && txType === 'gas') {
     const tipoTC = document.getElementById('tc-tipo-form')?.value || 'contado';
     const cuotasTC = tipoTC === 'contado' ? 1 : (parseInt(document.getElementById('tc-ncuotas-form')?.value) || 1);
+    const tcActiva = d.tarjetas.find(t=>t.id===window._tcFormId) || d.tarjetas[0];
+    const r = (tcActiva.tasaMin||1.5)/100;
     let montoCuotaTC;
     if (tipoTC === 'contado' || tipoTC === 'sin_interes') {
       montoCuotaTC = Math.round(monto / cuotasTC);
     } else {
-      const r = TC_TASA_MENSUAL_DEFAULT;
       montoCuotaTC = Math.round(monto * (r * Math.pow(1+r,cuotasTC)) / (Math.pow(1+r,cuotasTC)-1));
     }
     const timbresTC = cuotasTC > 1 ? Math.round(monto * TIMBRES_ESTAMPILLAS * cuotasTC) : 0;
-    const ciclos = getCiclosTC(d.tarjeta);
-    tcInfo = { tipo: tipoTC, cuotas: cuotasTC, montoCuota: montoCuotaTC, timbres: timbresTC, cicloInicio: ciclos[0].key };
-    // Registrar automáticamente en el módulo de tarjeta
-    const tcActiva = d.tarjetas.find(t=>t.id===window._tcFormId) || d.tarjetas[0];
+    const ciclos = getCiclosTC(tcActiva);
+    tcInfo = { tipo: tipoTC, cuotas: cuotasTC, montoCuota: montoCuotaTC, timbres: timbresTC, cicloInicio: ciclos[0].key, tcId: tcActiva.id };
     tcActiva.compras.push({
       id: 'tx_' + Date.now().toString(),
       desc: document.getElementById('f-desc').value.trim() || 'Compra',
@@ -2657,6 +2739,7 @@ function saveTx() {
     pago: txType === 'ing' ? null : txPago,
     nota: nota || null,
     tcInfo,
+    metaId: (catId === 'ahorro' && window._selectedMeta !== '__libre__') ? window._selectedMeta : null,
   };
   d.txs.push(tx);
 
