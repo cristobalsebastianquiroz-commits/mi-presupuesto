@@ -650,6 +650,31 @@
   }
   .calc-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
   .calc-row.total { font-weight: 600; font-size: 15px; border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px; }
+
+  /* ── PANEL CRÉDITO EN FORM ── */
+  .credito-panel {
+    background: rgba(124,100,151,.08); border: 1.5px solid rgba(124,100,151,.25);
+    border-radius: 14px; padding: 14px; margin-bottom: 14px;
+  }
+  .credito-panel-title { font-size: 11px; font-weight: 600; color: var(--purple); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .6px; }
+  .credito-resumen { background: var(--surface2); border-radius: 10px; padding: 12px; margin-top: 10px; }
+  .credito-resumen-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: var(--muted); }
+  .credito-resumen-row span:last-child { font-weight: 500; color: var(--text); }
+  .credito-resumen-row.highlight { font-size: 14px; font-weight: 600; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 6px; color: var(--text); }
+  .credito-resumen-row.highlight span:last-child { color: var(--purple); }
+
+  /* ── SELECTOR META EN AHORRO ── */
+  .meta-selector-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border-radius: 10px; border: 1.5px solid var(--border); margin-bottom: 8px; cursor: pointer;
+    transition: all .15s; background: var(--bg);
+  }
+  .meta-selector-item.selected { border-color: var(--accent); background: rgba(184,92,56,.07); }
+  .meta-selector-item.selected .meta-sel-check { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .meta-sel-check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; transition: all .15s; }
+  .meta-sel-info { flex: 1; }
+  .meta-sel-name { font-size: 13px; font-weight: 500; }
+  .meta-sel-prog { font-size: 11px; color: var(--muted); margin-top: 2px; }
 </style>
 <!-- Firebase -->
 <script type="module">
@@ -1747,48 +1772,72 @@ function deleteCargoTC(id) {
 }
 
 // ── CONFIG CICLO TC ──────────────────────────────────────────────────────────
+// Tarifario oficial Banco de Chile (mantencion mensual en UF)
+const BC_TARJETAS = [
+  { tipo: 'Visa FAN',           uf: 0.00 },
+  { tipo: 'Universal',          uf: 0.07 },
+  { tipo: 'Visa Dorada',        uf: 0.21 },
+  { tipo: 'Mastercard Dorada',  uf: 0.21 },
+  { tipo: 'Visa Platinum',      uf: 0.25 },
+  { tipo: 'Mastercard Platinum',uf: 0.25 },
+  { tipo: 'Visa Signature',     uf: 0.35 },
+  { tipo: 'Mastercard Black',   uf: 0.40 },
+  { tipo: 'Visa Infinite',      uf: 0.50 },
+];
+
 function openConfigTC() {
   const d = getData(); const tc = d.tarjeta;
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-title">⚙️ Configurar tarjeta</div>
-    <div class="field"><label>Tipo de tarjeta</label>
-      <select id="cf-tipo">
-        <option value="SMART" ${tc.tipo==='SMART'?'selected':''}>Visa SMART</option>
-        <option value="SMART+" ${tc.tipo==='SMART+'?'selected':''}>Visa SMART+</option>
-        <option value="Platinum" ${tc.tipo==='Platinum'?'selected':''}>Visa Platinum</option>
-        <option value="MasterCard" ${tc.tipo==='MasterCard'?'selected':''}>MasterCard Estándar</option>
-        <option value="MasterCard Black" ${tc.tipo==='MasterCard Black'?'selected':''}>MasterCard Black</option>
+    <div class="info-box">
+      <strong>Banco de Chile</strong> — mantención se cobra <strong>todos los meses sin excepción</strong>, independiente de si la usas o no. Selecciona tu tipo para cargar automáticamente la tarifa oficial.
+    </div>
+    <div class="field"><label>Tipo de tarjeta Banco de Chile</label>
+      <select id="cf-tipo" onchange="autoFillMantencion()">
+        ${BC_TARJETAS.map(t=>`<option value="${t.tipo}" ${tc.tipo===t.tipo?'selected':''}>${t.tipo} — UF ${t.uf.toFixed(2)}/mes</option>`).join('')}
       </select>
     </div>
-    <div class="field"><label>Día de corte del ciclo</label>
+    <div class="field"><label>Mantención mensual en UF (se carga automáticamente)</label>
+      <input type="number" id="cf-mantencion" value="${tc.mantencionUF}" step="0.01" inputmode="decimal">
+    </div>
+    <div class="field"><label>Valor UF actual ($) — consultar en cmfchile.cl</label>
+      <input type="number" id="cf-uf" value="${tc.ufValue}" inputmode="numeric">
+    </div>
+    <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px">
+      💡 Mantención estimada este mes: <strong id="preview-mantencion">${fmt(Math.round(tc.mantencionUF * tc.ufValue))}</strong>
+    </div>
+    <div class="field"><label>Día de corte del ciclo (ver estado de cuenta)</label>
       <input type="number" id="cf-corte" value="${tc.diaCorte}" min="1" max="28" inputmode="numeric">
     </div>
-    <div class="field"><label>Días hasta vencimiento (desde el corte)</label>
+    <div class="field"><label>Días desde el corte hasta el vencimiento</label>
       <input type="number" id="cf-venc" value="${tc.diasVencimiento}" min="1" max="30" inputmode="numeric">
     </div>
     <div class="field"><label>Límite de crédito ($)</label>
       <input type="number" id="cf-limite" value="${tc.limiteCredito||0}" inputmode="numeric">
     </div>
-    <div class="field"><label>Mantención mensual (UF)</label>
-      <input type="number" id="cf-mantencion" value="${tc.mantencionUF}" step="0.01" inputmode="decimal">
-    </div>
-    <div class="field"><label>Valor UF actual ($)</label>
-      <input type="number" id="cf-uf" value="${tc.ufValue}" inputmode="numeric">
-    </div>
-    <div class="info-box">El valor UF lo puedes consultar en <strong>cmfchile.cl</strong>. Actualízalo cada mes para que los cálculos de mantención sean precisos.</div>
     <button class="btn-primary" onclick="saveConfigTC()">Guardar configuración</button>
   `;
   openSheet();
 }
 
+function autoFillMantencion() {
+  const sel = document.getElementById('cf-tipo').value;
+  const t = BC_TARJETAS.find(x => x.tipo === sel);
+  if (t) {
+    document.getElementById('cf-mantencion').value = t.uf;
+    const uf = parseFloat(document.getElementById('cf-uf').value) || 38500;
+    document.getElementById('preview-mantencion').textContent = fmt(Math.round(t.uf * uf));
+  }
+}
+
 function saveConfigTC() {
   const d = getData();
-  d.tarjeta.tipo         = document.getElementById('cf-tipo').value;
-  d.tarjeta.diaCorte     = parseInt(document.getElementById('cf-corte').value) || 5;
-  d.tarjeta.diasVencimiento = parseInt(document.getElementById('cf-venc').value) || 10;
-  d.tarjeta.limiteCredito = parseFloat(document.getElementById('cf-limite').value) || 0;
-  d.tarjeta.mantencionUF  = parseFloat(document.getElementById('cf-mantencion').value) || 0.08;
-  d.tarjeta.ufValue       = parseFloat(document.getElementById('cf-uf').value) || 38000;
+  d.tarjeta.tipo            = document.getElementById('cf-tipo').value;
+  d.tarjeta.diaCorte        = parseInt(document.getElementById('cf-corte').value) || 5;
+  d.tarjeta.diasVencimiento = parseInt(document.getElementById('cf-venc').value) || 12;
+  d.tarjeta.limiteCredito   = parseFloat(document.getElementById('cf-limite').value) || 0;
+  d.tarjeta.mantencionUF    = parseFloat(document.getElementById('cf-mantencion').value) || 0.21;
+  d.tarjeta.ufValue         = parseFloat(document.getElementById('cf-uf').value) || 38500;
   save(d); closeSheet(); showTab('tarjeta');
 }
 
@@ -1804,14 +1853,17 @@ function renderComparar() {
     return `<div class="empty" style="margin-top:80px"><div class="empty-icon">📊</div><p>Sin datos aún.<br>Registra movimientos en al menos un mes.</p></div>`;
   }
 
-  // Calcular totales por mes
+  // Calcular totales por mes incluyendo ahorro
   const resumenMeses = mesesConDatos.map(mk => {
     const txs = d.txs.filter(t => t.month === mk);
     const ingresos = txs.filter(t => t.cat === 'ingreso').reduce((a,t)=>a+t.monto,0);
     const gastos   = txs.filter(t => t.cat !== 'ingreso').reduce((a,t)=>a+t.monto,0);
+    const ahorro   = txs.filter(t => t.cat === 'ahorro').reduce((a,t)=>a+t.monto,0);
     const credito  = txs.filter(t => t.cat !== 'ingreso' && t.pago === 'credito').reduce((a,t)=>a+t.monto,0);
-    return { mk, ingresos, gastos, balance: ingresos - gastos, credito };
-  }).reverse(); // más reciente primero
+    const pctAhorro = ingresos > 0 ? (ahorro / ingresos * 100) : 0;
+    const pctGasto  = ingresos > 0 ? (gastos / ingresos * 100) : 0;
+    return { mk, ingresos, gastos, ahorro, balance: ingresos - gastos, credito, pctAhorro, pctGasto };
+  }).reverse();
 
   const maxVal = Math.max(...resumenMeses.map(m => Math.max(m.ingresos, m.gastos)), 1);
 
@@ -1828,19 +1880,21 @@ function renderComparar() {
     const x = i * gap + gap / 2;
     const hIng = m.ingresos > 0 ? Math.max((m.ingresos / maxVal) * (H - 30), 4) : 0;
     const hGas = m.gastos > 0   ? Math.max((m.gastos   / maxVal) * (H - 30), 4) : 0;
-    const label = monthLabel(m.mk).slice(0,3) + '\n' + m.mk.slice(0,4);
+    const hAho = m.ahorro > 0   ? Math.max((m.ahorro   / maxVal) * (H - 30), 3) : 0;
     bars += `
       <rect x="${x - barW - 2}" y="${H - 20 - hIng}" width="${barW}" height="${hIng}" rx="4" fill="var(--green)" opacity=".85"/>
       <rect x="${x + 2}"         y="${H - 20 - hGas}" width="${barW}" height="${hGas}" rx="4" fill="var(--red)"   opacity=".75"/>
+      ${hAho > 0 ? `<rect x="${x - barW/2 - 4}" y="${H - 20 - hAho}" width="${barW * 0.6}" height="${hAho}" rx="3" fill="var(--yellow)" opacity=".9"/>` : ''}
       <text x="${x}" y="${H - 4}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="Plus Jakarta Sans">${MONTHS[parseInt(m.mk.slice(5))-1].slice(0,3)}</text>
     `;
   });
 
   let html = `<div class="card">
     <div class="card-title">Evolución mensual</div>
-    <div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px">
+    <div style="display:flex;gap:14px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">
       <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:3px;margin-right:4px;opacity:.85"></span>Ingresos</span>
       <span><span style="display:inline-block;width:10px;height:10px;background:var(--red);border-radius:3px;margin-right:4px;opacity:.75"></span>Gastos</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--yellow);border-radius:3px;margin-right:4px;opacity:.9"></span>Ahorro</span>
     </div>
     <div class="chart-wrap">
       <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;min-width:${W}px">
@@ -1850,7 +1904,6 @@ function renderComparar() {
     </div>
   </div>`;
 
-  // ── TABLA DE MESES ──
   html += `<div class="card"><div class="card-title">Detalle por mes</div>`;
   resumenMeses.forEach(m => {
     const isCurrent = m.mk === monthKey(d);
@@ -1871,8 +1924,15 @@ function renderComparar() {
           <div class="comp-bar-bg"><div class="comp-bar-fill" style="width:${pctGas}%;background:var(--red)"></div></div>
           <div class="comp-val" style="color:var(--red)">${fmt(m.gastos)}</div>
         </div>
-        <div style="font-size:11px;color:${balPos?'var(--green)':'var(--red)'};margin-top:2px;font-weight:600;text-align:right">
-          ${balPos?'▲':'▼'} ${fmt(Math.abs(m.balance))}
+        ${m.ahorro > 0 ? `
+        <div class="comp-bar-row">
+          <div class="comp-bar-bg"><div class="comp-bar-fill" style="width:${Math.min(m.ahorro/maxVal*100,100)}%;background:var(--yellow)"></div></div>
+          <div class="comp-val" style="color:var(--yellow)">${fmt(m.ahorro)}</div>
+        </div>` : ''}
+        <div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">
+          <span style="font-size:10px;color:${balPos?'var(--green)':'var(--red)'};font-weight:600">${balPos?'▲':'▼'} ${fmt(Math.abs(m.balance))} balance</span>
+          ${m.ahorro > 0 && m.ingresos > 0 ? `<span style="font-size:10px;color:var(--yellow);font-weight:600">💰 ${m.pctAhorro.toFixed(0)}% ahorro</span>` : ''}
+          ${m.ingresos > 0 ? `<span style="font-size:10px;color:var(--muted)">${m.pctGasto.toFixed(0)}% gasto</span>` : ''}
         </div>
       </div>
     </div>`;
@@ -1905,13 +1965,20 @@ function renderComparar() {
   if (n2 > 1) {
     const avgIng = resumenMeses.reduce((a,m)=>a+m.ingresos,0)/n2;
     const avgGas = resumenMeses.reduce((a,m)=>a+m.gastos,0)/n2;
+    const avgAho = resumenMeses.reduce((a,m)=>a+m.ahorro,0)/n2;
     const mejorMes = [...resumenMeses].sort((a,b)=>b.balance-a.balance)[0];
+    const mejorAhorro = [...resumenMeses].filter(m=>m.ahorro>0).sort((a,b)=>b.pctAhorro-a.pctAhorro)[0];
     html += `<div class="card"><div class="card-title">Promedios (${n2} meses)</div>
       <div class="summary-grid" style="margin-bottom:10px">
-        <div class="pill"><div class="pill-label">Ingreso prom.</div><div class="pill-val green">${fmt(avgIng)}</div></div>
-        <div class="pill"><div class="pill-label">Gasto prom.</div><div class="pill-val red">${fmt(avgGas)}</div></div>
+        <div class="pill"><div class="pill-label">Ingreso prom.</div><div class="pill-val green">${fmt(Math.round(avgIng))}</div></div>
+        <div class="pill"><div class="pill-label">Gasto prom.</div><div class="pill-val red">${fmt(Math.round(avgGas))}</div></div>
       </div>
-      <div style="font-size:13px;color:var(--muted)">🏆 Mejor mes: <strong style="color:var(--green)">${monthLabel(mejorMes.mk)}</strong> · Balance ${fmt(mejorMes.balance)}</div>
+      ${avgAho > 0 ? `<div class="pill" style="margin-bottom:10px;display:block">
+        <div class="pill-label">Ahorro promedio</div>
+        <div class="pill-val" style="color:var(--yellow)">${fmt(Math.round(avgAho))}</div>
+      </div>` : ''}
+      <div style="font-size:13px;color:var(--muted)">🏆 Mejor balance: <strong style="color:var(--green)">${monthLabel(mejorMes.mk)}</strong> · ${fmt(mejorMes.balance)}</div>
+      ${mejorAhorro ? `<div style="font-size:13px;color:var(--muted);margin-top:6px">💰 Mayor ahorro: <strong style="color:var(--yellow)">${monthLabel(mejorAhorro.mk)}</strong> · ${mejorAhorro.pctAhorro.toFixed(1)}% del ingreso</div>` : ''}
     </div>`;
   }
 
@@ -2149,6 +2216,9 @@ function renderConfig() {
 function openAddSheet() {
   const allCats = getAllCats();
   const today = new Date().toISOString().split('T')[0];
+  const d = getData();
+  const metas = (d.metas || []).filter(m => !m.completada);
+
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-title">Nuevo movimiento</div>
     <div class="type-toggle">
@@ -2156,19 +2226,21 @@ function openAddSheet() {
       <button class="type-btn" id="btn-ing" onclick="setType('ing')">▲ Ingreso</button>
     </div>
     <div class="field"><label>Monto ($)</label>
-      <input type="number" id="f-monto" placeholder="0" inputmode="numeric">
+      <input type="number" id="f-monto" placeholder="0" inputmode="numeric" oninput="onMontoChange()">
     </div>
     <div class="field"><label>Descripción</label>
-      <input type="text" id="f-desc" placeholder="Ej: Supermercado Lider">
+      <input type="text" id="f-desc" placeholder="Ej: Supermercado, Netflix...">
     </div>
     <div class="field"><label>Nota (opcional)</label>
       <input type="text" id="f-nota" placeholder="Ej: con descuento, cuota 3/12...">
     </div>
     <div class="field" id="f-cat-wrap"><label>Categoría</label>
-      <select id="f-cat">
+      <select id="f-cat" onchange="onCatChange()">
         ${allCats.filter(c=>c.id!=='ingreso').map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
       </select>
     </div>
+
+    <!-- MEDIO DE PAGO -->
     <div id="f-pago-wrap">
       <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Medio de pago</label>
       <div class="pago-toggle">
@@ -2177,6 +2249,51 @@ function openAddSheet() {
         <button class="pago-btn" id="pago-credito" onclick="setPago('credito')"><span class="pago-icon">🏦</span>Crédito</button>
       </div>
     </div>
+
+    <!-- PANEL TARJETA DE CRÉDITO (aparece solo al seleccionar Crédito) -->
+    <div id="f-credito-panel" style="display:none">
+      <div class="credito-panel">
+        <div class="credito-panel-title">💳 Configurar compra en tarjeta Banco de Chile</div>
+        <div class="field" style="margin-bottom:10px"><label>Tipo de cuotas</label>
+          <select id="tc-tipo-form" onchange="onCreditoChange()">
+            <option value="contado">Sin cuotas — cargo directo próximo estado</option>
+            <option value="sin_interes">Cuotas sin interés</option>
+            <option value="con_interes">Cuotas con interés (tasa vigente)</option>
+          </select>
+        </div>
+        <div class="field" id="tc-ncuotas-form-wrap" style="display:none;margin-bottom:10px"><label>Número de cuotas</label>
+          <select id="tc-ncuotas-form" onchange="onCreditoChange()">
+            ${[2,3,4,6,9,10,12,18,24,36,48].map(n=>`<option value="${n}">${n} cuotas</option>`).join('')}
+          </select>
+        </div>
+        <div id="tc-resumen-form"></div>
+      </div>
+    </div>
+
+    <!-- PANEL META (aparece solo al seleccionar categoría Ahorro) -->
+    <div id="f-meta-panel" style="display:none">
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">🎯 Abonar a meta</label>
+      <div id="f-meta-lista">
+        ${metas.length === 0
+          ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin metas activas. Créalas en la pestaña Metas.</div>`
+          : `<div class="meta-selector-item selected" onclick="selectMeta(this,'__libre__')">
+              <div class="meta-sel-check">✓</div>
+              <div class="meta-sel-info"><div class="meta-sel-name">Sin meta específica</div><div class="meta-sel-prog">Solo registrar el ahorro</div></div>
+            </div>` +
+            metas.map(m => {
+              const pct = m.objetivo > 0 ? Math.min(((m.baseAhorrado||0)+(m.ahorroVinculado||0))/m.objetivo*100,100) : 0;
+              return `<div class="meta-selector-item" onclick="selectMeta(this,'${m.id}')">
+                <div class="meta-sel-check"></div>
+                <div class="meta-sel-info">
+                  <div class="meta-sel-name">${m.emoji||'🎯'} ${m.nombre}</div>
+                  <div class="meta-sel-prog">${pct.toFixed(0)}% completada · ${fmt(m.objetivo)} objetivo</div>
+                </div>
+              </div>`;
+            }).join('')
+        }
+      </div>
+    </div>
+
     <div class="field"><label>Fecha</label>
       <input type="date" id="f-fecha" value="${today}">
     </div>
@@ -2195,7 +2312,63 @@ function openAddSheet() {
     <button class="btn-primary" onclick="saveTx()">Guardar</button>
   `;
   txPago = 'efectivo';
+  window._selectedMeta = '__libre__';
   openSheet();
+}
+
+function selectMeta(el, metaId) {
+  window._selectedMeta = metaId;
+  document.querySelectorAll('.meta-selector-item').forEach(x => {
+    x.classList.remove('selected');
+    x.querySelector('.meta-sel-check').textContent = '';
+  });
+  el.classList.add('selected');
+  el.querySelector('.meta-sel-check').textContent = '✓';
+}
+
+function onCatChange() {
+  const cat = document.getElementById('f-cat')?.value;
+  const panel = document.getElementById('f-meta-panel');
+  if (panel) panel.style.display = cat === 'ahorro' ? 'block' : 'none';
+}
+
+function onMontoChange() {
+  if (txPago === 'credito') onCreditoChange();
+}
+
+function onCreditoChange() {
+  const monto = parseFloat(document.getElementById('f-monto')?.value) || 0;
+  const tipo = document.getElementById('tc-tipo-form')?.value || 'contado';
+  const wrap = document.getElementById('tc-ncuotas-form-wrap');
+  if (wrap) wrap.style.display = tipo !== 'contado' ? 'block' : 'none';
+  const cuotas = tipo === 'contado' ? 1 : (parseInt(document.getElementById('tc-ncuotas-form')?.value) || 2);
+  const resumen = document.getElementById('tc-resumen-form');
+  if (!resumen || monto <= 0) return;
+
+  const d = getData(); const tc = d.tarjeta;
+  const mantencion = Math.round(tc.mantencionUF * tc.ufValue);
+  let montoCuota;
+  if (tipo === 'contado' || tipo === 'sin_interes') {
+    montoCuota = Math.round(monto / cuotas);
+  } else {
+    const r = TC_TASA_MENSUAL_DEFAULT;
+    montoCuota = Math.round(monto * (r * Math.pow(1+r,cuotas)) / (Math.pow(1+r,cuotas)-1));
+  }
+  const timbres = cuotas > 1 ? Math.round(monto * TIMBRES_ESTAMPILLAS * cuotas) : 0;
+  const totalReal = montoCuota * cuotas + timbres;
+  const ciclos = getCiclosTC(tc);
+  const cicloActivo = ciclos[0];
+
+  resumen.innerHTML = `<div class="credito-resumen">
+    <div style="font-size:11px;font-weight:600;color:var(--purple);margin-bottom:8px">📋 Resumen del cobro</div>
+    <div class="credito-resumen-row"><span>Próximo estado de cuenta</span><span>${cicloActivo.fechaVenc}</span></div>
+    <div class="credito-resumen-row"><span>Valor cuota</span><span>${fmt(montoCuota)}/mes × ${cuotas}</span></div>
+    ${timbres > 0 ? `<div class="credito-resumen-row"><span>Timbres y estampillas</span><span>${fmt(timbres)} (1° cuota)</span></div>` : ''}
+    <div class="credito-resumen-row"><span>Mantención tarjeta ${tc.tipo}</span><span>${fmt(mantencion)}/mes</span></div>
+    <div class="credito-resumen-row highlight"><span>Pagarás en el próximo estado</span><span>${fmt(montoCuota + (cuotas>1?timbres:0) + mantencion)}</span></div>
+    ${tipo==='con_interes'?`<div style="font-size:11px;color:var(--red);margin-top:6px">⚠️ Costo extra por intereses: ${fmt(totalReal - monto)} sobre el precio original</div>`:''}
+    ${tipo==='sin_interes'?`<div style="font-size:11px;color:var(--green);margin-top:6px">✅ Sin interés — recuerda pagar el total cada mes para no perder el beneficio</div>`:''}
+  </div>`;
 }
 
 let txType = 'gas';
@@ -2215,9 +2388,14 @@ function setType(t) {
   txType = t;
   document.getElementById('btn-gas').className = 'type-btn' + (t==='gas'?' active-gas':'');
   document.getElementById('btn-ing').className = 'type-btn' + (t==='ing'?' active-ing':'');
-  document.getElementById('f-cat-wrap').style.display = t==='gas' ? 'block' : 'none';
+  const catWrap = document.getElementById('f-cat-wrap');
+  if (catWrap) catWrap.style.display = t==='gas' ? 'block' : 'none';
   const pw = document.getElementById('f-pago-wrap');
   if (pw) pw.style.display = t==='gas' ? 'block' : 'none';
+  const cp = document.getElementById('f-credito-panel');
+  if (cp) cp.style.display = 'none';
+  const mp = document.getElementById('f-meta-panel');
+  if (mp) mp.style.display = 'none';
 }
 
 function setPago(p) {
@@ -2226,6 +2404,11 @@ function setPago(p) {
     const btn = document.getElementById('pago-'+x);
     if (btn) btn.className = 'pago-btn' + (x===p ? ' active-'+x : '');
   });
+  const panel = document.getElementById('f-credito-panel');
+  if (panel) {
+    panel.style.display = p === 'credito' ? 'block' : 'none';
+    if (p === 'credito') onCreditoChange();
+  }
 }
 
 function saveTx() {
@@ -2239,6 +2422,32 @@ function saveTx() {
   const nota = (document.getElementById('f-nota') ? document.getElementById('f-nota').value.trim() : '') || '';
   const esRecurrente = document.getElementById('f-recurrente') ? document.getElementById('f-recurrente').checked : false;
 
+  // Info crédito si aplica → registrar también en módulo tarjeta
+  let tcInfo = null;
+  if (txPago === 'credito' && txType === 'gas') {
+    const tipoTC = document.getElementById('tc-tipo-form')?.value || 'contado';
+    const cuotasTC = tipoTC === 'contado' ? 1 : (parseInt(document.getElementById('tc-ncuotas-form')?.value) || 1);
+    let montoCuotaTC;
+    if (tipoTC === 'contado' || tipoTC === 'sin_interes') {
+      montoCuotaTC = Math.round(monto / cuotasTC);
+    } else {
+      const r = TC_TASA_MENSUAL_DEFAULT;
+      montoCuotaTC = Math.round(monto * (r * Math.pow(1+r,cuotasTC)) / (Math.pow(1+r,cuotasTC)-1));
+    }
+    const timbresTC = cuotasTC > 1 ? Math.round(monto * TIMBRES_ESTAMPILLAS * cuotasTC) : 0;
+    const ciclos = getCiclosTC(d.tarjeta);
+    tcInfo = { tipo: tipoTC, cuotas: cuotasTC, montoCuota: montoCuotaTC, timbres: timbresTC, cicloInicio: ciclos[0].key };
+    // Registrar automáticamente en el módulo de tarjeta
+    d.tarjeta.compras.push({
+      id: 'tx_' + Date.now().toString(),
+      desc: document.getElementById('f-desc').value.trim() || 'Compra',
+      monto, tipo: tipoTC, cuotas: cuotasTC,
+      cicloInicio: tcInfo.cicloInicio,
+      montoCuota: montoCuotaTC, timbres: timbresTC,
+      emoji: '🛍️', activa: true, fromTx: true,
+    });
+  }
+
   const tx = {
     id: Date.now().toString(),
     monto,
@@ -2248,24 +2457,30 @@ function saveTx() {
     month: monthKey(d),
     pago: txType === 'ing' ? null : txPago,
     nota: nota || null,
+    tcInfo,
   };
   d.txs.push(tx);
 
-  // Guardar como recurrente si se marcó
   if (esRecurrente) {
     d.recurrentes.push({
       id: 'rec_' + Date.now().toString(),
-      monto,
-      desc: tx.desc,
-      cat: catId,
-      pago: tx.pago,
-      nota: tx.nota,
-      tipo: txType,
-      creadoEn: monthKey(d),
+      monto, desc: tx.desc, cat: catId, pago: tx.pago, nota: tx.nota, tipo: txType, creadoEn: monthKey(d),
     });
   }
 
-  if (catId === 'ahorro') actualizarMetasVinculadas(d, monto);
+  // Ahorro → meta seleccionada o auto-vinculadas
+  if (catId === 'ahorro') {
+    const metaId = window._selectedMeta;
+    if (metaId && metaId !== '__libre__') {
+      const meta = d.metas.find(x => x.id === metaId);
+      if (meta) {
+        meta.ahorroVinculado = (meta.ahorroVinculado || 0) + monto;
+        if ((meta.baseAhorrado||0) + (meta.ahorroVinculado||0) >= meta.objetivo) meta.completada = true;
+      }
+    } else {
+      actualizarMetasVinculadas(d, monto);
+    }
+  }
 
   save(d);
   closeSheet();
