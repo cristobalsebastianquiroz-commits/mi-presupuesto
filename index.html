@@ -42,6 +42,12 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
     overflow: hidden;
   }
+  /* Aplicar modo oscuro inmediatamente antes que cargue JS (evita flash blanco) */
+  html.dark-init body, html.dark-init #header, html.dark-init #nav, html.dark-init #content {
+    background: #141414 !important;
+    color: #f0ece4 !important;
+    border-color: #2a2a2a !important;
+  }
 
   /* ── LAYOUT ── */
   #app { display: flex; flex-direction: column; height: 100dvh; max-width: 430px; margin: 0 auto; position: relative; }
@@ -783,6 +789,7 @@ onAuthStateChanged(auth, async (user) => {
       showTab('resumen');
       appReady = true;
       setTimeout(checkAutoMonthClose, 1500);
+      fetchUFActual(); // actualizar UF desde CMF
     } else {
       // Ya está mostrando datos locales, sincronizar en segundo plano silencioso
       syncFromFirestoreBackground();
@@ -997,16 +1004,37 @@ function getData() {
   if (!d.deudores) d.deudores = [];
   if (!d.recurrentes) d.recurrentes = [];
   if (!d.recurrentesAplicados) d.recurrentesAplicados = {};
-  if (!d.tarjeta) d.tarjeta = {
-    tipo: 'SMART',                // tipo de tarjeta BancoEstado
-    diaCorte: 5,                  // día del mes en que cierra el ciclo
-    diasVencimiento: 10,          // días desde el corte hasta que vence el pago
-    limiteCredito: 0,             // límite de crédito total
-    mantencionUF: 0.08,           // mantención mensual en UF (SMART = 0.08)
-    ufValue: 38000,               // valor UF aproximado (usuario puede actualizar)
-    compras: [],                  // historial de compras ingresadas
-    cargosExtra: [],              // cargos manuales (seguros, cobros banco, etc.)
-  };
+  if (!d.monthSnapshots) d.monthSnapshots = {};
+
+  // Migrar tarjeta singular → array de tarjetas
+  if (d.tarjeta && !d.tarjetas) {
+    d.tarjetas = [{ ...d.tarjeta, id: 'tc_1', banco: 'Banco de Chile' }];
+    delete d.tarjeta;
+  }
+  if (!d.tarjetas) {
+    d.tarjetas = [{
+      id: 'tc_1',
+      banco: 'Banco de Chile',
+      tipo: 'Visa Dorada',
+      diaCorte: 5,
+      diasVencimiento: 12,
+      limiteCredito: 0,
+      mantencionUF: 0.21,
+      mantencionSemestralUF: 0,
+      ufValue: 38500,
+      compras: [],
+      cargosExtra: [],
+    }];
+  }
+  // Asegurar campos nuevos en tarjetas existentes
+  d.tarjetas.forEach(tc => {
+    if (!tc.id) tc.id = 'tc_' + Date.now();
+    if (!tc.banco) tc.banco = 'Banco de Chile';
+    if (!tc.compras) tc.compras = [];
+    if (!tc.cargosExtra) tc.cargosExtra = [];
+    if (tc.mantencionSemestralUF === undefined) tc.mantencionSemestralUF = 0;
+  });
+
   if (!d.currentMonth) {
     const now = new Date();
     d.currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -1284,10 +1312,11 @@ function renderGastos(query) {
   return html;
 }
 
-// ── TARJETA DE CRÉDITO BANCOESTADO ──────────────────────────────────────────
-// Tasa TMC aproximada para cuotas (BancoEstado SMART, actualizable por usuario)
-const TC_TASA_MENSUAL_DEFAULT = 0.0249; // ~2.49% mensual (cerca TMC)
-const TIMBRES_ESTAMPILLAS = 0.000800;   // 0.066% por mes de plazo (DL 3475)
+// ── TARJETA DE CRÉDITO BANCO DE CHILE ────────────────────────────────────────
+// Tasa TMC referencial para cuotas con interés (Banco de Chile, actualizable)
+// Fuente: CMF Chile — Tasa Máxima Convencional vigente ~2.2% mensual
+const TC_TASA_MENSUAL_DEFAULT = 0.0220; // 2.20% mensual ≈ TMC crédito consumo
+const TIMBRES_ESTAMPILLAS = 0.000800;   // Impuesto DL 3475: 0.066% × n° meses
 
 function getTCData() {
   return getData().tarjeta;
@@ -1324,14 +1353,11 @@ function calcCicloTC(compras, cargosExtra, tc, cicloKey) {
     detalles.push({ ...c, cuotaActual, montoCuota, timbres: cuotaActual === 1 ? timbres : 0 });
   });
 
-  // Mantención (con bonificación BancoEstado)
-  const totalComprasCiclo = detalles.reduce((a, d) => a + d.montoCuota, 0);
-  const totalUF = totalComprasCiclo / tc.ufValue;
-  let mantencion = Math.round(tc.mantencionUF * tc.ufValue);
-  if (totalUF >= 7) mantencion = 0;
-  else if (totalUF >= 6) mantencion = Math.round(mantencion * 0.25);
-  else if (totalUF >= 5) mantencion = Math.round(mantencion * 0.50);
-  else if (totalUF >= 4) mantencion = Math.round(mantencion * 0.75);
+  // ── MANTENCIÓN BANCO DE CHILE ──────────────────────────────────────────────
+  // Banco de Chile cobra la mantención SIEMPRE, a todo evento, sin bonificación
+  // por uso. Es un cargo fijo mensual independiente de si usas o no la tarjeta.
+  // Fuente: tarifario oficial bancochile.cl
+  const mantencion = Math.round(tc.mantencionUF * tc.ufValue);
 
   // Cargos extra del ciclo
   const cargos = cargosExtra.filter(x => x.activo);
@@ -1344,8 +1370,6 @@ function calcCicloTC(compras, cargosExtra, tc, cicloKey) {
     total: totalCiclo + mantencion + totalCargos,
     detalles,
     cargos,
-    bonificado: totalUF >= 4,
-    ufUsadas: totalUF,
   };
 }
 
@@ -1378,27 +1402,54 @@ function getCiclosTC(tc) {
   return ciclos;
 }
 
-// ── RENDER PRINCIPAL TARJETA ─────────────────────────────────────────────────
+// ── RENDER PRINCIPAL TARJETA (múltiples tarjetas) ────────────────────────────
+let _tcTabActiva = 0; // índice de la tarjeta visible
+
 function renderTarjeta() {
   const d = getData();
-  const tc = d.tarjeta;
+  const tarjetas = d.tarjetas;
+  if (!tarjetas || tarjetas.length === 0) return `<div class="empty"><div class="empty-icon">💳</div><p>Sin tarjetas configuradas.</p></div>`;
+  const idx = Math.min(_tcTabActiva, tarjetas.length - 1);
+  const tc = tarjetas[idx];
+
   const ciclos = getCiclosTC(tc);
   const cicloActivo = ciclos[0];
-  const res = calcCicloTC(tc.compras || [], tc.cargosExtra || [], tc, cicloActivo.key);
+  const res = calcCicloTC(tc.compras||[], tc.cargosExtra||[], tc, cicloActivo.key);
 
-  // Cupo usado estimado = suma de saldos pendientes en compras activas
-  const saldoPendiente = (tc.compras || []).filter(c => c.activa).reduce((a, c) => {
-    const [cy, cm] = cicloActivo.key.split('-').map(Number);
-    const [py, pm] = c.cicloInicio.split('-').map(Number);
-    const cuotaActual = (cy - py) * 12 + (cm - pm) + 1;
-    const cuotasRestantes = Math.max(c.cuotas - cuotaActual + 1, 0);
-    return a + c.montoCuota * cuotasRestantes;
-  }, 0);
-  const pctCupo = tc.limiteCredito > 0 ? Math.min(saldoPendiente / tc.limiteCredito * 100, 100) : 0;
+  // Cupo usado
+  const saldoPendiente = (tc.compras||[]).filter(c=>c.activa).reduce((a,c)=>{
+    const [cy,cm]=cicloActivo.key.split('-').map(Number);
+    const [py,pm]=c.cicloInicio.split('-').map(Number);
+    const cuotaActual=(cy-py)*12+(cm-pm)+1;
+    return a + c.montoCuota * Math.max(c.cuotas-cuotaActual+1,0);
+  },0);
+  const pctCupo = tc.limiteCredito>0 ? Math.min(saldoPendiente/tc.limiteCredito*100,100):0;
 
-  let html = `
-  <!-- Header tarjeta -->
-  <div class="tc-header">
+  // Color del banco
+  const bancoColor = tc.banco==='Scotiabank Chile'
+    ? 'linear-gradient(135deg,#1a0a2e 0%,#2d1060 50%,#0a1a2e 100%)'
+    : 'linear-gradient(135deg,#1a1a2e 0%,#2d1b4e 50%,#1a2a1a 100%)';
+
+  let html = '';
+
+  // Selector de tarjetas si hay más de una
+  if (tarjetas.length > 1) {
+    html += `<div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">`;
+    tarjetas.forEach((t,i)=>{
+      const active = i===idx;
+      html += `<button onclick="_tcTabActiva=${i};showTab('tarjeta')" style="
+        flex-shrink:0;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:${active?'600':'400'};
+        background:${active?'var(--accent)':'var(--surface2)'};
+        color:${active?'#fff':'var(--muted)'};
+        border:1px solid ${active?'var(--accent)':'var(--border)'};cursor:pointer">
+        ${t.alias||t.tipo||t.banco}
+      </button>`;
+    });
+    html += `</div>`;
+  }
+
+  // Header tarjeta
+  html += `<div class="tc-header" style="background:${bancoColor}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <div class="tc-chip">💳</div>
@@ -1406,115 +1457,115 @@ function renderTarjeta() {
         <div class="tc-balance">${fmt(res.total)}</div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:3px">BancoEstado</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.9);font-weight:500">${tc.tipo || 'SMART'}</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px">Cierre: día ${tc.diaCorte}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:3px">${tc.banco||'Banco de Chile'}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.85);font-weight:500">${tc.alias||tc.tipo}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:4px">Cierre: día ${tc.diaCorte}</div>
+        <button onclick="openConfigTC('${tc.id}')" style="background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;margin-top:6px">✏️ Config</button>
       </div>
     </div>
     <div class="tc-meta">
       <div class="tc-meta-item">Compras<strong>${fmt(res.totalCompras)}</strong></div>
-      <div class="tc-meta-item">Mantención<strong style="color:${res.mantencion===0?'#6db38a':'rgba(255,255,255,.9)'}">
-        ${res.mantencion === 0 ? '¡Gratis!' : fmt(res.mantencion)}
-      </strong></div>
-      ${res.totalCargos > 0 ? `<div class="tc-meta-item">Cargos banco<strong>${fmt(res.totalCargos)}</strong></div>` : ''}
+      <div class="tc-meta-item">Mantención<strong>${fmt(res.mantencion)}/mes</strong></div>
+      ${res.totalCargos>0?`<div class="tc-meta-item">Otros cargos<strong>${fmt(res.totalCargos)}</strong></div>`:''}
     </div>
-    ${tc.limiteCredito > 0 ? `
+    ${tc.limiteCredito>0?`
       <div class="tc-pct-bar"><div class="tc-pct-fill" style="width:${pctCupo}%"></div></div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.5);margin-top:5px">
-        <span>Usado: ${fmt(saldoPendiente)}</span>
-        <span>Límite: ${fmt(tc.limiteCredito)}</span>
-      </div>` : ''}
+        <span>Usado: ${fmt(saldoPendiente)}</span><span>Límite: ${fmt(tc.limiteCredito)}</span>
+      </div>`:''}
   </div>`;
 
-  // Alerta bonificación mantención
-  if (res.bonificado) {
-    html += `<div style="background:var(--green-bg);border:1px solid rgba(109,179,138,.25);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--green)">
-      ✅ Gastaste más de ${res.ufUsadas >= 7 ? '7' : res.ufUsadas >= 6 ? '6' : res.ufUsadas >= 5 ? '5' : '4'} UF — mantención ${res.mantencion === 0 ? 'completamente bonificada' : 'con descuento'}
-    </div>`;
-  }
+  // Aviso UF actualizada
+  html += `<div style="background:rgba(124,100,151,.08);border:1px solid rgba(124,100,151,.2);border-radius:12px;padding:10px 14px;margin-bottom:12px">
+    <div style="font-size:12px;color:var(--muted);line-height:1.6">
+      💡 <strong style="color:var(--purple)">${tc.banco}</strong> · ${tc.tipo} ·
+      Mantención: <strong style="color:var(--purple)">UF ${tc.mantencionUF.toFixed(2)} = ${fmt(Math.round(tc.mantencionUF*tc.ufValue))}/mes</strong>
+      ${tc.mantencionSemestralUF>0?`· Cargo semestral adicional: UF ${tc.mantencionSemestralUF.toFixed(2)}`:''}
+      <br>Tasa cuotas con interés: <strong>${(tc.tasaMin||1.5).toFixed(2)}% – ${(tc.tasaMax||2.2).toFixed(2)}%</strong> mensual.
+      UF actualizada automáticamente: <strong>${fmt(tc.ufValue)}</strong>
+    </div>
+  </div>`;
 
-  // Compras en el ciclo actual
+  // Compras del ciclo
   html += `<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:0">Compras ciclo actual</div>
-      <button onclick="openAddCompraTC()" style="background:rgba(184,92,56,.12);border:1px solid rgba(184,92,56,.3);color:var(--accent);border-radius:10px;padding:6px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer;font-weight:600">+ Agregar</button>
+      <button onclick="openAddCompraTC('${tc.id}')" style="background:rgba(184,92,56,.12);border:1px solid rgba(184,92,56,.3);color:var(--accent);border-radius:10px;padding:6px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer;font-weight:600">+ Agregar</button>
     </div>`;
 
-  const comprasActivas = (tc.compras || []).filter(c => c.activa);
-  if (comprasActivas.length === 0) {
-    html += `<div class="empty" style="padding:20px 0"><div class="empty-icon" style="font-size:28px">🛒</div><p style="font-size:13px">Sin compras registradas.<br>Toca + para agregar.</p></div>`;
+  const comprasActivas = (tc.compras||[]).filter(c=>c.activa);
+  if (comprasActivas.length===0) {
+    html+=`<div class="empty" style="padding:20px 0"><div class="empty-icon" style="font-size:28px">🛒</div><p style="font-size:13px">Sin compras registradas.</p></div>`;
   } else {
-    comprasActivas.forEach(c => {
-      const [cy, cm] = cicloActivo.key.split('-').map(Number);
-      const [py, pm] = c.cicloInicio.split('-').map(Number);
-      const cuotaActual = (cy - py) * 12 + (cm - pm) + 1;
-      const cuotasRestantes = Math.max(c.cuotas - cuotaActual + 1, 0);
-      const enEsteCiclo = cuotaActual >= 1 && cuotaActual <= c.cuotas;
-      html += `<div class="tc-compra-item" onclick="openEditCompraTC('${c.id}')">
-        <div class="tc-compra-icon">${c.emoji || '🛍️'}</div>
+    comprasActivas.forEach(c=>{
+      const [cy,cm]=cicloActivo.key.split('-').map(Number);
+      const [py,pm]=c.cicloInicio.split('-').map(Number);
+      const cuotaActual=(cy-py)*12+(cm-pm)+1;
+      const cuotasRestantes=Math.max(c.cuotas-cuotaActual+1,0);
+      const enEsteCiclo=cuotaActual>=1&&cuotaActual<=c.cuotas;
+      const fromTxBadge = c.fromTx ? `<span style="font-size:9px;background:var(--surface2);border-radius:6px;padding:1px 5px;color:var(--muted);margin-left:4px">desde movimiento</span>` : '';
+      html+=`<div class="tc-compra-item" onclick="openEditCompraTC('${c.id}','${tc.id}')">
+        <div class="tc-compra-icon">${c.emoji||'🛍️'}</div>
         <div class="tc-compra-info">
-          <div class="tc-compra-name">${c.desc}</div>
+          <div class="tc-compra-name">${c.desc}${fromTxBadge}</div>
           <div class="tc-compra-meta">
-            ${c.tipo === 'contado' ? '<span class="cuota-badge contado">Al contado</span>' :
-              c.tipo === 'sin_interes' ? `<span class="cuota-badge sin-int">Sin interés</span> Cuota ${cuotaActual}/${c.cuotas}` :
-              `<span class="cuota-badge con-int">Con interés</span> Cuota ${cuotaActual}/${c.cuotas}`}
+            ${c.tipo==='contado'?'<span class="cuota-badge contado">Al contado</span>':
+              c.tipo==='sin_interes'?`<span class="cuota-badge sin-int">Sin interés</span> ${cuotaActual}/${c.cuotas}`:
+              `<span class="cuota-badge con-int">Con interés</span> ${cuotaActual}/${c.cuotas}`}
           </div>
         </div>
         <div class="tc-compra-amt">
-          <div class="tc-compra-total">${enEsteCiclo ? fmt(c.montoCuota) : '—'}</div>
-          ${c.cuotas > 1 ? `<div class="tc-compra-restante">${cuotasRestantes} cuota${cuotasRestantes!==1?'s':''} restantes</div>` : ''}
+          <div class="tc-compra-total">${enEsteCiclo?fmt(c.montoCuota):'—'}</div>
+          ${c.cuotas>1?`<div class="tc-compra-restante">${cuotasRestantes} cuota${cuotasRestantes!==1?'s':''} restantes</div>`:''}
         </div>
       </div>`;
     });
   }
-  html += `</div>`;
+  html+=`</div>`;
 
-  // Proyección 3 meses siguientes
-  const proyeccion = ciclos.slice(1, 4).map(cic => {
-    const r = calcCicloTC(tc.compras || [], tc.cargosExtra || [], tc, cic.key);
-    return { ...cic, total: r.total };
-  });
-  const maxProj = Math.max(...proyeccion.map(p => p.total), 1);
-  if (proyeccion.some(p => p.total > 0)) {
-    html += `<div class="card"><div class="card-title">Comprometido próximos meses</div>`;
-    proyeccion.forEach(p => {
-      html += `<div class="tc-proj-row">
+  // Proyección 3 meses
+  const proyeccion=ciclos.slice(1,4).map(cic=>({...cic,total:calcCicloTC(tc.compras||[],tc.cargosExtra||[],tc,cic.key).total}));
+  const maxProj=Math.max(...proyeccion.map(p=>p.total),1);
+  if (proyeccion.some(p=>p.total>0)) {
+    html+=`<div class="card"><div class="card-title">Comprometido próximos 3 meses</div>`;
+    proyeccion.forEach(p=>{
+      html+=`<div class="tc-proj-row">
         <div class="tc-proj-mes">${MONTHS[parseInt(p.key.slice(5))-1].slice(0,3)} ${p.key.slice(2,4)}</div>
         <div class="tc-proj-bar"><div class="tc-proj-fill" style="width:${p.total/maxProj*100}%"></div></div>
-        <div class="tc-proj-amt">${p.total > 0 ? fmt(p.total) : '—'}</div>
+        <div class="tc-proj-amt">${p.total>0?fmt(p.total):'—'}</div>
       </div>`;
     });
-    html += `</div>`;
+    html+=`</div>`;
   }
 
-  // Cargos fijos del banco
-  html += `<div class="card">
+  // Cargos fijos
+  html+=`<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:0">Cargos fijos banco</div>
-      <button onclick="openAddCargoTC()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:6px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer">+ Cargo</button>
+      <button onclick="openAddCargoTC('${tc.id}')" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:6px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer">+ Cargo</button>
     </div>
     <div class="setting-row" style="padding:10px 0">
-      <span style="font-size:13px">🔧 Mantención ${tc.tipo||'SMART'}</span>
-      <span style="font-size:13px;font-weight:600;color:var(--muted)">UF ${tc.mantencionUF} ≈ ${fmt(Math.round(tc.mantencionUF * tc.ufValue))}</span>
+      <span style="font-size:13px">🔧 Mantención mensual</span>
+      <span style="font-size:13px;font-weight:600;color:var(--purple)">UF ${tc.mantencionUF.toFixed(2)} = ${fmt(Math.round(tc.mantencionUF*tc.ufValue))}</span>
     </div>
-    <div style="font-size:11px;color:var(--muted);padding-bottom:8px">
-      Bonificada si gastas ≥ 4 UF (${fmt(Math.round(4*tc.ufValue))}). Gratis si gastas ≥ 7 UF (${fmt(Math.round(7*tc.ufValue))})
-    </div>
-    ${(tc.cargosExtra||[]).map(x => `
-      <div class="setting-row" style="padding:10px 0" onclick="openEditCargoTC('${x.id}')">
+    ${tc.mantencionSemestralUF>0?`<div class="setting-row" style="padding:6px 0;border:none">
+      <span style="font-size:12px;color:var(--muted)">Cargo semestral</span>
+      <span style="font-size:12px;color:var(--purple)">UF ${tc.mantencionSemestralUF.toFixed(2)} = ${fmt(Math.round(tc.mantencionSemestralUF*tc.ufValue))}</span>
+    </div>`:''}
+    ${(tc.cargosExtra||[]).map(x=>`
+      <div class="setting-row" style="padding:10px 0" onclick="openEditCargoTC('${x.id}','${tc.id}')">
         <span style="font-size:13px">${x.emoji||'💰'} ${x.desc}</span>
-        <span style="font-size:13px;font-weight:600;color:${x.activo?'var(--red)':'var(--muted)'}">${x.activo ? fmt(x.monto) : 'Inactivo'}</span>
+        <span style="font-size:13px;font-weight:600;color:${x.activo?'var(--red)':'var(--muted)'}">${x.activo?fmt(x.monto):'Inactivo'}</span>
       </div>`).join('')}
   </div>`;
 
-  // Calculadora cuotas
-  html += `<div class="card">
+  // Calculadora
+  const tasaDefault = (tc.tasaMin||1.50)/100;
+  html+=`<div class="card">
     <div class="card-title">🧮 Calculadora de cuotas</div>
-    <div class="info-box" style="margin-bottom:12px">Simula el costo real de una compra antes de hacerla.</div>
-    <div class="field"><label>Monto de la compra ($)</label>
-      <input type="number" id="calc-monto" placeholder="Ej: 150000" inputmode="numeric" oninput="calcCuotasTC()">
-    </div>
-    <div class="field"><label>Número de cuotas</label>
+    <div class="info-box" style="margin-bottom:12px">Simula el costo real <strong>antes</strong> de comprar. Tasa ${tc.banco}: ${(tc.tasaMin||1.50).toFixed(2)}% – ${(tc.tasaMax||2.20).toFixed(2)}% mensual.</div>
+    <div class="field"><label>Monto ($)</label><input type="number" id="calc-monto" placeholder="Ej: 150000" inputmode="numeric" oninput="calcCuotasTC()"></div>
+    <div class="field"><label>Cuotas</label>
       <select id="calc-cuotas" onchange="calcCuotasTC()">
         <option value="1">1 cuota (contado)</option>
         ${[2,3,4,6,9,10,12,18,24,36,48].map(n=>`<option value="${n}">${n} cuotas</option>`).join('')}
@@ -1523,86 +1574,46 @@ function renderTarjeta() {
     <div class="field"><label>Tipo</label>
       <select id="calc-tipo" onchange="calcCuotasTC()">
         <option value="sin_interes">Sin interés</option>
-        <option value="con_interes">Con interés (${(TC_TASA_MENSUAL_DEFAULT*100).toFixed(2)}% mensual)</option>
+        <option value="con_interes">Con interés (${(tc.tasaMin||1.50).toFixed(2)}% mensual)</option>
       </select>
     </div>
     <div id="calc-resultado"></div>
   </div>`;
 
-  // Configuración del ciclo
-  html += `<div class="card">
-    <div class="card-title">⚙️ Configuración ciclo</div>
-    <div class="setting-row"><span class="setting-label">Tipo de tarjeta</span>
-      <span class="setting-val" onclick="openConfigTC()">${tc.tipo || 'SMART'} ✏️</span>
-    </div>
-    <div class="setting-row"><span class="setting-label">Día de corte</span>
-      <span class="setting-val" onclick="openConfigTC()">Día ${tc.diaCorte} ✏️</span>
-    </div>
-    <div class="setting-row"><span class="setting-label">Días hasta vencimiento</span>
-      <span class="setting-val" onclick="openConfigTC()">${tc.diasVencimiento} días ✏️</span>
-    </div>
-    <div class="setting-row"><span class="setting-label">Límite de crédito</span>
-      <span class="setting-val" onclick="openConfigTC()">${tc.limiteCredito > 0 ? fmt(tc.limiteCredito) : 'No configurado'} ✏️</span>
-    </div>
-    <div class="setting-row" style="border:none"><span class="setting-label">Valor UF</span>
-      <span class="setting-val" onclick="openConfigTC()">${fmt(tc.ufValue)} ✏️</span>
-    </div>
+  // Botón agregar tarjeta + config
+  html+=`<div class="card">
+    <div class="card-title">⚙️ Gestión de tarjetas</div>
+    <button onclick="addNuevaTarjeta()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;cursor:pointer;margin-bottom:8px">+ Agregar otra tarjeta</button>
+    <button onclick="openAddEstadoCuenta('${tc.id}')" style="width:100%;padding:12px;background:rgba(124,100,151,.1);border:1px solid rgba(124,100,151,.25);color:var(--purple);border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;cursor:pointer">📄 Ingresar estado de cuenta anterior</button>
   </div>`;
 
   return html;
 }
 
-// ── CALCULADORA DE CUOTAS ────────────────────────────────────────────────────
-function calcCuotasTC() {
-  const monto = parseFloat(document.getElementById('calc-monto').value) || 0;
-  const cuotas = parseInt(document.getElementById('calc-cuotas').value) || 1;
-  const tipo = document.getElementById('calc-tipo').value;
-  const el = document.getElementById('calc-resultado');
-  if (!el || monto <= 0) { if(el) el.innerHTML=''; return; }
-
-  const d = getData(); const tc = d.tarjeta;
-  let montoCuota, totalPagar, interesTotal;
-
-  if (cuotas === 1 || tipo === 'sin_interes') {
-    montoCuota = monto / cuotas;
-    interesTotal = 0;
-  } else {
-    const r = TC_TASA_MENSUAL_DEFAULT;
-    montoCuota = monto * (r * Math.pow(1+r, cuotas)) / (Math.pow(1+r, cuotas) - 1);
-    interesTotal = montoCuota * cuotas - monto;
-  }
-  totalPagar = montoCuota * cuotas;
-  const timbres = cuotas > 1 ? monto * TIMBRES_ESTAMPILLAS * cuotas : 0;
-
-  el.innerHTML = `<div class="calc-result">
-    <div class="calc-row"><span>Valor cuota</span><span style="font-weight:600;color:var(--accent)">${fmt(Math.round(montoCuota))}</span></div>
-    <div class="calc-row"><span>Monto original</span><span>${fmt(monto)}</span></div>
-    ${interesTotal > 0 ? `<div class="calc-row"><span>Interés total</span><span style="color:var(--red)">${fmt(Math.round(interesTotal))}</span></div>` : ''}
-    ${timbres > 0 ? `<div class="calc-row"><span>Timbres y estampillas</span><span style="color:var(--muted)">${fmt(Math.round(timbres))}</span></div>` : ''}
-    <div class="calc-row total"><span>Total a pagar</span><span style="color:var(--text)">${fmt(Math.round(totalPagar + timbres))}</span></div>
-    ${tipo==='sin_interes' && cuotas > 1 ? `<div style="font-size:11px;color:var(--green);margin-top:8px">✅ Sin interés — debes pagar el total facturado cada mes para mantener el beneficio</div>` : ''}
-    ${interesTotal > 0 ? `<div style="font-size:11px;color:var(--red);margin-top:8px">⚠️ Pagas ${fmt(Math.round(interesTotal + timbres))} extra por cuotas (${((interesTotal/monto)*100).toFixed(1)}% del valor)</div>` : ''}
-  </div>`;
-}
 
 // ── SHEET: AGREGAR COMPRA TC ─────────────────────────────────────────────────
 const TC_EMOJIS = ['🛍️','🛒','🏪','🍔','✈️','⛽','💊','🎬','📱','💻','👕','🏠','🚗','🎁','🔧','📚','🌐','🎮','🏋️','💈'];
+let _tcIdActualCompra = null;
 
-function openAddCompraTC() {
-  const d = getData(); const tc = d.tarjeta;
+function openAddCompraTC(tcId) {
+  const d = getData();
+  _tcIdActualCompra = tcId;
+  const tc = d.tarjetas.find(t=>t.id===tcId) || d.tarjetas[0];
   const ciclos = getCiclosTC(tc);
+  const tasa = (tc.tasaMin||1.50)/100;
+
   document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">Nueva compra TC</div>
+    <div class="sheet-title">Nueva compra · ${tc.alias||tc.tipo}</div>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      ${TC_EMOJIS.slice(0,10).map(e=>`<span onclick="selectTCEmoji(this,'${e}')" style="font-size:22px;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent" data-emoji="${e}">${e}</span>`).join('')}
+      ${TC_EMOJIS.slice(0,12).map(e=>`<span onclick="selectTCEmoji(this,'${e}')" style="font-size:22px;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent" data-emoji="${e}">${e}</span>`).join('')}
     </div>
     <div class="field"><label>Descripción</label><input type="text" id="tc-desc" placeholder="Ej: Netflix, Supermercado..."></div>
     <div class="field"><label>Monto total ($)</label><input type="number" id="tc-monto" placeholder="0" inputmode="numeric" oninput="previewCuotaTC()"></div>
     <div class="field"><label>Tipo de compra</label>
       <select id="tc-tipo" onchange="previewCuotaTC()">
-        <option value="contado">Al contado (1 cuota)</option>
+        <option value="contado">Al contado — cargo completo próximo estado</option>
         <option value="sin_interes">Cuotas sin interés</option>
-        <option value="con_interes">Cuotas con interés</option>
+        <option value="con_interes">Cuotas con interés (${((tc.tasaMin||1.50)).toFixed(2)}% mensual)</option>
       </select>
     </div>
     <div class="field" id="tc-ncuotas-wrap" style="display:none"><label>Número de cuotas</label>
@@ -1610,133 +1621,132 @@ function openAddCompraTC() {
         ${[2,3,4,6,9,10,12,18,24,36,48].map(n=>`<option value="${n}">${n} cuotas</option>`).join('')}
       </select>
     </div>
-    <div class="field"><label>Ciclo de inicio (estado de cuenta)</label>
-      <select id="tc-ciclo">
-        ${ciclos.map(c=>`<option value="${c.key}">${c.label}</option>`).join('')}
-      </select>
+    <div class="field"><label>Ciclo de inicio (estado de cuenta donde cae la 1ª cuota)</label>
+      <select id="tc-ciclo">${ciclos.map(c=>`<option value="${c.key}">${c.label} (vence ${c.fechaVenc})</option>`).join('')}</select>
     </div>
     <div id="tc-preview"></div>
     <button class="btn-primary" onclick="saveCompraTC()">Guardar compra</button>
   `;
   window._tcEmojiSelected = '🛍️';
-  document.querySelector(`[data-emoji="🛍️"]`).style.borderColor = 'var(--accent)';
+  setTimeout(()=>{ const el=document.querySelector('[data-emoji="🛍️"]'); if(el) el.style.borderColor='var(--accent)'; },50);
   openSheet();
 }
 
-function selectTCEmoji(el, e) {
-  window._tcEmojiSelected = e;
-  document.querySelectorAll('[data-emoji]').forEach(x => x.style.borderColor = 'transparent');
-  el.style.borderColor = 'var(--accent)';
+function selectTCEmoji(el,e) {
+  window._tcEmojiSelected=e;
+  document.querySelectorAll('[data-emoji]').forEach(x=>x.style.borderColor='transparent');
+  el.style.borderColor='var(--accent)';
 }
 
 function previewCuotaTC() {
-  const tipo = document.getElementById('tc-tipo').value;
-  const wrap = document.getElementById('tc-ncuotas-wrap');
-  if (wrap) wrap.style.display = tipo !== 'contado' ? 'block' : 'none';
-  const monto = parseFloat(document.getElementById('tc-monto')?.value) || 0;
-  const cuotas = tipo === 'contado' ? 1 : (parseInt(document.getElementById('tc-ncuotas')?.value) || 2);
-  const prev = document.getElementById('tc-preview');
-  if (!prev || monto <= 0) return;
-
+  const tipo=document.getElementById('tc-tipo')?.value;
+  const wrap=document.getElementById('tc-ncuotas-wrap');
+  if(wrap) wrap.style.display=tipo!=='contado'?'block':'none';
+  const monto=parseFloat(document.getElementById('tc-monto')?.value)||0;
+  const cuotas=tipo==='contado'?1:(parseInt(document.getElementById('tc-ncuotas')?.value)||2);
+  const prev=document.getElementById('tc-preview');
+  if(!prev||monto<=0) return;
+  const d=getData(); const tc=d.tarjetas.find(t=>t.id===_tcIdActualCompra)||d.tarjetas[0];
+  const r=(tc.tasaMin||1.5)/100;
   let montoCuota;
-  if (tipo === 'contado' || tipo === 'sin_interes') {
-    montoCuota = monto / cuotas;
-  } else {
-    const r = TC_TASA_MENSUAL_DEFAULT;
-    montoCuota = monto * (r * Math.pow(1+r, cuotas)) / (Math.pow(1+r, cuotas) - 1);
-  }
-  const timbres = cuotas > 1 ? Math.round(monto * TIMBRES_ESTAMPILLAS * cuotas) : 0;
-  prev.innerHTML = `<div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:14px;border:1px solid var(--border)">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Resumen</div>
-    <div style="font-size:16px;font-weight:600;color:var(--accent)">${fmt(Math.round(montoCuota))} /mes × ${cuotas}</div>
-    ${timbres > 0 ? `<div style="font-size:11px;color:var(--muted);margin-top:3px">+ ${fmt(timbres)} en timbres (cargo único primer cuota)</div>` : ''}
-    <div style="font-size:12px;color:var(--text);margin-top:4px">Total a pagar: <strong>${fmt(Math.round(montoCuota * cuotas + timbres))}</strong></div>
+  if(tipo==='contado'||tipo==='sin_interes') montoCuota=monto/cuotas;
+  else montoCuota=monto*(r*Math.pow(1+r,cuotas))/(Math.pow(1+r,cuotas)-1);
+  const timbres=cuotas>1?Math.round(monto*TIMBRES_ESTAMPILLAS*cuotas):0;
+  const interes=tipo==='con_interes'?Math.round(montoCuota*cuotas-monto):0;
+  prev.innerHTML=`<div class="credito-resumen">
+    <div class="credito-resumen-row"><span>Valor cuota</span><span>${fmt(Math.round(montoCuota))} × ${cuotas}</span></div>
+    ${timbres>0?`<div class="credito-resumen-row"><span>Timbres y estampillas (DL 3475)</span><span>${fmt(timbres)}</span></div>`:''}
+    ${interes>0?`<div class="credito-resumen-row"><span style="color:var(--red)">Interés total</span><span style="color:var(--red)">${fmt(interes)}</span></div>`:''}
+    <div class="credito-resumen-row highlight"><span>Total a pagar</span><span>${fmt(Math.round(montoCuota*cuotas+timbres))}</span></div>
+    ${tipo==='sin_interes'?`<div style="font-size:11px;color:var(--green);margin-top:6px">✅ Sin interés — paga el total cada mes para mantener el beneficio</div>`:''}
+    ${interes>0?`<div style="font-size:11px;color:var(--red);margin-top:6px">⚠️ Costo extra por financiar: ${fmt(interes+timbres)} (${((interes/monto)*100).toFixed(1)}% sobre el precio)</div>`:''}
   </div>`;
 }
 
 function saveCompraTC() {
-  const desc = document.getElementById('tc-desc').value.trim();
-  if (!desc) { alert('Ingresa una descripción'); return; }
-  const monto = parseFloat(document.getElementById('tc-monto').value);
-  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  const tipo = document.getElementById('tc-tipo').value;
-  const cuotas = tipo === 'contado' ? 1 : (parseInt(document.getElementById('tc-ncuotas').value) || 2);
-  const cicloInicio = document.getElementById('tc-ciclo').value;
-
+  const desc=document.getElementById('tc-desc').value.trim();
+  if(!desc){alert('Ingresa una descripción');return;}
+  const monto=parseFloat(document.getElementById('tc-monto').value);
+  if(!monto||monto<=0){alert('Ingresa un monto válido');return;}
+  const tipo=document.getElementById('tc-tipo').value;
+  const cuotas=tipo==='contado'?1:(parseInt(document.getElementById('tc-ncuotas')?.value)||2);
+  const cicloInicio=document.getElementById('tc-ciclo').value;
+  const d=getData();
+  const tc=d.tarjetas.find(t=>t.id===_tcIdActualCompra)||d.tarjetas[0];
+  const r=(tc.tasaMin||1.5)/100;
   let montoCuota;
-  if (tipo === 'contado' || tipo === 'sin_interes') {
-    montoCuota = Math.round(monto / cuotas);
-  } else {
-    const r = TC_TASA_MENSUAL_DEFAULT;
-    montoCuota = Math.round(monto * (r * Math.pow(1+r, cuotas)) / (Math.pow(1+r, cuotas) - 1));
-  }
-  const timbres = cuotas > 1 ? Math.round(monto * TIMBRES_ESTAMPILLAS * cuotas) : 0;
-
-  const d = getData();
-  d.tarjeta.compras.push({
-    id: Date.now().toString(),
-    desc, monto, tipo, cuotas, cicloInicio, montoCuota, timbres,
-    emoji: window._tcEmojiSelected || '🛍️',
-    activa: true,
-  });
-  save(d);
-  closeSheet();
-  showTab('tarjeta');
+  if(tipo==='contado'||tipo==='sin_interes') montoCuota=Math.round(monto/cuotas);
+  else montoCuota=Math.round(monto*(r*Math.pow(1+r,cuotas))/(Math.pow(1+r,cuotas)-1));
+  const timbres=cuotas>1?Math.round(monto*TIMBRES_ESTAMPILLAS*cuotas):0;
+  tc.compras.push({id:Date.now().toString(),desc,monto,tipo,cuotas,cicloInicio,montoCuota,timbres,emoji:window._tcEmojiSelected||'🛍️',activa:true});
+  save(d); closeSheet(); showTab('tarjeta');
 }
 
-function openEditCompraTC(id) {
-  const d = getData();
-  const c = (d.tarjeta.compras || []).find(x => x.id === id);
-  if (!c) return;
-  const ciclos = getCiclosTC(d.tarjeta);
-  const [cy, cm] = ciclos[0].key.split('-').map(Number);
-  const [py, pm] = c.cicloInicio.split('-').map(Number);
-  const cuotaActual = (cy - py) * 12 + (cm - pm) + 1;
-  const cuotasRestantes = Math.max(c.cuotas - cuotaActual + 1, 0);
-
-  document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">${c.emoji || '🛍️'} ${c.desc}</div>
-    <div class="card" style="margin-bottom:16px;text-align:center">
-      <div style="font-size:28px;margin-bottom:6px">${c.emoji||'🛍️'}</div>
-      <div style="font-size:20px;font-weight:600;font-family:'Lora',serif">${fmt(c.monto)}</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:4px">
+function openEditCompraTC(id,tcId) {
+  const d=getData();
+  const tc=d.tarjetas.find(t=>t.id===tcId)||d.tarjetas[0];
+  const c=(tc.compras||[]).find(x=>x.id===id);
+  if(!c) return;
+  const ciclos=getCiclosTC(tc);
+  const [cy,cm]=ciclos[0].key.split('-').map(Number);
+  const [py,pm]=c.cicloInicio.split('-').map(Number);
+  const cuotaActual=(cy-py)*12+(cm-pm)+1;
+  const cuotasRestantes=Math.max(c.cuotas-cuotaActual+1,0);
+  const interes=c.tipo==='con_interes'?Math.round(c.montoCuota*c.cuotas-c.monto):0;
+  document.getElementById('sheet-content').innerHTML=`
+    <div class="sheet-title">${c.emoji||'🛍️'} ${c.desc}</div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="text-align:center;font-size:28px;margin-bottom:8px">${c.emoji||'🛍️'}</div>
+      <div style="text-align:center;font-size:20px;font-weight:600;font-family:'Lora',serif">${fmt(c.monto)}</div>
+      <div style="text-align:center;font-size:13px;color:var(--muted);margin-top:4px">
         ${c.tipo==='contado'?'Al contado':c.tipo==='sin_interes'?'Sin interés':'Con interés'} · ${c.cuotas} cuota${c.cuotas!==1?'s':''}
       </div>
-      <div style="font-size:13px;color:var(--accent);margin-top:6px;font-weight:600">${fmt(c.montoCuota)}/mes</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">Cuota ${cuotaActual}/${c.cuotas} · ${cuotasRestantes} restante${cuotasRestantes!==1?'s':''}</div>
+      <div class="credito-resumen" style="margin-top:12px">
+        <div class="credito-resumen-row"><span>Cuota actual</span><span>${cuotaActual} de ${c.cuotas}</span></div>
+        <div class="credito-resumen-row"><span>Cuotas restantes</span><span>${cuotasRestantes}</span></div>
+        <div class="credito-resumen-row"><span>Monto por cuota</span><span>${fmt(c.montoCuota)}/mes</span></div>
+        ${c.timbres>0?`<div class="credito-resumen-row"><span>Timbres (1ª cuota)</span><span>${fmt(c.timbres)}</span></div>`:''}
+        ${interes>0?`<div class="credito-resumen-row"><span style="color:var(--red)">Interés total</span><span style="color:var(--red)">${fmt(interes)}</span></div>`:''}
+        <div class="credito-resumen-row highlight"><span>Restante por pagar</span><span>${fmt(c.montoCuota*cuotasRestantes)}</span></div>
+      </div>
+      ${c.fromTx?'<div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">📎 Generada desde un movimiento registrado</div>':''}
     </div>
-    <button onclick="deleteCompraTC('${id}')" class="btn-delete" style="width:100%">🗑️ Eliminar esta compra</button>
+    <button onclick="deleteCompraTC('${id}','${tcId}')" class="btn-delete" style="width:100%">🗑️ Eliminar esta compra</button>
   `;
   openSheet();
 }
 
-function deleteCompraTC(id) {
-  if (!confirm('¿Eliminar esta compra de la tarjeta?')) return;
-  const d = getData();
-  d.tarjeta.compras = d.tarjeta.compras.filter(c => c.id !== id);
-  save(d);
-  closeSheet();
-  showTab('tarjeta');
+function deleteCompraTC(id,tcId) {
+  if(!confirm('¿Eliminar esta compra?')) return;
+  const d=getData();
+  const tc=d.tarjetas.find(t=>t.id===tcId)||d.tarjetas[0];
+  tc.compras=tc.compras.filter(c=>c.id!==id);
+  save(d); closeSheet(); showTab('tarjeta');
 }
 
 // ── CARGOS EXTRA TC ──────────────────────────────────────────────────────────
-function openAddCargoTC() {
-  document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">Nuevo cargo fijo</div>
-    <div class="info-box">Cargos recurrentes del banco: seguros, comisiones especiales, etc.</div>
-    <div class="field"><label>Descripción</label><input type="text" id="cargo-desc" placeholder="Ej: Seguro de vida, Comisión PAT..."></div>
+let _tcIdActualCargo = null;
+
+function openAddCargoTC(tcId) {
+  _tcIdActualCargo=tcId;
+  document.getElementById('sheet-content').innerHTML=`
+    <div class="sheet-title">Nuevo cargo fijo del banco</div>
+    <div class="info-box">Agrega cobros recurrentes: seguros, comisión PAT, etc. que aparecen en tu estado de cuenta.</div>
+    <div class="field"><label>Descripción</label><input type="text" id="cargo-desc" placeholder="Ej: Seguro de desgravamen, PAT..."></div>
     <div class="field"><label>Monto mensual ($)</label><input type="number" id="cargo-monto" placeholder="0" inputmode="numeric"></div>
-    <div class="field"><label>Emoji</label><input type="text" id="cargo-emoji" value="💰" style="width:80px"></div>
+    <div class="field"><label>Emoji (opcional)</label><input type="text" id="cargo-emoji" value="💰" style="width:80px"></div>
     <button class="btn-primary" onclick="saveCargoTC()">Guardar cargo</button>
   `;
   openSheet();
 }
 
-function openEditCargoTC(id) {
-  const d = getData();
-  const x = (d.tarjeta.cargosExtra || []).find(c => c.id === id);
-  if (!x) return;
-  document.getElementById('sheet-content').innerHTML = `
+function openEditCargoTC(id,tcId) {
+  _tcIdActualCargo=tcId;
+  const d=getData();
+  const tc=d.tarjetas.find(t=>t.id===tcId)||d.tarjetas[0];
+  const x=(tc.cargosExtra||[]).find(c=>c.id===id);
+  if(!x) return;
+  document.getElementById('sheet-content').innerHTML=`
     <div class="sheet-title">${x.emoji||'💰'} ${x.desc}</div>
     <div class="field"><label>Descripción</label><input type="text" id="cargo-desc" value="${x.desc}"></div>
     <div class="field"><label>Monto mensual ($)</label><input type="number" id="cargo-monto" value="${x.monto}" inputmode="numeric"></div>
@@ -1748,98 +1758,286 @@ function openEditCargoTC(id) {
 }
 
 function saveCargoTC() {
-  const desc = document.getElementById('cargo-desc').value.trim();
-  if (!desc) { alert('Ingresa una descripción'); return; }
-  const monto = parseFloat(document.getElementById('cargo-monto').value) || 0;
-  const d = getData();
-  if (!d.tarjeta.cargosExtra) d.tarjeta.cargosExtra = [];
-  d.tarjeta.cargosExtra.push({ id: Date.now().toString(), desc, monto, emoji: document.getElementById('cargo-emoji').value || '💰', activo: true });
+  const desc=document.getElementById('cargo-desc').value.trim();
+  if(!desc){alert('Ingresa una descripción');return;}
+  const monto=parseFloat(document.getElementById('cargo-monto').value)||0;
+  const d=getData();
+  const tc=d.tarjetas.find(t=>t.id===_tcIdActualCargo)||d.tarjetas[0];
+  if(!tc.cargosExtra) tc.cargosExtra=[];
+  tc.cargosExtra.push({id:Date.now().toString(),desc,monto,emoji:document.getElementById('cargo-emoji').value||'💰',activo:true});
   save(d); closeSheet(); showTab('tarjeta');
 }
 
 function updateCargoTC(id) {
-  const d = getData();
-  const x = d.tarjeta.cargosExtra.find(c => c.id === id);
-  if (x) { x.desc = document.getElementById('cargo-desc').value.trim(); x.monto = parseFloat(document.getElementById('cargo-monto').value)||0; x.emoji = document.getElementById('cargo-emoji').value||'💰'; }
+  const d=getData();
+  const tc=d.tarjetas.find(t=>t.id===_tcIdActualCargo)||d.tarjetas[0];
+  const x=(tc.cargosExtra||[]).find(c=>c.id===id);
+  if(x){x.desc=document.getElementById('cargo-desc').value.trim();x.monto=parseFloat(document.getElementById('cargo-monto').value)||0;x.emoji=document.getElementById('cargo-emoji').value||'💰';}
   save(d); closeSheet(); showTab('tarjeta');
 }
 
 function deleteCargoTC(id) {
-  if (!confirm('¿Eliminar este cargo?')) return;
-  const d = getData();
-  d.tarjeta.cargosExtra = d.tarjeta.cargosExtra.filter(c => c.id !== id);
+  if(!confirm('¿Eliminar este cargo?')) return;
+  const d=getData();
+  const tc=d.tarjetas.find(t=>t.id===_tcIdActualCargo)||d.tarjetas[0];
+  tc.cargosExtra=tc.cargosExtra.filter(c=>c.id!==id);
   save(d); closeSheet(); showTab('tarjeta');
 }
 
-// ── CONFIG CICLO TC ──────────────────────────────────────────────────────────
-// Tarifario oficial Banco de Chile (mantencion mensual en UF)
-const BC_TARJETAS = [
-  { tipo: 'Visa FAN',           uf: 0.00 },
-  { tipo: 'Universal',          uf: 0.07 },
-  { tipo: 'Visa Dorada',        uf: 0.21 },
-  { tipo: 'Mastercard Dorada',  uf: 0.21 },
-  { tipo: 'Visa Platinum',      uf: 0.25 },
-  { tipo: 'Mastercard Platinum',uf: 0.25 },
-  { tipo: 'Visa Signature',     uf: 0.35 },
-  { tipo: 'Mastercard Black',   uf: 0.40 },
-  { tipo: 'Visa Infinite',      uf: 0.50 },
-];
-
-function openConfigTC() {
-  const d = getData(); const tc = d.tarjeta;
-  document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-title">⚙️ Configurar tarjeta</div>
+// ── INGRESAR ESTADO DE CUENTA ANTERIOR ───────────────────────────────────────
+function openAddEstadoCuenta(tcId) {
+  _tcIdActualCompra = tcId;
+  const d = getData();
+  const tc = d.tarjetas.find(t=>t.id===tcId)||d.tarjetas[0];
+  // Generar opciones de ciclos pasados (hasta 12 meses atrás)
+  const now = new Date();
+  const ciclosPasados = [];
+  for(let i=1; i<=12; i++) {
+    let m = now.getMonth()+1-i; let y = now.getFullYear();
+    while(m<1){m+=12;y--;}
+    const key=`${y}-${String(m).padStart(2,'0')}`;
+    ciclosPasados.push({key, label:`${MONTHS[m-1]} ${y}`});
+  }
+  document.getElementById('sheet-content').innerHTML=`
+    <div class="sheet-title">📄 Estado de cuenta anterior</div>
     <div class="info-box">
-      <strong>Banco de Chile</strong> — mantención se cobra <strong>todos los meses sin excepción</strong>, independiente de si la usas o no. Selecciona tu tipo para cargar automáticamente la tarifa oficial.
+      Ingresa las compras en cuotas que <strong>aún tienes pendientes</strong> de meses anteriores. Esto le permite a la app calcular correctamente tu deuda total actual.
     </div>
-    <div class="field"><label>Tipo de tarjeta Banco de Chile</label>
-      <select id="cf-tipo" onchange="autoFillMantencion()">
-        ${BC_TARJETAS.map(t=>`<option value="${t.tipo}" ${tc.tipo===t.tipo?'selected':''}>${t.tipo} — UF ${t.uf.toFixed(2)}/mes</option>`).join('')}
+    <div class="field"><label>Descripción</label>
+      <input type="text" id="ec-desc" placeholder="Ej: TV Samsung, Viaje a Bariloche...">
+    </div>
+    <div class="field"><label>Monto total de la compra original ($)</label>
+      <input type="number" id="ec-monto" placeholder="0" inputmode="numeric" oninput="previewEstadoCuenta()">
+    </div>
+    <div class="field"><label>Total de cuotas pactadas</label>
+      <select id="ec-cuotas-total" onchange="previewEstadoCuenta()">
+        ${[2,3,4,6,9,10,12,18,24,36,48].map(n=>`<option value="${n}">${n} cuotas</option>`).join('')}
       </select>
     </div>
-    <div class="field"><label>Mantención mensual en UF (se carga automáticamente)</label>
-      <input type="number" id="cf-mantencion" value="${tc.mantencionUF}" step="0.01" inputmode="decimal">
+    <div class="field"><label>Cuotas ya pagadas</label>
+      <select id="ec-cuotas-pagadas" onchange="previewEstadoCuenta()">
+        ${[1,2,3,4,5,6,7,8,9,10,11,12].map(n=>`<option value="${n}">${n} cuota${n!==1?'s':''} pagada${n!==1?'s':''}</option>`).join('')}
+      </select>
     </div>
-    <div class="field"><label>Valor UF actual ($) — consultar en cmfchile.cl</label>
-      <input type="number" id="cf-uf" value="${tc.ufValue}" inputmode="numeric">
+    <div class="field"><label>Tipo</label>
+      <select id="ec-tipo" onchange="previewEstadoCuenta()">
+        <option value="sin_interes">Sin interés</option>
+        <option value="con_interes">Con interés</option>
+      </select>
     </div>
-    <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px">
-      💡 Mantención estimada este mes: <strong id="preview-mantencion">${fmt(Math.round(tc.mantencionUF * tc.ufValue))}</strong>
+    <div class="field"><label>Mes en que comenzó la 1ª cuota</label>
+      <select id="ec-inicio">
+        ${ciclosPasados.map(c=>`<option value="${c.key}">${c.label}</option>`).join('')}
+      </select>
     </div>
-    <div class="field"><label>Día de corte del ciclo (ver estado de cuenta)</label>
-      <input type="number" id="cf-corte" value="${tc.diaCorte}" min="1" max="28" inputmode="numeric">
-    </div>
-    <div class="field"><label>Días desde el corte hasta el vencimiento</label>
-      <input type="number" id="cf-venc" value="${tc.diasVencimiento}" min="1" max="30" inputmode="numeric">
-    </div>
-    <div class="field"><label>Límite de crédito ($)</label>
-      <input type="number" id="cf-limite" value="${tc.limiteCredito||0}" inputmode="numeric">
-    </div>
-    <button class="btn-primary" onclick="saveConfigTC()">Guardar configuración</button>
+    <div id="ec-preview"></div>
+    <button class="btn-primary" onclick="saveEstadoCuenta()">Agregar compra histórica</button>
   `;
   openSheet();
 }
 
+function previewEstadoCuenta() {
+  const monto=parseFloat(document.getElementById('ec-monto')?.value)||0;
+  const total=parseInt(document.getElementById('ec-cuotas-total')?.value)||2;
+  const pagadas=parseInt(document.getElementById('ec-cuotas-pagadas')?.value)||1;
+  const tipo=document.getElementById('ec-tipo')?.value||'sin_interes';
+  const prev=document.getElementById('ec-preview');
+  if(!prev||monto<=0) return;
+  const d=getData(); const tc=d.tarjetas.find(t=>t.id===_tcIdActualCompra)||d.tarjetas[0];
+  const r=(tc.tasaMin||1.5)/100;
+  let montoCuota;
+  if(tipo==='sin_interes') montoCuota=Math.round(monto/total);
+  else montoCuota=Math.round(monto*(r*Math.pow(1+r,total))/(Math.pow(1+r,total)-1));
+  const restantes=Math.max(total-pagadas,0);
+  prev.innerHTML=`<div class="credito-resumen">
+    <div class="credito-resumen-row"><span>Cuota mensual</span><span>${fmt(montoCuota)}/mes</span></div>
+    <div class="credito-resumen-row"><span>Cuotas restantes</span><span>${restantes}</span></div>
+    <div class="credito-resumen-row highlight"><span>Deuda pendiente total</span><span>${fmt(montoCuota*restantes)}</span></div>
+  </div>`;
+}
+
+function saveEstadoCuenta() {
+  const desc=document.getElementById('ec-desc').value.trim();
+  if(!desc){alert('Ingresa una descripción');return;}
+  const monto=parseFloat(document.getElementById('ec-monto').value)||0;
+  if(!monto){alert('Ingresa un monto');return;}
+  const total=parseInt(document.getElementById('ec-cuotas-total').value)||2;
+  const tipo=document.getElementById('ec-tipo').value;
+  const inicio=document.getElementById('ec-inicio').value;
+  const d=getData(); const tc=d.tarjetas.find(t=>t.id===_tcIdActualCompra)||d.tarjetas[0];
+  const r=(tc.tasaMin||1.5)/100;
+  let montoCuota;
+  if(tipo==='sin_interes') montoCuota=Math.round(monto/total);
+  else montoCuota=Math.round(monto*(r*Math.pow(1+r,total))/(Math.pow(1+r,total)-1));
+  const timbres=total>1?Math.round(monto*TIMBRES_ESTAMPILLAS*total):0;
+  tc.compras.push({
+    id:Date.now().toString(), desc, monto, tipo, cuotas:total,
+    cicloInicio:inicio, montoCuota, timbres, emoji:'📄', activa:true, historica:true,
+  });
+  save(d); closeSheet(); showTab('tarjeta');
+}
+
+// ── CALCULADORA DE CUOTAS ─────────────────────────────────────────────────────
+function calcCuotasTC() {
+  const monto=parseFloat(document.getElementById('calc-monto').value)||0;
+  const cuotas=parseInt(document.getElementById('calc-cuotas').value)||1;
+  const tipo=document.getElementById('calc-tipo').value;
+  const el=document.getElementById('calc-resultado');
+  if(!el||monto<=0){if(el)el.innerHTML='';return;}
+  const d=getData();
+  const tc=d.tarjetas[_tcTabActiva||0]||d.tarjetas[0];
+  const r=(tc.tasaMin||1.5)/100;
+  let montoCuota,interesTotal;
+  if(cuotas===1||tipo==='sin_interes'){montoCuota=monto/cuotas;interesTotal=0;}
+  else{montoCuota=monto*(r*Math.pow(1+r,cuotas))/(Math.pow(1+r,cuotas)-1);interesTotal=montoCuota*cuotas-monto;}
+  const totalPagar=montoCuota*cuotas;
+  const timbres=cuotas>1?monto*TIMBRES_ESTAMPILLAS*cuotas:0;
+  el.innerHTML=`<div class="calc-result">
+    <div class="calc-row"><span>Valor cuota</span><span style="font-weight:600;color:var(--accent)">${fmt(Math.round(montoCuota))}</span></div>
+    <div class="calc-row"><span>Monto original</span><span>${fmt(monto)}</span></div>
+    ${interesTotal>0?`<div class="calc-row"><span>Interés total</span><span style="color:var(--red)">${fmt(Math.round(interesTotal))}</span></div>`:''}
+    ${timbres>0?`<div class="calc-row"><span>Timbres y estampillas</span><span style="color:var(--muted)">${fmt(Math.round(timbres))}</span></div>`:''}
+    <div class="calc-row total"><span>Total real a pagar</span><span style="color:var(--text)">${fmt(Math.round(totalPagar+timbres))}</span></div>
+    ${tipo==='sin_interes'&&cuotas>1?`<div style="font-size:11px;color:var(--green);margin-top:8px">✅ Sin interés — paga el estado completo cada mes para no perder el beneficio</div>`:''}
+    ${interesTotal>0?`<div style="font-size:11px;color:var(--red);margin-top:8px">⚠️ Financiar te cuesta ${fmt(Math.round(interesTotal+timbres))} extra (${((interesTotal/monto)*100).toFixed(1)}% del precio)</div>`:''}
+  </div>`;
+}
+
+
+
+function openConfigTC(tcId) {
+  const d = getData();
+  const tc = tcId ? d.tarjetas.find(t=>t.id===tcId) : d.tarjetas[0];
+  if (!tc) return;
+  _tcActivaId = tc.id;
+  const banco = tc.banco || 'Banco de Chile';
+  const tarjs = TARIFARIOS[banco] || TARIFARIOS['Banco de Chile'];
+
+  document.getElementById('sheet-content').innerHTML = `
+    <div class="sheet-title">⚙️ Configurar tarjeta</div>
+    <div class="field"><label>Banco</label>
+      <select id="cf-banco" onchange="onBancoChange()">
+        ${BANCOS.map(b=>`<option value="${b}" ${banco===b?'selected':''}>${b}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>Tipo de tarjeta</label>
+      <select id="cf-tipo" onchange="autoFillMantencion()">
+        ${tarjs.map(t=>`<option value="${t.tipo}" ${tc.tipo===t.tipo?'selected':''}>${t.tipo} — UF ${t.uf.toFixed(2)}/mes</option>`).join('')}
+      </select>
+    </div>
+    <div id="cf-nota-tarjeta" style="font-size:12px;color:var(--muted);padding:6px 0 12px;line-height:1.6">
+      ${tarjs.find(t=>t.tipo===tc.tipo)?.nota||''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Mantención mensual (UF)</label>
+        <input type="number" id="cf-mantencion" value="${tc.mantencionUF}" step="0.01" inputmode="decimal">
+      </div>
+      <div class="field"><label>Cargo semestral (UF)</label>
+        <input type="number" id="cf-sem" value="${tc.mantencionSemestralUF||0}" step="0.01" inputmode="decimal">
+      </div>
+    </div>
+    <div class="field"><label>Valor UF ($) — se actualiza automáticamente</label>
+      <input type="number" id="cf-uf" value="${tc.ufValue}" inputmode="numeric">
+    </div>
+    <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:12px;color:var(--muted)">Mantención estimada este mes</div>
+      <div style="font-size:16px;font-weight:600;color:var(--purple);margin-top:4px" id="preview-mantencion">
+        ${fmt(Math.round(tc.mantencionUF * tc.ufValue))}
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">
+        Tasa cuotas con interés: ${(tc.tasaMin||1.50).toFixed(2)}% – ${(tc.tasaMax||2.20).toFixed(2)}% mensual
+      </div>
+    </div>
+    <div class="field"><label>Alias / Nombre de tu tarjeta</label>
+      <input type="text" id="cf-alias" value="${tc.alias||''}" placeholder="Ej: Mi Visa Dorada, Principal...">
+    </div>
+    <div class="field"><label>Día de corte del ciclo</label>
+      <input type="number" id="cf-corte" value="${tc.diaCorte||5}" min="1" max="28" inputmode="numeric">
+    </div>
+    <div class="field"><label>Días desde el corte hasta el vencimiento</label>
+      <input type="number" id="cf-venc" value="${tc.diasVencimiento||12}" min="1" max="30" inputmode="numeric">
+    </div>
+    <div class="field"><label>Límite de crédito ($)</label>
+      <input type="number" id="cf-limite" value="${tc.limiteCredito||0}" inputmode="numeric">
+    </div>
+    <button class="btn-primary" onclick="saveConfigTC()">Guardar</button>
+    ${d.tarjetas.length > 1 ? `<button class="btn-delete" style="width:100%;margin-top:10px" onclick="deleteTarjeta('${tc.id}')">🗑️ Eliminar esta tarjeta</button>` : ''}
+  `;
+  openSheet();
+}
+
+function onBancoChange() {
+  const banco = document.getElementById('cf-banco').value;
+  const tarjs = TARIFARIOS[banco] || [];
+  const sel = document.getElementById('cf-tipo');
+  sel.innerHTML = tarjs.map(t=>`<option value="${t.tipo}">${t.tipo} — UF ${t.uf.toFixed(2)}/mes</option>`).join('');
+  autoFillMantencion();
+}
+
 function autoFillMantencion() {
-  const sel = document.getElementById('cf-tipo').value;
-  const t = BC_TARJETAS.find(x => x.tipo === sel);
-  if (t) {
-    document.getElementById('cf-mantencion').value = t.uf;
-    const uf = parseFloat(document.getElementById('cf-uf').value) || 38500;
-    document.getElementById('preview-mantencion').textContent = fmt(Math.round(t.uf * uf));
-  }
+  const banco = document.getElementById('cf-banco')?.value || 'Banco de Chile';
+  const tipo  = document.getElementById('cf-tipo')?.value;
+  const tarjs = TARIFARIOS[banco] || [];
+  const t = tarjs.find(x => x.tipo === tipo);
+  if (!t) return;
+  document.getElementById('cf-mantencion').value = t.uf;
+  document.getElementById('cf-sem').value = t.semUF || 0;
+  const nota = document.getElementById('cf-nota-tarjeta');
+  if (nota) nota.textContent = t.nota || '';
+  const uf = parseFloat(document.getElementById('cf-uf').value) || 38500;
+  document.getElementById('preview-mantencion').textContent = fmt(Math.round(t.uf * uf));
 }
 
 function saveConfigTC() {
   const d = getData();
-  d.tarjeta.tipo            = document.getElementById('cf-tipo').value;
-  d.tarjeta.diaCorte        = parseInt(document.getElementById('cf-corte').value) || 5;
-  d.tarjeta.diasVencimiento = parseInt(document.getElementById('cf-venc').value) || 12;
-  d.tarjeta.limiteCredito   = parseFloat(document.getElementById('cf-limite').value) || 0;
-  d.tarjeta.mantencionUF    = parseFloat(document.getElementById('cf-mantencion').value) || 0.21;
-  d.tarjeta.ufValue         = parseFloat(document.getElementById('cf-uf').value) || 38500;
+  const tc = d.tarjetas.find(t=>t.id===_tcActivaId) || d.tarjetas[0];
+  if (!tc) return;
+  tc.banco             = document.getElementById('cf-banco').value;
+  tc.tipo              = document.getElementById('cf-tipo').value;
+  tc.alias             = document.getElementById('cf-alias').value.trim();
+  tc.diaCorte          = parseInt(document.getElementById('cf-corte').value) || 5;
+  tc.diasVencimiento   = parseInt(document.getElementById('cf-venc').value) || 12;
+  tc.limiteCredito     = parseFloat(document.getElementById('cf-limite').value) || 0;
+  tc.mantencionUF      = parseFloat(document.getElementById('cf-mantencion').value) || 0;
+  tc.mantencionSemestralUF = parseFloat(document.getElementById('cf-sem').value) || 0;
+  tc.ufValue           = parseFloat(document.getElementById('cf-uf').value) || 38500;
+  // Guardar tasa según tarifario
+  const tarjs = TARIFARIOS[tc.banco] || [];
+  const tarjInfo = tarjs.find(x=>x.tipo===tc.tipo);
+  if (tarjInfo) { tc.tasaMin = tarjInfo.tasaMin; tc.tasaMax = tarjInfo.tasaMax; }
   save(d); closeSheet(); showTab('tarjeta');
 }
+
+function deleteTarjeta(id) {
+  if (!confirm('¿Eliminar esta tarjeta y todas sus compras registradas?')) return;
+  const d = getData();
+  d.tarjetas = d.tarjetas.filter(t=>t.id!==id);
+  save(d); closeSheet(); showTab('tarjeta');
+}
+
+function addNuevaTarjeta() {
+  const d = getData();
+  const nueva = {
+    id: 'tc_' + Date.now(),
+    banco: 'Banco de Chile',
+    tipo: 'Visa Dorada',
+    alias: '',
+    diaCorte: 5,
+    diasVencimiento: 12,
+    limiteCredito: 0,
+    mantencionUF: 0.21,
+    mantencionSemestralUF: 0,
+    ufValue: d.tarjetas[0]?.ufValue || 38500, // heredar UF
+    tasaMin: 1.50, tasaMax: 2.20,
+    compras: [],
+    cargosExtra: [],
+  };
+  d.tarjetas.push(nueva);
+  save(d);
+  openConfigTC(nueva.id);
+}
+
+
 
 
 function renderComparar() {
@@ -2438,7 +2636,8 @@ function saveTx() {
     const ciclos = getCiclosTC(d.tarjeta);
     tcInfo = { tipo: tipoTC, cuotas: cuotasTC, montoCuota: montoCuotaTC, timbres: timbresTC, cicloInicio: ciclos[0].key };
     // Registrar automáticamente en el módulo de tarjeta
-    d.tarjeta.compras.push({
+    const tcActiva = d.tarjetas.find(t=>t.id===window._tcFormId) || d.tarjetas[0];
+    tcActiva.compras.push({
       id: 'tx_' + Date.now().toString(),
       desc: document.getElementById('f-desc').value.trim() || 'Compra',
       monto, tipo: tipoTC, cuotas: cuotasTC,
@@ -2487,17 +2686,18 @@ function saveTx() {
   showTab(currentTab);
 }
 
-// Distribuir ahorro nuevo entre metas vinculadas (en orden de creación)
+// Distribuir ahorro entre metas vinculadas (auto-link) — solo si no hay meta específica seleccionada
 function actualizarMetasVinculadas(d, montoNuevo) {
   let disponible = montoNuevo;
   d.metas.forEach(m => {
-    if (!m.vinculado || disponible <= 0) return;
+    if (!m.vinculado || disponible <= 0 || m.completada) return;
     const totalActual = (m.baseAhorrado || 0) + (m.ahorroVinculado || 0);
     const restante = Math.max(m.objetivo - totalActual, 0);
     if (restante <= 0) return;
     const aportar = Math.min(disponible, restante);
     m.ahorroVinculado = (m.ahorroVinculado || 0) + aportar;
     disponible -= aportar;
+    if ((m.baseAhorrado||0)+(m.ahorroVinculado||0) >= m.objetivo) m.completada = true;
   });
 }
 
@@ -2990,7 +3190,39 @@ function deleteRecurrente(id) {
   showTab('config');
 }
 
-// ── MODO OSCURO ───────────────────────────────────────────────────────────────
+// ── VALOR UF AUTOMÁTICO (CMF Chile) ──────────────────────────────────────────
+async function fetchUFActual() {
+  try {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2,'0');
+    const d2 = String(now.getDate()).padStart(2,'0');
+    const url = `https://mindicador.cl/api/uf/${d2}-${m}-${y}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error();
+    const json = await res.json();
+    const valor = json?.serie?.[0]?.valor;
+    if (valor && valor > 0) {
+      const data = getData();
+      // Actualizar UF en todas las tarjetas registradas
+      data.tarjetas.forEach(tc => { tc.ufValue = Math.round(valor); });
+      save(data);
+      console.log('UF actualizada automáticamente:', valor);
+      return Math.round(valor);
+    }
+  } catch(e) {
+    console.log('No se pudo obtener UF, usando valor guardado');
+  }
+  return null;
+}
+
+// ── MODO OSCURO: persistencia CSS ─────────────────────────────────────────────
+// Se aplica antes del render para evitar flash de pantalla blanca
+(function() {
+  if (localStorage.getItem('darkMode') === '1') {
+    document.documentElement.classList.add('dark-init');
+  }
+})();
 function toggleDarkMode() {
   const isDark = document.body.classList.toggle('dark');
   localStorage.setItem('darkMode', isDark ? '1' : '0');
