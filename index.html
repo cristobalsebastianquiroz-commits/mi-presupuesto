@@ -1532,6 +1532,46 @@ function getCiclosTC(tc) {
 }
 
 // ── RENDER PRINCIPAL TARJETA (múltiples tarjetas) ────────────────────────────
+// ── GRADIENTES POR BANCO Y TIPO ───────────────────────────────────────────────
+function getCardGradient(banco, tipo) {
+  if (banco === 'Scotiabank Chile') {
+    const m = {
+      'Visa Gold (con plan)': '135deg,#1a0040,#3d0080,#0d1a40',
+      'Gold Zero':            '135deg,#002040,#004080,#001428',
+      'Visa Gold':            '135deg,#1a0040,#3d0080,#0d1a40',
+      'Visa Platinum':        '135deg,#1a1a40,#2d2d80,#0d0d28',
+      'Platinum Plus':        '135deg,#0d0d2e,#1a1a50,#080828',
+      'Visa Signature':       '135deg,#1a0a2e,#3a1060,#0a1428',
+      'Mastercard Black':     '135deg,#0a0a0a,#1a1a1a,#050505',
+      'Visa Infinite Air':    '135deg,#001428,#002850,#001020',
+      'Singular Signature':   '135deg,#2a0a1e,#501040,#180614',
+      'Singular Infinite':    '135deg,#1a0a0a,#3a1020,#0f0508',
+    };
+    return m[tipo] || '135deg,#1a0040,#3d0080,#0a1428';
+  }
+  const m = {
+    'Visa FAN':            '135deg,#1a2a1e,#2d5040,#0f1e14',
+    'Universal':           '135deg,#1e1a2a,#403060,#120e1e',
+    'Visa Dorada':         '135deg,#1e1400,#4a3200,#140e00',
+    'Mastercard Dorada':   '135deg,#1e1400,#4a3200,#140e00',
+    'Visa Platinum':       '135deg,#1a1a2e,#2d2d5e,#0f0f1e',
+    'Mastercard Platinum': '135deg,#1a1a2e,#2d2d5e,#0f0f1e',
+    'Visa Signature':      '135deg,#0f1e28,#1e3d50,#080f14',
+    'Mastercard Black':    '135deg,#0a0a0a,#1a1a1a,#050505',
+    'Visa Infinite':       '135deg,#1a0a28,#3d1060,#0f0514',
+  };
+  return m[tipo] || '135deg,#1a1a2e,#2d1b4e,#1a2a1a';
+}
+
+function getCardAccentColor(banco, tipo) {
+  if (!tipo) return 'rgba(255,255,255,.08)';
+  if (tipo.includes('Dorada') || tipo.includes('Gold')) return 'rgba(255,200,80,.15)';
+  if (tipo.includes('Black') || tipo.includes('Infinite')) return 'rgba(200,200,200,.08)';
+  if (tipo.includes('Platinum')) return 'rgba(180,190,210,.12)';
+  if (tipo.includes('Signature') || tipo.includes('Singular')) return 'rgba(180,120,220,.12)';
+  return 'rgba(255,255,255,.08)';
+}
+
 let _tcTabActiva = 0;
 
 function renderTarjeta() {
