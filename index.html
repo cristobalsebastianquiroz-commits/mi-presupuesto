@@ -1094,27 +1094,15 @@ function getData() {
   if (!d.recurrentesAplicados) d.recurrentesAplicados = {};
   if (!d.monthSnapshots) d.monthSnapshots = {};
 
-  // Migrar tarjeta singular → array de tarjetas
+  // Migrar tarjeta singular → array (compatibilidad con versión anterior)
   if (d.tarjeta && !d.tarjetas) {
-    d.tarjetas = [{ ...d.tarjeta, id: 'tc_1', banco: 'Banco de Chile' }];
+    d.tarjetas = [{ ...d.tarjeta, id: 'tc_legacy', banco: 'Banco de Chile' }];
     delete d.tarjeta;
   }
   if (!d.tarjetas) {
-    d.tarjetas = [{
-      id: 'tc_1',
-      banco: 'Banco de Chile',
-      tipo: 'Visa Dorada',
-      diaCorte: 5,
-      diasVencimiento: 12,
-      limiteCredito: 0,
-      mantencionUF: 0.21,
-      mantencionSemestralUF: 0,
-      ufValue: 38500,
-      compras: [],
-      cargosExtra: [],
-    }];
+    d.tarjetas = []; // el usuario agrega sus tarjetas manualmente
   }
-  // Asegurar campos nuevos en tarjetas existentes
+  // Asegurar campos mínimos en cada tarjeta
   d.tarjetas.forEach(tc => {
     if (!tc.id) tc.id = 'tc_' + Date.now();
     if (!tc.banco) tc.banco = 'Banco de Chile';
@@ -1122,6 +1110,32 @@ function getData() {
     if (!tc.cargosExtra) tc.cargosExtra = [];
     if (tc.mantencionSemestralUF === undefined) tc.mantencionSemestralUF = 0;
   });
+
+  // Eliminar duplicados: conservar solo la primera por banco+tipo+alias
+  // Si una tiene compras o cargos, tiene prioridad sobre una vacía
+  const dedupMap = new Map();
+  d.tarjetas.forEach(tc => {
+    const key = `${tc.banco}|${tc.tipo}`;
+    const existing = dedupMap.get(key);
+    if (!existing) {
+      dedupMap.set(key, tc);
+    } else {
+      // Conservar la que tiene más datos
+      const existingScore = (existing.compras?.length||0) + (existing.cargosExtra?.length||0) + (existing.alias?1:0);
+      const newScore = (tc.compras?.length||0) + (tc.cargosExtra?.length||0) + (tc.alias?1:0);
+      if (newScore > existingScore) {
+        // Fusionar compras y cargos si la nueva tiene más
+        tc.compras = [...(tc.compras||[]), ...(existing.compras||[])];
+        tc.cargosExtra = [...(tc.cargosExtra||[]), ...(existing.cargosExtra||[])];
+        dedupMap.set(key, tc);
+      } else if (existingScore >= 0) {
+        // Fusionar compras de la duplicada a la existente
+        existing.compras = [...(existing.compras||[]), ...(tc.compras||[])];
+        existing.cargosExtra = [...(existing.cargosExtra||[]), ...(tc.cargosExtra||[])];
+      }
+    }
+  });
+  d.tarjetas = Array.from(dedupMap.values());
 
   if (!d.currentMonth) {
     const now = new Date();
@@ -1520,57 +1534,20 @@ function getCiclosTC(tc) {
 // ── RENDER PRINCIPAL TARJETA (múltiples tarjetas) ────────────────────────────
 let _tcTabActiva = 0;
 
-// Colores de gradiente por banco y tipo
-function getCardGradient(banco, tipo) {
-  if (banco === 'Scotiabank Chile') {
-    const scotiaColors = {
-      'Visa Gold (con plan)': '135deg,#1a0040,#3d0080,#0d1a40',
-      'Gold Zero':            '135deg,#002040,#004080,#001428',
-      'Visa Gold':            '135deg,#1a0040,#3d0080,#0d1a40',
-      'Visa Platinum':        '135deg,#1a1a40,#2d2d80,#0d0d28',
-      'Platinum Plus':        '135deg,#0d0d2e,#1a1a50,#080828',
-      'Visa Signature':       '135deg,#1a0a2e,#3a1060,#0a1428',
-      'Mastercard Black':     '135deg,#0a0a0a,#1a1a1a,#050505',
-      'Visa Infinite Air':    '135deg,#001428,#002850,#001020',
-      'Singular Signature':   '135deg,#2a0a1e,#501040,#180614',
-      'Singular Infinite':    '135deg,#1a0a0a,#3a1020,#0f0508',
-    };
-    return scotiaColors[tipo] || '135deg,#1a0040,#3d0080,#0a1428';
-  }
-  // Banco de Chile
-  const bcColors = {
-    'Visa FAN':            '135deg,#1a2a1e,#2d5040,#0f1e14',
-    'Universal':           '135deg,#1e1a2a,#403060,#120e1e',
-    'Visa Dorada':         '135deg,#1e1400,#4a3200,#140e00',
-    'Mastercard Dorada':   '135deg,#1e1400,#4a3200,#140e00',
-    'Visa Platinum':       '135deg,#1a1a2e,#2d2d5e,#0f0f1e',
-    'Mastercard Platinum': '135deg,#1a1a2e,#2d2d5e,#0f0f1e',
-    'Visa Signature':      '135deg,#0f1e28,#1e3d50,#080f14',
-    'Mastercard Black':    '135deg,#0a0a0a,#1a1a1a,#050505',
-    'Visa Infinite':       '135deg,#1a0a28,#3d1060,#0f0514',
-  };
-  return bcColors[tipo] || '135deg,#1a1a2e,#2d1b4e,#1a2a1a';
-}
-
-function getCardAccentColor(banco, tipo) {
-  if (tipo?.includes('Dorada') || tipo?.includes('Gold')) return 'rgba(255,200,80,.15)';
-  if (tipo?.includes('Black') || tipo?.includes('Infinite')) return 'rgba(200,200,200,.08)';
-  if (tipo?.includes('Platinum')) return 'rgba(180,190,210,.12)';
-  if (tipo?.includes('Signature') || tipo?.includes('Singular')) return 'rgba(180,120,220,.12)';
-  return 'rgba(255,255,255,.08)';
-}
-
 function renderTarjeta() {
   const d = getData();
   const tarjetas = d.tarjetas;
+
+  // Sin tarjetas configuradas
   if (!tarjetas || tarjetas.length === 0) {
-    return `<div style="padding-top:20px">
-      <div class="empty"><div class="empty-icon">💳</div><p>Sin tarjetas configuradas.<br>Agrega tu primera tarjeta.</p></div>
-      <div style="padding:0 16px">
-        <button onclick="openSetupTarjeta()" style="width:100%;padding:16px;background:var(--accent);color:#fff;border:none;border-radius:16px;font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(184,92,56,.3)">
-          + Agregar mi primera tarjeta
-        </button>
+    return `<div style="padding:32px 0 0">
+      <div class="empty">
+        <div class="empty-icon">💳</div>
+        <p>Aún no tienes tarjetas.<br>Agrega la primera para empezar.</p>
       </div>
+      <button onclick="openSetupTarjeta()" class="btn-primary" style="margin:0 0 12px">
+        + Agregar mi primera tarjeta
+      </button>
     </div>`;
   }
 
@@ -1579,6 +1556,8 @@ function renderTarjeta() {
   const ciclos = getCiclosTC(tc);
   const cicloActivo = ciclos[0];
   const res = calcCicloTC(tc.compras||[], tc.cargosExtra||[], tc, cicloActivo.key);
+  const grad = getCardGradient(tc.banco, tc.tipo);
+  const accent = getCardAccentColor(tc.banco, tc.tipo);
 
   const saldoPendiente = (tc.compras||[]).filter(c=>c.activa).reduce((a,c)=>{
     const [cy,cm]=cicloActivo.key.split('-').map(Number);
@@ -1587,45 +1566,40 @@ function renderTarjeta() {
     return a + c.montoCuota * Math.max(c.cuotas-ca+1,0);
   },0);
   const pctCupo = tc.limiteCredito>0 ? Math.min(saldoPendiente/tc.limiteCredito*100,100):0;
-  const grad = getCardGradient(tc.banco, tc.tipo);
-  const accent = getCardAccentColor(tc.banco, tc.tipo);
 
   let html = '';
 
-  // ── APPLE WALLET STACK ──────────────────────────────────────────────────────
-  html += `<div class="wallet-stack">`;
+  // ── SELECTOR DE TARJETA (si hay más de una) ──────────────────────────────────
+  if (tarjetas.length > 1) {
+    html += `<div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none">`;
+    tarjetas.forEach((t,i) => {
+      const active = i === idx;
+      html += `<button onclick="_tcTabActiva=${i};showTab('tarjeta')" style="
+        flex-shrink:0;padding:8px 16px;border-radius:12px;
+        font-size:12px;font-weight:${active?'600':'400'};cursor:pointer;
+        white-space:nowrap;border:1.5px solid ${active?'var(--accent)':'var(--border)'};
+        background:${active?'var(--accent)':'var(--surface)'};
+        color:${active?'#fff':'var(--muted)'};
+        font-family:'Plus Jakarta Sans',sans-serif;
+        transition:all .2s">
+        ${t.alias || t.tipo}
+      </button>`;
+    });
+    html += `</div>`;
+  }
 
-  // Tarjetas apiladas detrás (decorativas)
-  tarjetas.forEach((t, i) => {
-    if (i === idx) return;
-    const g = getCardGradient(t.banco, t.tipo);
-    const offset = i < idx ? -(i+1)*6 : (i-idx)*6;
-    const scale = 1 - Math.abs(i-idx)*0.04;
-    html += `<div class="wallet-stack-shadow" style="
-      width:calc(100% - ${8 + Math.abs(i-idx)*8}px);
-      height:190px;
-      background:linear-gradient(${g});
-      bottom:${-offset-6}px;
-      transform:translateX(-50%) scale(${scale});
-      opacity:${0.5 - Math.abs(i-idx)*0.1};
-      z-index:${5-Math.abs(i-idx)};
-    "></div>`;
-  });
-
-  // Tarjeta activa
-  html += `<div class="wallet-card" style="background:linear-gradient(${grad});z-index:10;position:relative"
-    onclick="handleWalletTap(${idx})"
-    onswipe="swipeWallet(event)">
-    <div style="position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,${accent} 0%,transparent 60%);pointer-events:none"></div>
+  // ── TARJETA VISUAL ────────────────────────────────────────────────────────────
+  html += `<div class="wallet-card" style="background:linear-gradient(${grad})">
+    <div style="position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,${accent} 0%,transparent 60%);pointer-events:none;border-radius:22px"></div>
     <div class="wallet-card-top">
       <div>
-        <div class="wallet-bank-logo">${tc.banco === 'Scotiabank Chile' ? '🏦 Scotiabank' : '🏦 Banco de Chile'}</div>
+        <div class="wallet-bank-logo">${tc.banco==='Scotiabank Chile'?'🏦 Scotiabank':'🏦 Banco de Chile'}</div>
         <div class="wallet-card-type">${tc.alias||tc.tipo}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:10px;opacity:.5;margin-bottom:2px">Próximo pago</div>
-        <div style="font-size:11px;opacity:.75">${cicloActivo.fechaVenc}</div>
-        <div style="font-size:10px;opacity:.45;margin-top:4px">Cierre día ${tc.diaCorte}</div>
+        <div style="font-size:12px;opacity:.8;font-weight:500">${cicloActivo.fechaVenc}</div>
+        <div style="font-size:10px;opacity:.4;margin-top:4px">Cierre: día ${tc.diaCorte}</div>
       </div>
     </div>
     <div>
@@ -1638,25 +1612,12 @@ function renderTarjeta() {
         <div class="wallet-card-detail">Mantención<strong>${fmt(res.mantencion)}</strong></div>
         ${res.totalCargos>0?`<div class="wallet-card-detail">Cargos<strong>${fmt(res.totalCargos)}</strong></div>`:''}
       </div>
-      ${tc.limiteCredito>0?`<div class="wallet-card-detail" style="text-align:right">
-        Cupo usado<strong>${pctCupo.toFixed(0)}%</strong>
-      </div>`:''}
+      ${tc.limiteCredito>0?`<div class="wallet-card-detail" style="text-align:right">Cupo<strong>${pctCupo.toFixed(0)}%</strong></div>`:''}
     </div>
     ${tc.limiteCredito>0?`<div class="tc-pct-bar" style="margin-top:10px"><div class="tc-pct-fill" style="width:${pctCupo}%"></div></div>`:''}
   </div>`;
 
-  html += `</div>`; // wallet-stack
-
-  // Dots navegación
-  if (tarjetas.length > 1) {
-    html += `<div class="wallet-dots">`;
-    tarjetas.forEach((_,i) => {
-      html += `<div class="wallet-dot${i===idx?' active':''}" onclick="_tcTabActiva=${i};showTab('tarjeta')"></div>`;
-    });
-    html += `</div>`;
-  }
-
-  // Acciones rápidas
+  // ── ACCIONES RÁPIDAS ──────────────────────────────────────────────────────────
   html += `<div class="wallet-actions">
     <div class="wallet-action-btn" onclick="openAddCompraTC('${tc.id}')">
       <div class="wallet-action-icon">🛒</div>
@@ -1672,14 +1633,14 @@ function renderTarjeta() {
     </div>
   </div>`;
 
-  // Info tarifa
+  // ── INFO TARIFA ───────────────────────────────────────────────────────────────
   html += `<div class="card" style="margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div>
         <div style="font-size:13px;font-weight:500">${tc.banco} · ${tc.tipo}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:3px">
           Mantención: <strong style="color:var(--purple)">UF ${(tc.mantencionUF||0).toFixed(2)} = ${fmt(Math.round((tc.mantencionUF||0)*(tc.ufValue||38500)))}/mes</strong>
-          ${tc.mantencionSemestralUF>0?`· Semestral: UF ${tc.mantencionSemestralUF.toFixed(2)}`:''}
+          ${tc.mantencionSemestralUF>0?` · Semestral: UF ${tc.mantencionSemestralUF.toFixed(2)}`:''}
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:1px">
           Tasa con interés: ${(tc.tasaMin||1.5).toFixed(2)}%–${(tc.tasaMax||2.2).toFixed(2)}% mensual
@@ -1689,7 +1650,7 @@ function renderTarjeta() {
     </div>
   </div>`;
 
-  // Compras ciclo actual
+  // ── COMPRAS CICLO ACTUAL ──────────────────────────────────────────────────────
   html += `<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:0">Compras ciclo actual</div>
@@ -1698,7 +1659,7 @@ function renderTarjeta() {
 
   const comprasActivas = (tc.compras||[]).filter(c=>c.activa);
   if (comprasActivas.length===0) {
-    html+=`<div class="empty" style="padding:16px 0"><div class="empty-icon" style="font-size:28px">🛒</div><p style="font-size:13px">Sin compras. Toca + para agregar.</p></div>`;
+    html += `<div class="empty" style="padding:16px 0"><div class="empty-icon" style="font-size:28px">🛒</div><p style="font-size:13px">Sin compras. Toca + para agregar.</p></div>`;
   } else {
     comprasActivas.forEach(c=>{
       const [cy,cm]=cicloActivo.key.split('-').map(Number);
@@ -1706,14 +1667,15 @@ function renderTarjeta() {
       const cuotaActual=(cy-py)*12+(cm-pm)+1;
       const cuotasRestantes=Math.max(c.cuotas-cuotaActual+1,0);
       const enEsteCiclo=cuotaActual>=1&&cuotaActual<=c.cuotas;
-      html+=`<div class="tc-compra-item" onclick="openEditCompraTC('${c.id}','${tc.id}')">
+      html += `<div class="tc-compra-item" onclick="openEditCompraTC('${c.id}','${tc.id}')">
         <div class="tc-compra-icon">${c.emoji||'🛍️'}</div>
         <div class="tc-compra-info">
-          <div class="tc-compra-name">${c.desc}${c.fromTx?` <span style="font-size:9px;background:var(--surface2);border-radius:6px;padding:1px 5px;color:var(--muted)">mov.</span>`:''}</div>
+          <div class="tc-compra-name">${c.desc}</div>
           <div class="tc-compra-meta">
             ${c.tipo==='contado'?'<span class="cuota-badge contado">Contado</span>':
               c.tipo==='sin_interes'?`<span class="cuota-badge sin-int">Sin interés</span> · ${cuotaActual}/${c.cuotas}`:
               `<span class="cuota-badge con-int">Con interés</span> · ${cuotaActual}/${c.cuotas}`}
+            ${c.fromTx||c.historica?`<span style="font-size:9px;color:var(--muted);margin-left:4px">${c.historica?'histórica':'desde mov.'}</span>`:''}
           </div>
         </div>
         <div class="tc-compra-amt">
@@ -1723,42 +1685,50 @@ function renderTarjeta() {
       </div>`;
     });
   }
-  html+=`</div>`;
+  html += `</div>`;
 
-  // Proyección
-  const proyeccion=ciclos.slice(1,4).map(cic=>({...cic,total:calcCicloTC(tc.compras||[],tc.cargosExtra||[],tc,cic.key).total}));
-  const maxProj=Math.max(...proyeccion.map(p=>p.total),1);
+  // ── PROYECCIÓN ────────────────────────────────────────────────────────────────
+  const proyeccion = ciclos.slice(1,4).map(cic=>({
+    ...cic, total: calcCicloTC(tc.compras||[], tc.cargosExtra||[], tc, cic.key).total
+  }));
+  const maxProj = Math.max(...proyeccion.map(p=>p.total), 1);
   if (proyeccion.some(p=>p.total>0)) {
-    html+=`<div class="card"><div class="card-title">Comprometido próximos meses</div>`;
+    html += `<div class="card"><div class="card-title">Comprometido próximos meses</div>`;
     proyeccion.forEach(p=>{
-      html+=`<div class="tc-proj-row">
+      html += `<div class="tc-proj-row">
         <div class="tc-proj-mes">${MONTHS[parseInt(p.key.slice(5))-1].slice(0,3)} ${p.key.slice(2,4)}</div>
         <div class="tc-proj-bar"><div class="tc-proj-fill" style="width:${p.total/maxProj*100}%"></div></div>
         <div class="tc-proj-amt">${p.total>0?fmt(p.total):'—'}</div>
       </div>`;
     });
-    html+=`</div>`;
+    html += `</div>`;
   }
 
-  // Cargos fijos
-  html+=`<div class="card">
+  // ── CARGOS FIJOS ──────────────────────────────────────────────────────────────
+  html += `<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div class="card-title" style="margin-bottom:0">Cargos fijos banco</div>
-      <button onclick="openAddCargoTC('${tc.id}')" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer">+ Cargo</button>
+      <button onclick="openAddCargoTC('${tc.id}')" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">+ Cargo</button>
     </div>
     <div class="setting-row" style="padding:10px 0">
       <span style="font-size:13px">🔧 Mantención mensual</span>
       <span style="font-weight:600;color:var(--purple)">UF ${(tc.mantencionUF||0).toFixed(2)} = ${fmt(Math.round((tc.mantencionUF||0)*(tc.ufValue||38500)))}</span>
     </div>
     ${tc.mantencionSemestralUF>0?`<div class="setting-row" style="padding:6px 0"><span style="font-size:12px;color:var(--muted)">Cargo semestral</span><span style="color:var(--purple)">UF ${tc.mantencionSemestralUF.toFixed(2)} = ${fmt(Math.round(tc.mantencionSemestralUF*(tc.ufValue||38500)))}</span></div>`:''}
-    ${(tc.cargosExtra||[]).map(x=>`<div class="setting-row" style="padding:10px 0" onclick="openEditCargoTC('${x.id}','${tc.id}')"><span>${x.emoji||'💰'} ${x.desc}</span><span style="font-weight:600;color:${x.activo?'var(--red)':'var(--muted)'}">${x.activo?fmt(x.monto):'Inactivo'}</span></div>`).join('')}
+    ${(tc.cargosExtra||[]).map(x=>`
+      <div class="setting-row" style="padding:10px 0;cursor:pointer" onclick="openEditCargoTC('${x.id}','${tc.id}')">
+        <span>${x.emoji||'💰'} ${x.desc}</span>
+        <span style="font-weight:600;color:${x.activo?'var(--red)':'var(--muted)'}">${x.activo?fmt(x.monto):'Inactivo'}</span>
+      </div>`).join('')}
   </div>`;
 
-  // Calculadora
-  html+=`<div class="card">
+  // ── CALCULADORA ───────────────────────────────────────────────────────────────
+  html += `<div class="card">
     <div class="card-title">🧮 Calculadora de cuotas</div>
     <div class="info-box" style="margin-bottom:12px">Simula el costo real <strong>antes</strong> de comprar.</div>
-    <div class="field"><label>Monto ($)</label><input type="number" id="calc-monto" placeholder="150000" inputmode="numeric" oninput="calcCuotasTC()"></div>
+    <div class="field"><label>Monto ($)</label>
+      <input type="number" id="calc-monto" placeholder="150000" inputmode="numeric" oninput="calcCuotasTC()">
+    </div>
     <div class="field"><label>Cuotas</label>
       <select id="calc-cuotas" onchange="calcCuotasTC()">
         <option value="1">1 cuota (contado)</option>
@@ -1774,20 +1744,15 @@ function renderTarjeta() {
     <div id="calc-resultado"></div>
   </div>`;
 
-  // Gestión
-  html+=`<div class="card">
+  // ── GESTIÓN ───────────────────────────────────────────────────────────────────
+  html += `<div class="card">
     <div class="card-title">Gestión de tarjetas</div>
-    <button onclick="openGestionTarjetas()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;cursor:pointer;margin-bottom:8px">
+    <button onclick="openGestionTarjetas()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;cursor:pointer">
       ${tarjetas.length > 1 ? `💳 Ver mis ${tarjetas.length} tarjetas` : '+ Agregar otra tarjeta'}
     </button>
   </div>`;
 
   return html;
-}
-
-function handleWalletTap(idx) {
-  // Swipe-like: if more than one card, tap cycles through
-  // For now just open config on double-tap simulation
 }
 
 // ── SETUP WIZARD: elegir banco y tarjetas ─────────────────────────────────────
@@ -2253,6 +2218,8 @@ function calcCuotasTC() {
 }
 
 
+
+let _tcActivaId = null;
 
 function openConfigTC(tcId) {
   const d = getData();
