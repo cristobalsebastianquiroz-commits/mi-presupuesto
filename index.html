@@ -13,26 +13,53 @@
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* ── Paleta acogedora ── */
-    --bg:       #f5f0e8;          /* crema cálido */
-    --surface:  #fdfaf4;          /* blanco marfil */
-    --surface2: #ede8dd;          /* crema oscuro */
-    --border:   #ddd5c4;          /* borde arena */
-    --text:     #2c2416;          /* marrón oscuro */
-    --muted:    #8c7d68;          /* marrón medio */
-    --accent:   #b85c38;          /* terracota */
-    --accent2:  #e8d5b7;          /* terracota claro */
-    --green:    #4a7c59;          /* verde salvia */
-    --green-bg: rgba(74,124,89,.12);
-    --red:      #c0392b;          /* rojo ladrillo */
-    --red-bg:   rgba(192,57,43,.1);
-    --yellow:   #c0830a;          /* ámbar cálido */
-    --yellow-bg:rgba(192,131,10,.12);
-    --purple:   #7c6497;          /* lavanda */
-    --safe: env(safe-area-inset-bottom, 0px);
-    --radius: 16px;
-    --shadow: 0 2px 12px rgba(44,36,22,.08);
+    color-scheme: light;
+    /* ── Paleta día ── */
+    --bg:        #f5f0e8;
+    --surface:   #fdfaf4;
+    --surface2:  #ede8dd;
+    --border:    #ddd5c4;
+    --text:      #2c2416;
+    --muted:     #8c7d68;
+    --accent:    #b85c38;
+    --accent2:   #e8d5b7;
+    --green:     #4a7c59;
+    --green-bg:  rgba(74,124,89,.12);
+    --red:       #c0392b;
+    --red-bg:    rgba(192,57,43,.1);
+    --yellow:    #c0830a;
+    --yellow-bg: rgba(192,131,10,.12);
+    --purple:    #7c6497;
+    --safe:      env(safe-area-inset-bottom, 0px);
+    --radius:    16px;
+    --shadow:    0 2px 12px rgba(44,36,22,.08);
     --shadow-md: 0 4px 24px rgba(44,36,22,.12);
+    --nav-bg:    rgba(245,240,232,0.97);
+    --input-bg:  var(--bg);
+  }
+
+  /* ── MODO OSCURO: cambia solo variables, todo lo demás es automático ── */
+  html.dark {
+    color-scheme: dark;
+    --bg:        #141414;
+    --surface:   #1e1e1e;
+    --surface2:  #272727;
+    --border:    #333333;
+    --text:      #f0ece4;
+    --muted:     #888070;
+    --accent:    #d4956a;
+    --accent2:   #2a1f17;
+    --green:     #6db38a;
+    --green-bg:  rgba(109,179,138,.13);
+    --red:       #d96b6b;
+    --red-bg:    rgba(217,107,107,.12);
+    --yellow:    #c9a84c;
+    --yellow-bg: rgba(201,168,76,.13);
+    --purple:    #a08bc0;
+    --shadow:    0 2px 12px rgba(0,0,0,.4);
+    --shadow-md: 0 4px 24px rgba(0,0,0,.5);
+    --nav-bg:    rgba(20,20,20,0.97);
+    --input-bg:  #272727;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   html, body {
@@ -42,11 +69,14 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
     overflow: hidden;
   }
-  /* Aplicar modo oscuro inmediatamente antes que cargue JS (evita flash blanco) */
-  html.dark-init body, html.dark-init #header, html.dark-init #nav, html.dark-init #content {
+  /* Pre-carga modo oscuro antes del JS para evitar flash */
+  html.dark-init, html.dark-init body {
     background: #141414 !important;
     color: #f0ece4 !important;
-    border-color: #2a2a2a !important;
+  }
+  html.dark-init #header, html.dark-init #nav, html.dark-init #content {
+    background: #141414 !important;
+    border-color: #333 !important;
   }
 
   /* ── LAYOUT ── */
@@ -67,13 +97,15 @@
   #nav {
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; max-width: 430px;
-    background: rgba(245,240,232,0.97);
+    background: var(--nav-bg);
     backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid var(--border);
     display: flex;
     padding: 10px 0 calc(10px + var(--safe));
     z-index: 100;
     box-shadow: 0 -4px 20px rgba(44,36,22,.06);
+    transition: background .3s, border-color .3s;
   }
   .nav-btn {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -218,7 +250,7 @@
   }
   .field input, .field select {
     width: 100%;
-    background: var(--bg);
+    background: var(--input-bg);
     border: 1.5px solid var(--border);
     border-radius: 12px;
     padding: 12px 14px;
@@ -496,46 +528,101 @@
     font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
-  /* ── MODO OSCURO ELEGANTE ── */
-  body.dark {
-    --bg:        #141414;          /* negro carbón */
-    --surface:   #1e1e1e;          /* superficie oscura */
-    --surface2:  #272727;          /* superficie secundaria */
-    --border:    #333333;          /* borde sutil */
-    --text:      #f0ece4;          /* blanco cálido */
-    --muted:     #888070;          /* gris cálido */
-    --accent:    #d4956a;          /* terracota dorado */
-    --accent2:   #2a1f17;          /* terracota muy oscuro */
-    --green:     #6db38a;          /* verde suave */
-    --green-bg:  rgba(109,179,138,.13);
-    --red:       #d96b6b;          /* rojo suave */
-    --red-bg:    rgba(217,107,107,.12);
-    --yellow:    #c9a84c;          /* dorado */
-    --yellow-bg: rgba(201,168,76,.13);
-    --purple:    #a08bc0;          /* lavanda oscuro */
-    --shadow:    0 2px 12px rgba(0,0,0,.4);
-    --shadow-md: 0 4px 24px rgba(0,0,0,.5);
+  /* tc-header dark handled by gradient override below */
+  body.dark .tc-header {
+    background: linear-gradient(135deg,#0f0f1a 0%,#1e1030 50%,#101a10 100%) !important;
   }
 
-  /* Header y nav oscuros: fondo sólido sin transparencia sucia */
-  body.dark #header    { background: #141414; border-bottom-color: #2a2a2a; }
-  body.dark #nav       { background: rgba(20,20,20,.97); border-top-color: #2a2a2a; }
-  body.dark #content   { background: #141414; }
-  body.dark .sheet     { background: #1e1e1e; }
-  body.dark .card      { background: #1e1e1e; border-color: #2d2d2d; }
-  body.dark .pill      { background: #1e1e1e; border-color: #2d2d2d; }
-  body.dark .meta-card { background: #1e1e1e; border-color: #2d2d2d; }
-  body.dark .deudor-card { background: #1e1e1e; border-color: #2d2d2d; }
-  body.dark .meta-card-credit { background: #1e1e1e; border-color: #2d2d2d; }
+  /* ── APPLE WALLET STYLE ─────────────────────────────────────────────────── */
+  .wallet-stack {
+    position: relative;
+    margin-bottom: 24px;
+    padding-bottom: 8px;
+  }
+  .wallet-card {
+    border-radius: 22px;
+    padding: 22px 22px 20px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform .35s cubic-bezier(.32,1,.6,1), box-shadow .35s;
+    box-shadow: 0 8px 32px rgba(0,0,0,.25);
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    user-select: none;
+  }
+  .wallet-card:active { transform: scale(.98); }
+  .wallet-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+  /* Círculos decorativos estilo tarjeta */
+  .wallet-card::after {
+    content: ''; position: absolute;
+    width: 220px; height: 220px; border-radius: 50%;
+    background: rgba(255,255,255,.06);
+    right: -60px; top: -60px;
+    pointer-events: none;
+  }
+  .wallet-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .wallet-bank-logo { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; opacity: .8; }
+  .wallet-card-type { font-size: 12px; opacity: .65; margin-top: 2px; }
+  .wallet-card-amount-label { font-size: 11px; opacity: .6; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 3px; }
+  .wallet-card-amount { font-size: 28px; font-weight: 600; font-family: 'Lora', serif; letter-spacing: -.5px; }
+  .wallet-card-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
+  .wallet-card-detail { font-size: 11px; opacity: .65; }
+  .wallet-card-detail strong { display: block; font-size: 13px; opacity: .95; font-weight: 500; margin-top: 1px; }
+  .wallet-chip { font-size: 20px; opacity: .8; }
 
-  /* Inputs en oscuro */
-  body.dark .field input,
-  body.dark .field select  { background: #272727; border-color: #383838; color: #f0ece4; }
-  body.dark .field input:focus,
-  body.dark .field select:focus { border-color: #d4956a; }
+  /* Stacked cards behind (decorative) */
+  .wallet-stack-shadow {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    border-radius: 22px;
+    pointer-events: none;
+  }
 
-  /* Textura de grano — más sutil en dark */
-  body.dark::before { opacity: .02; }
+  /* Navigation dots */
+  .wallet-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0 16px; }
+  .wallet-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: all .3s; }
+  .wallet-dot.active { width: 18px; border-radius: 99px; background: var(--accent); }
+
+  /* Card picker for setup */
+  .card-picker-item {
+    display: flex; align-items: center; gap: 14px; padding: 14px;
+    border-radius: 14px; border: 1.5px solid var(--border);
+    margin-bottom: 8px; cursor: pointer; background: var(--bg);
+    transition: all .2s;
+  }
+  .card-picker-item:active { transform: scale(.98); }
+  .card-picker-item.selected { border-color: var(--accent); background: rgba(184,92,56,.06); }
+  .card-picker-preview {
+    width: 52px; height: 34px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0; color: #fff;
+  }
+  .card-picker-info { flex: 1; }
+  .card-picker-name { font-size: 14px; font-weight: 500; }
+  .card-picker-fee { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .card-picker-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .card-picker-item.selected .card-picker-check { background: var(--accent); border-color: var(--accent); color: #fff; font-size: 12px; }
+
+  /* Wallet actions bar */
+  .wallet-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .wallet-action-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 8px; border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    cursor: pointer; box-shadow: var(--shadow); transition: all .15s;
+  }
+  .wallet-action-btn:active { transform: scale(.96); }
+  .wallet-action-icon { font-size: 20px; }
+  .wallet-action-label { font-size: 11px; color: var(--muted); font-weight: 500; text-align: center; line-height: 1.3; }
 
   /* ── BARRA DE BÚSQUEDA ── */
   .search-bar {
@@ -591,9 +678,6 @@
     border-radius: 20px; padding: 20px; margin-bottom: 14px;
     position: relative; overflow: hidden; color: #fff;
     box-shadow: 0 8px 32px rgba(0,0,0,.25);
-  }
-  body.dark .tc-header {
-    background: linear-gradient(135deg, #0f0f1a 0%, #1e1030 50%, #101a10 100%);
   }
   .tc-header::before {
     content: ''; position: absolute; inset: 0;
@@ -1135,7 +1219,7 @@ function showTab(tab) {
   else if (tab === 'gastos')   c.innerHTML = renderGastos();
   else if (tab === 'comparar') c.innerHTML = renderComparar();
   else if (tab === 'metas')    c.innerHTML = renderMetas();
-  else if (tab === 'tarjeta')  c.innerHTML = renderTarjeta();
+  else if (tab === 'tarjeta')  { c.innerHTML = renderTarjeta(); initWalletSwipe(); }
   else if (tab === 'cobros')   c.innerHTML = renderCobros();
   else if (tab === 'config')   c.innerHTML = renderConfig();
   c.scrollTop = 0;
@@ -1403,99 +1487,187 @@ function getCiclosTC(tc) {
 }
 
 // ── RENDER PRINCIPAL TARJETA (múltiples tarjetas) ────────────────────────────
-let _tcTabActiva = 0; // índice de la tarjeta visible
+let _tcTabActiva = 0;
+
+// Colores de gradiente por banco y tipo
+function getCardGradient(banco, tipo) {
+  if (banco === 'Scotiabank Chile') {
+    const scotiaColors = {
+      'Visa Gold (con plan)': '135deg,#1a0040,#3d0080,#0d1a40',
+      'Gold Zero':            '135deg,#002040,#004080,#001428',
+      'Visa Gold':            '135deg,#1a0040,#3d0080,#0d1a40',
+      'Visa Platinum':        '135deg,#1a1a40,#2d2d80,#0d0d28',
+      'Platinum Plus':        '135deg,#0d0d2e,#1a1a50,#080828',
+      'Visa Signature':       '135deg,#1a0a2e,#3a1060,#0a1428',
+      'Mastercard Black':     '135deg,#0a0a0a,#1a1a1a,#050505',
+      'Visa Infinite Air':    '135deg,#001428,#002850,#001020',
+      'Singular Signature':   '135deg,#2a0a1e,#501040,#180614',
+      'Singular Infinite':    '135deg,#1a0a0a,#3a1020,#0f0508',
+    };
+    return scotiaColors[tipo] || '135deg,#1a0040,#3d0080,#0a1428';
+  }
+  // Banco de Chile
+  const bcColors = {
+    'Visa FAN':            '135deg,#1a2a1e,#2d5040,#0f1e14',
+    'Universal':           '135deg,#1e1a2a,#403060,#120e1e',
+    'Visa Dorada':         '135deg,#1e1400,#4a3200,#140e00',
+    'Mastercard Dorada':   '135deg,#1e1400,#4a3200,#140e00',
+    'Visa Platinum':       '135deg,#1a1a2e,#2d2d5e,#0f0f1e',
+    'Mastercard Platinum': '135deg,#1a1a2e,#2d2d5e,#0f0f1e',
+    'Visa Signature':      '135deg,#0f1e28,#1e3d50,#080f14',
+    'Mastercard Black':    '135deg,#0a0a0a,#1a1a1a,#050505',
+    'Visa Infinite':       '135deg,#1a0a28,#3d1060,#0f0514',
+  };
+  return bcColors[tipo] || '135deg,#1a1a2e,#2d1b4e,#1a2a1a';
+}
+
+function getCardAccentColor(banco, tipo) {
+  if (tipo?.includes('Dorada') || tipo?.includes('Gold')) return 'rgba(255,200,80,.15)';
+  if (tipo?.includes('Black') || tipo?.includes('Infinite')) return 'rgba(200,200,200,.08)';
+  if (tipo?.includes('Platinum')) return 'rgba(180,190,210,.12)';
+  if (tipo?.includes('Signature') || tipo?.includes('Singular')) return 'rgba(180,120,220,.12)';
+  return 'rgba(255,255,255,.08)';
+}
 
 function renderTarjeta() {
   const d = getData();
   const tarjetas = d.tarjetas;
-  if (!tarjetas || tarjetas.length === 0) return `<div class="empty"><div class="empty-icon">💳</div><p>Sin tarjetas configuradas.</p></div>`;
+  if (!tarjetas || tarjetas.length === 0) {
+    return `<div style="padding-top:20px">
+      <div class="empty"><div class="empty-icon">💳</div><p>Sin tarjetas configuradas.<br>Agrega tu primera tarjeta.</p></div>
+      <div style="padding:0 16px">
+        <button onclick="openSetupTarjeta()" style="width:100%;padding:16px;background:var(--accent);color:#fff;border:none;border-radius:16px;font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(184,92,56,.3)">
+          + Agregar mi primera tarjeta
+        </button>
+      </div>
+    </div>`;
+  }
+
   const idx = Math.min(_tcTabActiva, tarjetas.length - 1);
   const tc = tarjetas[idx];
-
   const ciclos = getCiclosTC(tc);
   const cicloActivo = ciclos[0];
   const res = calcCicloTC(tc.compras||[], tc.cargosExtra||[], tc, cicloActivo.key);
 
-  // Cupo usado
   const saldoPendiente = (tc.compras||[]).filter(c=>c.activa).reduce((a,c)=>{
     const [cy,cm]=cicloActivo.key.split('-').map(Number);
     const [py,pm]=c.cicloInicio.split('-').map(Number);
-    const cuotaActual=(cy-py)*12+(cm-pm)+1;
-    return a + c.montoCuota * Math.max(c.cuotas-cuotaActual+1,0);
+    const ca=(cy-py)*12+(cm-pm)+1;
+    return a + c.montoCuota * Math.max(c.cuotas-ca+1,0);
   },0);
   const pctCupo = tc.limiteCredito>0 ? Math.min(saldoPendiente/tc.limiteCredito*100,100):0;
-
-  // Color del banco
-  const bancoColor = tc.banco==='Scotiabank Chile'
-    ? 'linear-gradient(135deg,#1a0a2e 0%,#2d1060 50%,#0a1a2e 100%)'
-    : 'linear-gradient(135deg,#1a1a2e 0%,#2d1b4e 50%,#1a2a1a 100%)';
+  const grad = getCardGradient(tc.banco, tc.tipo);
+  const accent = getCardAccentColor(tc.banco, tc.tipo);
 
   let html = '';
 
-  // Selector de tarjetas si hay más de una
+  // ── APPLE WALLET STACK ──────────────────────────────────────────────────────
+  html += `<div class="wallet-stack">`;
+
+  // Tarjetas apiladas detrás (decorativas)
+  tarjetas.forEach((t, i) => {
+    if (i === idx) return;
+    const g = getCardGradient(t.banco, t.tipo);
+    const offset = i < idx ? -(i+1)*6 : (i-idx)*6;
+    const scale = 1 - Math.abs(i-idx)*0.04;
+    html += `<div class="wallet-stack-shadow" style="
+      width:calc(100% - ${8 + Math.abs(i-idx)*8}px);
+      height:190px;
+      background:linear-gradient(${g});
+      bottom:${-offset-6}px;
+      transform:translateX(-50%) scale(${scale});
+      opacity:${0.5 - Math.abs(i-idx)*0.1};
+      z-index:${5-Math.abs(i-idx)};
+    "></div>`;
+  });
+
+  // Tarjeta activa
+  html += `<div class="wallet-card" style="background:linear-gradient(${grad});z-index:10;position:relative"
+    onclick="handleWalletTap(${idx})"
+    onswipe="swipeWallet(event)">
+    <div style="position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,${accent} 0%,transparent 60%);pointer-events:none"></div>
+    <div class="wallet-card-top">
+      <div>
+        <div class="wallet-bank-logo">${tc.banco === 'Scotiabank Chile' ? '🏦 Scotiabank' : '🏦 Banco de Chile'}</div>
+        <div class="wallet-card-type">${tc.alias||tc.tipo}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;opacity:.5;margin-bottom:2px">Próximo pago</div>
+        <div style="font-size:11px;opacity:.75">${cicloActivo.fechaVenc}</div>
+        <div style="font-size:10px;opacity:.45;margin-top:4px">Cierre día ${tc.diaCorte}</div>
+      </div>
+    </div>
+    <div>
+      <div class="wallet-card-amount-label">Total a pagar</div>
+      <div class="wallet-card-amount">${fmt(res.total)}</div>
+    </div>
+    <div class="wallet-card-bottom">
+      <div style="display:flex;gap:16px">
+        <div class="wallet-card-detail">Compras<strong>${fmt(res.totalCompras)}</strong></div>
+        <div class="wallet-card-detail">Mantención<strong>${fmt(res.mantencion)}</strong></div>
+        ${res.totalCargos>0?`<div class="wallet-card-detail">Cargos<strong>${fmt(res.totalCargos)}</strong></div>`:''}
+      </div>
+      ${tc.limiteCredito>0?`<div class="wallet-card-detail" style="text-align:right">
+        Cupo usado<strong>${pctCupo.toFixed(0)}%</strong>
+      </div>`:''}
+    </div>
+    ${tc.limiteCredito>0?`<div class="tc-pct-bar" style="margin-top:10px"><div class="tc-pct-fill" style="width:${pctCupo}%"></div></div>`:''}
+  </div>`;
+
+  html += `</div>`; // wallet-stack
+
+  // Dots navegación
   if (tarjetas.length > 1) {
-    html += `<div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">`;
-    tarjetas.forEach((t,i)=>{
-      const active = i===idx;
-      html += `<button onclick="_tcTabActiva=${i};showTab('tarjeta')" style="
-        flex-shrink:0;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:${active?'600':'400'};
-        background:${active?'var(--accent)':'var(--surface2)'};
-        color:${active?'#fff':'var(--muted)'};
-        border:1px solid ${active?'var(--accent)':'var(--border)'};cursor:pointer">
-        ${t.alias||t.tipo||t.banco}
-      </button>`;
+    html += `<div class="wallet-dots">`;
+    tarjetas.forEach((_,i) => {
+      html += `<div class="wallet-dot${i===idx?' active':''}" onclick="_tcTabActiva=${i};showTab('tarjeta')"></div>`;
     });
     html += `</div>`;
   }
 
-  // Header tarjeta
-  html += `<div class="tc-header" style="background:${bancoColor}">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+  // Acciones rápidas
+  html += `<div class="wallet-actions">
+    <div class="wallet-action-btn" onclick="openAddCompraTC('${tc.id}')">
+      <div class="wallet-action-icon">🛒</div>
+      <div class="wallet-action-label">Nueva compra</div>
+    </div>
+    <div class="wallet-action-btn" onclick="openAddEstadoCuenta('${tc.id}')">
+      <div class="wallet-action-icon">📄</div>
+      <div class="wallet-action-label">Estado anterior</div>
+    </div>
+    <div class="wallet-action-btn" onclick="openConfigTC('${tc.id}')">
+      <div class="wallet-action-icon">⚙️</div>
+      <div class="wallet-action-label">Configurar</div>
+    </div>
+  </div>`;
+
+  // Info tarifa
+  html += `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
       <div>
-        <div class="tc-chip">💳</div>
-        <div class="tc-balance-label">Próximo pago · ${cicloActivo.fechaVenc}</div>
-        <div class="tc-balance">${fmt(res.total)}</div>
+        <div style="font-size:13px;font-weight:500">${tc.banco} · ${tc.tipo}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">
+          Mantención: <strong style="color:var(--purple)">UF ${(tc.mantencionUF||0).toFixed(2)} = ${fmt(Math.round((tc.mantencionUF||0)*(tc.ufValue||38500)))}/mes</strong>
+          ${tc.mantencionSemestralUF>0?`· Semestral: UF ${tc.mantencionSemestralUF.toFixed(2)}`:''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">
+          Tasa con interés: ${(tc.tasaMin||1.5).toFixed(2)}%–${(tc.tasaMax||2.2).toFixed(2)}% mensual
+          · UF: ${fmt(tc.ufValue||38500)}
+        </div>
       </div>
-      <div style="text-align:right">
-        <div style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:3px">${tc.banco||'Banco de Chile'}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.85);font-weight:500">${tc.alias||tc.tipo}</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:4px">Cierre: día ${tc.diaCorte}</div>
-        <button onclick="openConfigTC('${tc.id}')" style="background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;margin-top:6px">✏️ Config</button>
-      </div>
-    </div>
-    <div class="tc-meta">
-      <div class="tc-meta-item">Compras<strong>${fmt(res.totalCompras)}</strong></div>
-      <div class="tc-meta-item">Mantención<strong>${fmt(res.mantencion)}/mes</strong></div>
-      ${res.totalCargos>0?`<div class="tc-meta-item">Otros cargos<strong>${fmt(res.totalCargos)}</strong></div>`:''}
-    </div>
-    ${tc.limiteCredito>0?`
-      <div class="tc-pct-bar"><div class="tc-pct-fill" style="width:${pctCupo}%"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.5);margin-top:5px">
-        <span>Usado: ${fmt(saldoPendiente)}</span><span>Límite: ${fmt(tc.limiteCredito)}</span>
-      </div>`:''}
-  </div>`;
-
-  // Aviso UF actualizada
-  html += `<div style="background:rgba(124,100,151,.08);border:1px solid rgba(124,100,151,.2);border-radius:12px;padding:10px 14px;margin-bottom:12px">
-    <div style="font-size:12px;color:var(--muted);line-height:1.6">
-      💡 <strong style="color:var(--purple)">${tc.banco}</strong> · ${tc.tipo} ·
-      Mantención: <strong style="color:var(--purple)">UF ${tc.mantencionUF.toFixed(2)} = ${fmt(Math.round(tc.mantencionUF*tc.ufValue))}/mes</strong>
-      ${tc.mantencionSemestralUF>0?`· Cargo semestral adicional: UF ${tc.mantencionSemestralUF.toFixed(2)}`:''}
-      <br>Tasa cuotas con interés: <strong>${(tc.tasaMin||1.5).toFixed(2)}% – ${(tc.tasaMax||2.2).toFixed(2)}%</strong> mensual.
-      UF actualizada automáticamente: <strong>${fmt(tc.ufValue)}</strong>
     </div>
   </div>`;
 
-  // Compras del ciclo
+  // Compras ciclo actual
   html += `<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:0">Compras ciclo actual</div>
-      <button onclick="openAddCompraTC('${tc.id}')" style="background:rgba(184,92,56,.12);border:1px solid rgba(184,92,56,.3);color:var(--accent);border-radius:10px;padding:6px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer;font-weight:600">+ Agregar</button>
+      <button onclick="openAddCompraTC('${tc.id}')" style="background:rgba(184,92,56,.12);border:1px solid rgba(184,92,56,.3);color:var(--accent);border-radius:10px;padding:6px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer;font-weight:600">+ Agregar</button>
     </div>`;
 
   const comprasActivas = (tc.compras||[]).filter(c=>c.activa);
   if (comprasActivas.length===0) {
-    html+=`<div class="empty" style="padding:20px 0"><div class="empty-icon" style="font-size:28px">🛒</div><p style="font-size:13px">Sin compras registradas.</p></div>`;
+    html+=`<div class="empty" style="padding:16px 0"><div class="empty-icon" style="font-size:28px">🛒</div><p style="font-size:13px">Sin compras. Toca + para agregar.</p></div>`;
   } else {
     comprasActivas.forEach(c=>{
       const [cy,cm]=cicloActivo.key.split('-').map(Number);
@@ -1503,31 +1675,30 @@ function renderTarjeta() {
       const cuotaActual=(cy-py)*12+(cm-pm)+1;
       const cuotasRestantes=Math.max(c.cuotas-cuotaActual+1,0);
       const enEsteCiclo=cuotaActual>=1&&cuotaActual<=c.cuotas;
-      const fromTxBadge = c.fromTx ? `<span style="font-size:9px;background:var(--surface2);border-radius:6px;padding:1px 5px;color:var(--muted);margin-left:4px">desde movimiento</span>` : '';
       html+=`<div class="tc-compra-item" onclick="openEditCompraTC('${c.id}','${tc.id}')">
         <div class="tc-compra-icon">${c.emoji||'🛍️'}</div>
         <div class="tc-compra-info">
-          <div class="tc-compra-name">${c.desc}${fromTxBadge}</div>
+          <div class="tc-compra-name">${c.desc}${c.fromTx?` <span style="font-size:9px;background:var(--surface2);border-radius:6px;padding:1px 5px;color:var(--muted)">mov.</span>`:''}</div>
           <div class="tc-compra-meta">
-            ${c.tipo==='contado'?'<span class="cuota-badge contado">Al contado</span>':
-              c.tipo==='sin_interes'?`<span class="cuota-badge sin-int">Sin interés</span> ${cuotaActual}/${c.cuotas}`:
-              `<span class="cuota-badge con-int">Con interés</span> ${cuotaActual}/${c.cuotas}`}
+            ${c.tipo==='contado'?'<span class="cuota-badge contado">Contado</span>':
+              c.tipo==='sin_interes'?`<span class="cuota-badge sin-int">Sin interés</span> · ${cuotaActual}/${c.cuotas}`:
+              `<span class="cuota-badge con-int">Con interés</span> · ${cuotaActual}/${c.cuotas}`}
           </div>
         </div>
         <div class="tc-compra-amt">
           <div class="tc-compra-total">${enEsteCiclo?fmt(c.montoCuota):'—'}</div>
-          ${c.cuotas>1?`<div class="tc-compra-restante">${cuotasRestantes} cuota${cuotasRestantes!==1?'s':''} restantes</div>`:''}
+          ${c.cuotas>1?`<div class="tc-compra-restante">${cuotasRestantes}c restantes</div>`:''}
         </div>
       </div>`;
     });
   }
   html+=`</div>`;
 
-  // Proyección 3 meses
+  // Proyección
   const proyeccion=ciclos.slice(1,4).map(cic=>({...cic,total:calcCicloTC(tc.compras||[],tc.cargosExtra||[],tc,cic.key).total}));
   const maxProj=Math.max(...proyeccion.map(p=>p.total),1);
   if (proyeccion.some(p=>p.total>0)) {
-    html+=`<div class="card"><div class="card-title">Comprometido próximos 3 meses</div>`;
+    html+=`<div class="card"><div class="card-title">Comprometido próximos meses</div>`;
     proyeccion.forEach(p=>{
       html+=`<div class="tc-proj-row">
         <div class="tc-proj-mes">${MONTHS[parseInt(p.key.slice(5))-1].slice(0,3)} ${p.key.slice(2,4)}</div>
@@ -1540,31 +1711,23 @@ function renderTarjeta() {
 
   // Cargos fijos
   html+=`<div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div class="card-title" style="margin-bottom:0">Cargos fijos banco</div>
-      <button onclick="openAddCargoTC('${tc.id}')" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:6px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer">+ Cargo</button>
+      <button onclick="openAddCargoTC('${tc.id}')" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer">+ Cargo</button>
     </div>
     <div class="setting-row" style="padding:10px 0">
       <span style="font-size:13px">🔧 Mantención mensual</span>
-      <span style="font-size:13px;font-weight:600;color:var(--purple)">UF ${tc.mantencionUF.toFixed(2)} = ${fmt(Math.round(tc.mantencionUF*tc.ufValue))}</span>
+      <span style="font-weight:600;color:var(--purple)">UF ${(tc.mantencionUF||0).toFixed(2)} = ${fmt(Math.round((tc.mantencionUF||0)*(tc.ufValue||38500)))}</span>
     </div>
-    ${tc.mantencionSemestralUF>0?`<div class="setting-row" style="padding:6px 0;border:none">
-      <span style="font-size:12px;color:var(--muted)">Cargo semestral</span>
-      <span style="font-size:12px;color:var(--purple)">UF ${tc.mantencionSemestralUF.toFixed(2)} = ${fmt(Math.round(tc.mantencionSemestralUF*tc.ufValue))}</span>
-    </div>`:''}
-    ${(tc.cargosExtra||[]).map(x=>`
-      <div class="setting-row" style="padding:10px 0" onclick="openEditCargoTC('${x.id}','${tc.id}')">
-        <span style="font-size:13px">${x.emoji||'💰'} ${x.desc}</span>
-        <span style="font-size:13px;font-weight:600;color:${x.activo?'var(--red)':'var(--muted)'}">${x.activo?fmt(x.monto):'Inactivo'}</span>
-      </div>`).join('')}
+    ${tc.mantencionSemestralUF>0?`<div class="setting-row" style="padding:6px 0"><span style="font-size:12px;color:var(--muted)">Cargo semestral</span><span style="color:var(--purple)">UF ${tc.mantencionSemestralUF.toFixed(2)} = ${fmt(Math.round(tc.mantencionSemestralUF*(tc.ufValue||38500)))}</span></div>`:''}
+    ${(tc.cargosExtra||[]).map(x=>`<div class="setting-row" style="padding:10px 0" onclick="openEditCargoTC('${x.id}','${tc.id}')"><span>${x.emoji||'💰'} ${x.desc}</span><span style="font-weight:600;color:${x.activo?'var(--red)':'var(--muted)'}">${x.activo?fmt(x.monto):'Inactivo'}</span></div>`).join('')}
   </div>`;
 
   // Calculadora
-  const tasaDefault = (tc.tasaMin||1.50)/100;
   html+=`<div class="card">
     <div class="card-title">🧮 Calculadora de cuotas</div>
-    <div class="info-box" style="margin-bottom:12px">Simula el costo real <strong>antes</strong> de comprar. Tasa ${tc.banco}: ${(tc.tasaMin||1.50).toFixed(2)}% – ${(tc.tasaMax||2.20).toFixed(2)}% mensual.</div>
-    <div class="field"><label>Monto ($)</label><input type="number" id="calc-monto" placeholder="Ej: 150000" inputmode="numeric" oninput="calcCuotasTC()"></div>
+    <div class="info-box" style="margin-bottom:12px">Simula el costo real <strong>antes</strong> de comprar.</div>
+    <div class="field"><label>Monto ($)</label><input type="number" id="calc-monto" placeholder="150000" inputmode="numeric" oninput="calcCuotasTC()"></div>
     <div class="field"><label>Cuotas</label>
       <select id="calc-cuotas" onchange="calcCuotasTC()">
         <option value="1">1 cuota (contado)</option>
@@ -1580,15 +1743,100 @@ function renderTarjeta() {
     <div id="calc-resultado"></div>
   </div>`;
 
-  // Botón agregar tarjeta + config
+  // Gestión
   html+=`<div class="card">
-    <div class="card-title">⚙️ Gestión de tarjetas</div>
-    <button onclick="addNuevaTarjeta()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;cursor:pointer;margin-bottom:8px">+ Agregar otra tarjeta</button>
-    <button onclick="openAddEstadoCuenta('${tc.id}')" style="width:100%;padding:12px;background:rgba(124,100,151,.1);border:1px solid rgba(124,100,151,.25);color:var(--purple);border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;cursor:pointer">📄 Ingresar estado de cuenta anterior</button>
+    <div class="card-title">Gestión de tarjetas</div>
+    <button onclick="openSetupTarjeta()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;cursor:pointer;margin-bottom:8px">
+      ${tarjetas.length > 1 ? `💳 Mis ${tarjetas.length} tarjetas` : '+ Agregar otra tarjeta'}
+    </button>
   </div>`;
 
   return html;
 }
+
+function handleWalletTap(idx) {
+  // Swipe-like: if more than one card, tap cycles through
+  // For now just open config on double-tap simulation
+}
+
+// ── SETUP WIZARD: elegir banco y tarjetas ─────────────────────────────────────
+function openSetupTarjeta() {
+  const d = getData();
+  document.getElementById('sheet-content').innerHTML = `
+    <div class="sheet-title">💳 Mis tarjetas</div>
+    <div class="info-box" style="margin-bottom:16px">
+      Gestiona tus tarjetas. Cada una tiene sus propios movimientos y ciclo de facturación.
+    </div>
+
+    <!-- Tarjetas existentes -->
+    ${d.tarjetas.map((t,i)=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:linear-gradient(${getCardGradient(t.banco,t.tipo)});margin-bottom:10px;cursor:pointer" onclick="openConfigTC('${t.id}')">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:#fff">${t.alias||t.tipo}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:2px">${t.banco} · UF ${(t.mantencionUF||0).toFixed(2)}/mes</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5)">Cierre: día ${t.diaCorte} · Vence: +${t.diasVencimiento}d</div>
+        </div>
+        <div style="text-align:right">
+          ${i===_tcTabActiva?'<span style="font-size:10px;background:rgba(255,255,255,.2);color:#fff;padding:2px 8px;border-radius:99px">ACTIVA</span>':''}
+          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px">✏️ Configurar</div>
+        </div>
+      </div>
+    `).join('')}
+
+    <!-- Agregar nueva -->
+    <div style="margin-top:8px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">Agregar nueva tarjeta</div>
+    ${Object.entries(TARIFARIOS).map(([banco, tarjetas])=>`
+      <div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">${banco === 'Scotiabank Chile' ? '🏦 Scotiabank Chile' : '🏦 Banco de Chile'}</div>
+        ${tarjetas.map(t=>`
+          <div class="card-picker-item" onclick="quickAddTarjeta('${banco}','${t.tipo}')">
+            <div class="card-picker-preview" style="background:linear-gradient(${getCardGradient(banco,t.tipo)})">💳</div>
+            <div class="card-picker-info">
+              <div class="card-picker-name">${t.tipo}</div>
+              <div class="card-picker-fee">${t.uf===0?'Sin mantención':`UF ${t.uf.toFixed(2)}/mes`}${t.semUF>0?` + UF ${t.semUF.toFixed(2)} semestral`:''} · ${t.nota}</div>
+            </div>
+            <div style="font-size:18px;color:var(--muted)">+</div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('')}
+  `;
+  openSheet();
+}
+
+function quickAddTarjeta(banco, tipo) {
+  const d = getData();
+  const tarjInfo = (TARIFARIOS[banco]||[]).find(t=>t.tipo===tipo);
+  if (!tarjInfo) return;
+  // Check if already exists
+  const existe = d.tarjetas.find(t=>t.banco===banco && t.tipo===tipo);
+  if (existe) {
+    alert(`Ya tienes una tarjeta ${tipo} de ${banco}. Puedes configurarla desde el módulo.`);
+    closeSheet();
+    _tcTabActiva = d.tarjetas.indexOf(existe);
+    showTab('tarjeta');
+    return;
+  }
+  const nueva = {
+    id: 'tc_' + Date.now(),
+    banco, tipo, alias: '',
+    diaCorte: 5, diasVencimiento: 12,
+    limiteCredito: 0,
+    mantencionUF: tarjInfo.uf,
+    mantencionSemestralUF: tarjInfo.semUF || 0,
+    tasaMin: tarjInfo.tasaMin, tasaMax: tarjInfo.tasaMax,
+    ufValue: d.tarjetas[0]?.ufValue || 38500,
+    compras: [], cargosExtra: [],
+  };
+  d.tarjetas.push(nueva);
+  save(d);
+  _tcTabActiva = d.tarjetas.length - 1;
+  closeSheet();
+  showTab('tarjeta');
+}
+
+function addNuevaTarjeta() { openSetupTarjeta(); }
+
 
 
 // ── SHEET: AGREGAR COMPRA TC ─────────────────────────────────────────────────
@@ -3299,6 +3547,31 @@ async function fetchUFActual() {
   return null;
 }
 
+// ── SWIPE ENTRE TARJETAS (Apple Wallet) ──────────────────────────────────────
+let _swipeStartX = 0, _swipeStartY = 0;
+
+function initWalletSwipe() {
+  const content = document.getElementById('content');
+  if (!content || content._swipeInit) return;
+  content._swipeInit = true;
+  content.addEventListener('touchstart', e => {
+    _swipeStartX = e.touches[0].clientX;
+    _swipeStartY = e.touches[0].clientY;
+  }, { passive: true });
+  content.addEventListener('touchend', e => {
+    if (window.currentTab !== 'tarjeta') return;
+    const dx = e.changedTouches[0].clientX - _swipeStartX;
+    const dy = e.changedTouches[0].clientY - _swipeStartY;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+    const d = getData();
+    if (!d.tarjetas || d.tarjetas.length < 2) return;
+    _tcTabActiva = dx < 0
+      ? Math.min(_tcTabActiva + 1, d.tarjetas.length - 1)
+      : Math.max(_tcTabActiva - 1, 0);
+    showTab('tarjeta');
+  }, { passive: true });
+}
+
 // ── MODO OSCURO: persistencia CSS ─────────────────────────────────────────────
 // Se aplica antes del render para evitar flash de pantalla blanca
 (function() {
@@ -3307,30 +3580,31 @@ async function fetchUFActual() {
   }
 })();
 function toggleDarkMode() {
-  const isDark = document.body.classList.toggle('dark');
+  const isDark = document.documentElement.classList.toggle('dark');
+  document.body.classList.toggle('dark', isDark);
   localStorage.setItem('darkMode', isDark ? '1' : '0');
-  document.getElementById('btn-dark').textContent = isDark ? '☀️' : '🌙';
+  const btn = document.getElementById('btn-dark');
+  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
   applyThemeColor(isDark);
+  if (window.currentTab === 'config') showTab('config');
 }
 
 function applyThemeColor(isDark) {
   const color = isDark ? '#141414' : '#f5f0e8';
   const meta = document.getElementById('meta-theme-color');
   if (meta) meta.setAttribute('content', color);
-  // iOS status bar
-  const apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  if (apple) apple.setAttribute('content', isDark ? 'black' : 'black-translucent');
 }
 
 function initDarkMode() {
-  const saved = localStorage.getItem('darkMode');
-  const isDark = saved === '1';
+  const isDark = localStorage.getItem('darkMode') === '1';
   if (isDark) {
+    document.documentElement.classList.add('dark');
     document.body.classList.add('dark');
     const btn = document.getElementById('btn-dark');
     if (btn) btn.textContent = '☀️';
   }
   applyThemeColor(isDark);
+  document.documentElement.classList.remove('dark-init');
 }
 
 // ── CIERRE AUTOMÁTICO DE MES ──────────────────────────────────────────────────
