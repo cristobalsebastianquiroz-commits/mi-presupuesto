@@ -1162,6 +1162,33 @@ function getCat(id) {
   return getAllCats().find(c => c.id === id) || BASE_CATS[0];
 }
 
+// ── FUNCIONES DE MES Y SNAPSHOTS ──────────────────────────────────────────────
+function getCurrentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+}
+
+function snapshotMonth(d, mk) {
+  if (!d.monthSnapshots) d.monthSnapshots = {};
+  d.monthSnapshots[mk] = {
+    customCats: JSON.parse(JSON.stringify(d.customCats || [])),
+    presupuesto: JSON.parse(JSON.stringify((d.presupuestos||{})[mk] || {})),
+    snapDate: new Date().toISOString(),
+  };
+}
+
+function getCatsForMonth(d, mk) {
+  const snap = d.monthSnapshots && d.monthSnapshots[mk];
+  if (snap && snap.customCats) return [...BASE_CATS, ...snap.customCats];
+  return [...BASE_CATS, ...(d.customCats||[])];
+}
+
+function getCatForMonth(id, mk) {
+  const d = getData();
+  const cats = getCatsForMonth(d, mk);
+  return cats.find(c => c.id === id) || BASE_CATS[0];
+}
+
 function getTotals(d) {
   const txs = getMonthTxs(d);
   const ingresos = txs.filter(t => t.cat === 'ingreso').reduce((a,t) => a + t.monto, 0);
@@ -2533,17 +2560,26 @@ function renderMetas() {
   const completadas = d.metas.filter(m => m.completada);
 
   const renderMeta = (m) => {
-    const totalAhorrado = (m.baseAhorrado||0) + (m.ahorroVinculado||0) + (m.ahorrado||0);
+    // Total ahorrado = base manual + abonos registrados vía tx + aportes directos
+    const totalAhorrado = Math.max(
+      (m.baseAhorrado||0) + (m.ahorroVinculado||0) + (m.ahorrado||0),
+      aporteHistorico + (m.baseAhorrado||0)
+    );
     const pct = m.objetivo > 0 ? Math.min(totalAhorrado / m.objetivo * 100, 100) : 0;
     const restante = Math.max(m.objetivo - totalAhorrado, 0);
     const mesesRestantes = (m.mensual > 0 && restante > 0) ? Math.ceil(restante / m.mensual) : null;
     const barColor = pct >= 100 ? 'green' : pct >= 70 ? 'accent' : pct >= 40 ? 'yellow' : 'accent';
 
-    // Calcular aportes del mes actual
+    // Calcular aportes del mes actual a esta meta específica (por metaId en tx)
     const mesActual = monthKey(d);
     const aporteMes = d.txs
       .filter(t => t.cat === 'ahorro' && t.month === mesActual && t.metaId === m.id)
-      .reduce((a,t) => a+t.monto, 0);
+      .reduce((a,t) => a + t.monto, 0);
+
+    // Total aportado históricamente a esta meta (por metaId)
+    const aporteHistorico = d.txs
+      .filter(t => t.cat === 'ahorro' && t.metaId === m.id)
+      .reduce((a,t) => a + t.monto, 0);
 
     return `<div class="meta-card" onclick="openEditMeta('${m.id}')">
       <div class="meta-top">
@@ -3446,6 +3482,9 @@ function deleteMeta(id) {
   closeSheet();
   showTab('metas');
 }
+
+// Alias — algunas partes del código llaman saveNewMeta
+const saveNewMeta = saveMeta;
 
 // ── SHEET: CATEGORÍAS PERSONALIZADAS ─────────────────────────────────────────
 function openAddCat() {
