@@ -1800,51 +1800,71 @@ function openSetupTarjeta() {
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-handle"></div>
     <div class="sheet-title">Agregar tarjeta</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">¿De qué banco es tu tarjeta?</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px">¿De qué banco es tu tarjeta?</div>
 
-    <div onclick="wizardElegirTarjeta('Banco de Chile')" style="display:flex;align-items:center;gap:16px;padding:18px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);margin-bottom:12px;cursor:pointer;box-shadow:var(--shadow)">
+    <button onclick="wizardElegirTarjeta('Banco de Chile')" style="
+      width:100%;display:flex;align-items:center;gap:16px;padding:18px;
+      border-radius:16px;border:1.5px solid var(--border);
+      background:var(--surface);margin-bottom:12px;cursor:pointer;
+      box-shadow:var(--shadow);text-align:left;font-family:'Plus Jakarta Sans',sans-serif">
       <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#1e1400,#4a3200);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏦</div>
       <div style="flex:1">
-        <div style="font-size:15px;font-weight:600">Banco de Chile</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">Visa FAN, Dorada, Platinum, Signature, Infinite...</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text)">Banco de Chile</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Visa FAN, Dorada, Platinum, Signature, Infinite...</div>
       </div>
-      <div style="color:var(--muted);font-size:20px">›</div>
-    </div>
+      <div style="color:var(--muted);font-size:22px;font-weight:300">›</div>
+    </button>
 
-    <div onclick="wizardElegirTarjeta('Scotiabank Chile')" style="display:flex;align-items:center;gap:16px;padding:18px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;box-shadow:var(--shadow)">
+    <button onclick="wizardElegirTarjeta('Scotiabank Chile')" style="
+      width:100%;display:flex;align-items:center;gap:16px;padding:18px;
+      border-radius:16px;border:1.5px solid var(--border);
+      background:var(--surface);cursor:pointer;
+      box-shadow:var(--shadow);text-align:left;font-family:'Plus Jakarta Sans',sans-serif">
       <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#1a0040,#3d0080);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏦</div>
       <div style="flex:1">
-        <div style="font-size:15px;font-weight:600">Scotiabank Chile</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">Gold Zero, Platinum, Signature, Black, Infinite Air...</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text)">Scotiabank Chile</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Gold Zero, Platinum, Signature, Black, Infinite Air...</div>
       </div>
-      <div style="color:var(--muted);font-size:20px">›</div>
-    </div>
+      <div style="color:var(--muted);font-size:22px;font-weight:300">›</div>
+    </button>
   `;
   openSheet();
 }
 
 function wizardElegirTarjeta(banco) {
   const tarjetas = TARIFARIOS[banco] || [];
-  document.getElementById('sheet-content').innerHTML = `
-    <div class="sheet-handle"></div>
-    <button onclick="openSetupTarjeta()" style="background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:0;margin-bottom:8px">‹ Volver</button>
-    <div class="sheet-title" style="margin-bottom:4px">Selecciona tu tarjeta</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">${banco}</div>
-
-    ${tarjetas.map(t => `
-      <div onclick="wizardConfirmarTarjeta('${banco}','${t.tipo}')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;border:1.5px solid var(--border);background:var(--surface);margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow)">
-        <div style="width:44px;height:30px;border-radius:8px;background:linear-gradient(${getCardGradient(banco,t.tipo)});flex-shrink:0"></div>
+  let items = '';
+  tarjetas.forEach(t => {
+    const grad = getCardGradient(banco, t.tipo);
+    const fee = t.uf === 0 ? '✅ Sin mantención' : `📅 UF ${t.uf.toFixed(2)}/mes`;
+    const sem = t.semUF > 0 ? ` + UF ${t.semUF.toFixed(2)} semestral` : '';
+    // Encode tipo to avoid quote issues
+    const tipoEncoded = t.tipo.replace(/'/g, '&#39;');
+    const bancoEncoded = banco.replace(/'/g, '&#39;');
+    items += `
+      <button onclick="wizardConfirmarTarjeta('${bancoEncoded}','${tipoEncoded}')" style="
+        width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;
+        border-radius:14px;border:1.5px solid var(--border);background:var(--surface);
+        margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow);
+        text-align:left;font-family:'Plus Jakarta Sans',sans-serif">
+        <div style="width:44px;height:30px;border-radius:8px;background:linear-gradient(${grad});flex-shrink:0"></div>
         <div style="flex:1">
-          <div style="font-size:14px;font-weight:500">${t.tipo}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">
-            ${t.uf === 0 ? '✅ Sin mantención' : `📅 UF ${t.uf.toFixed(2)}/mes`}${t.semUF > 0 ? ` + UF ${t.semUF.toFixed(2)} semestral` : ''}
-          </div>
+          <div style="font-size:14px;font-weight:500;color:var(--text)">${t.tipo}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${fee}${sem}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:1px;line-height:1.4">${t.nota}</div>
         </div>
-        <div style="color:var(--muted);font-size:20px">›</div>
-      </div>
-    `).join('')}
+        <div style="color:var(--muted);font-size:20px;font-weight:300">›</div>
+      </button>`;
+  });
+
+  document.getElementById('sheet-content').innerHTML = `
+    <div class="sheet-handle"></div>
+    <button onclick="openSetupTarjeta()" style="background:none;border:none;color:var(--accent);font-size:15px;cursor:pointer;padding:0 0 8px;font-family:'Plus Jakarta Sans',sans-serif;display:block">‹ Volver</button>
+    <div class="sheet-title" style="margin-bottom:4px">Selecciona tu tarjeta</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">${banco}</div>
+    ${items}
   `;
+  openSheet();
 }
 
 function wizardConfirmarTarjeta(banco, tipo) {
@@ -1853,43 +1873,54 @@ function wizardConfirmarTarjeta(banco, tipo) {
   const d = getData();
   const ufActual = d.tarjetas[0]?.ufValue || 38500;
   const mantencionEst = Math.round(tarjInfo.uf * ufActual);
+  const grad = getCardGradient(banco, tipo);
+  const bancoE = banco.replace(/'/g,'&#39;');
+  const tipoE  = tipo.replace(/'/g,'&#39;');
 
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-handle"></div>
-    <button onclick="wizardElegirTarjeta('${banco}')" style="background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:0;margin-bottom:8px">‹ Volver</button>
-    <div class="sheet-title" style="margin-bottom:16px">Configurar tarjeta</div>
+    <button onclick="wizardElegirTarjeta('${bancoE}')" style="background:none;border:none;color:var(--accent);font-size:15px;cursor:pointer;padding:0 0 8px;font-family:'Plus Jakarta Sans',sans-serif;display:block">‹ Volver</button>
+    <div class="sheet-title" style="margin-bottom:16px">Confirmar tarjeta</div>
 
-    <div style="height:80px;border-radius:16px;background:linear-gradient(${getCardGradient(banco,tipo)});margin-bottom:20px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 6px 24px rgba(0,0,0,.25);overflow:hidden;position:relative">
+    <div style="height:80px;border-radius:16px;background:linear-gradient(${grad});margin-bottom:20px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 6px 24px rgba(0,0,0,.25);overflow:hidden;position:relative">
       <div style="position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.06);right:-30px;top:-30px;pointer-events:none"></div>
       <div style="font-size:10px;color:rgba(255,255,255,.6);font-weight:700;letter-spacing:1.5px;text-transform:uppercase">${banco}</div>
       <div style="font-size:15px;font-weight:600;color:#fff">${tipo}</div>
     </div>
 
-    <div class="info-box" style="margin-bottom:18px">
+    <div class="info-box" style="margin-bottom:18px;line-height:1.8">
       ${tarjInfo.uf === 0
         ? '✅ <strong style="color:var(--green)">Sin mantención mensual</strong>'
         : `📅 Mantención: <strong style="color:var(--purple)">UF ${tarjInfo.uf.toFixed(2)} ≈ $${mantencionEst.toLocaleString('es-CL')}/mes</strong>`}
       ${tarjInfo.semUF > 0 ? `<br>📅 Cargo semestral: <strong>UF ${tarjInfo.semUF.toFixed(2)}</strong>` : ''}
-      <br>💳 Tasa cuotas con interés: <strong>${tarjInfo.tasaMin.toFixed(2)}% – ${tarjInfo.tasaMax.toFixed(2)}%</strong> mensual
-      <br><span style="opacity:.75">${tarjInfo.nota}</span>
+      <br>💳 Tasa con interés: <strong>${tarjInfo.tasaMin}%–${tarjInfo.tasaMax}% mensual</strong>
+      <br><span style="opacity:.7;font-size:11px">${tarjInfo.nota}</span>
     </div>
 
-    <div class="field"><label>Nombre o alias (opcional)</label>
+    <div class="field">
+      <label>Alias / nombre (opcional)</label>
       <input type="text" id="wiz-alias" placeholder="Ej: Mi Visa Dorada, Principal...">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="field"><label>Día de corte</label>
+      <div class="field">
+        <label>Día de corte</label>
         <input type="number" id="wiz-corte" value="5" min="1" max="28" inputmode="numeric">
       </div>
-      <div class="field"><label>Días al vencimiento</label>
+      <div class="field">
+        <label>Días al vencimiento</label>
         <input type="number" id="wiz-venc" value="12" min="1" max="30" inputmode="numeric">
       </div>
     </div>
-    <div class="field"><label>Límite de crédito (opcional, $)</label>
+    <div class="field">
+      <label>Límite de crédito (opcional, $)</label>
       <input type="number" id="wiz-limite" value="0" inputmode="numeric">
     </div>
-    <button class="btn-primary" onclick="wizardGuardarTarjeta('${banco}','${tipo}')">Agregar tarjeta</button>
+
+    <button class="btn-primary" onclick="wizardGuardarTarjeta('${bancoE}','${tipoE}')">
+      Agregar tarjeta ✓
+    </button>
   `;
+  openSheet();
 }
 
 function wizardGuardarTarjeta(banco, tipo) {
@@ -1922,24 +1953,38 @@ function addNuevaTarjeta() { openSetupTarjeta(); }
 
 function openGestionTarjetas() {
   const d = getData();
+  let items = '';
+  d.tarjetas.forEach((t, i) => {
+    const grad = getCardGradient(t.banco, t.tipo);
+    const activeLabel = i === _tcTabActiva
+      ? `<span style="font-size:10px;background:rgba(255,255,255,.2);color:#fff;padding:3px 10px;border-radius:99px;font-weight:600;white-space:nowrap">ACTIVA</span>`
+      : `<span style="color:rgba(255,255,255,.5);font-size:14px">✏️</span>`;
+    items += `
+      <button onclick="_tcTabActiva=${i};closeSheet();showTab('tarjeta');openConfigTC('${t.id}')" style="
+        width:100%;display:flex;align-items:center;gap:14px;padding:14px;
+        border-radius:14px;margin-bottom:10px;cursor:pointer;
+        background:linear-gradient(${grad});border:none;
+        box-shadow:0 4px 16px rgba(0,0,0,.2);text-align:left;
+        font-family:'Plus Jakarta Sans',sans-serif">
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;color:#fff">${t.alias || t.tipo}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:2px">${t.banco}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:1px">
+            ${t.mantencionUF > 0 ? `UF ${t.mantencionUF.toFixed(2)}/mes` : 'Sin mantención'}
+            · Corte: día ${t.diaCorte}
+          </div>
+        </div>
+        ${activeLabel}
+      </button>`;
+  });
+
   document.getElementById('sheet-content').innerHTML = `
     <div class="sheet-handle"></div>
     <div class="sheet-title">Mis tarjetas</div>
-
-    ${d.tarjetas.length === 0 ? `<div class="empty" style="padding:20px 0"><div class="empty-icon">💳</div><p>Sin tarjetas todavía.</p></div>` : ''}
-
-    ${d.tarjetas.map((t, i) => `
-      <div onclick="openConfigTC('${t.id}')" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;margin-bottom:10px;cursor:pointer;background:linear-gradient(${getCardGradient(t.banco,t.tipo)});box-shadow:0 4px 16px rgba(0,0,0,.2)">
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:600;color:#fff">${t.alias || t.tipo}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:2px">${t.banco} · ${t.mantencionUF > 0 ? `UF ${t.mantencionUF.toFixed(2)}/mes` : 'Sin mantención'}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:1px">Corte: día ${t.diaCorte} · Vence: +${t.diasVencimiento}d</div>
-        </div>
-        ${i === _tcTabActiva ? `<span style="font-size:10px;background:rgba(255,255,255,.2);color:#fff;padding:3px 10px;border-radius:99px;font-weight:600;white-space:nowrap">ACTIVA</span>` : `<div style="color:rgba(255,255,255,.5);font-size:16px">✏️</div>`}
-      </div>
-    `).join('')}
-
-    <button class="btn-primary" style="margin-top:4px" onclick="openSetupTarjeta()">+ Agregar nueva tarjeta</button>
+    ${d.tarjetas.length === 0
+      ? `<div class="empty" style="padding:20px 0"><div class="empty-icon">💳</div><p>Sin tarjetas todavía.</p></div>`
+      : items}
+    <button class="btn-primary" onclick="openSetupTarjeta()">+ Agregar nueva tarjeta</button>
   `;
   openSheet();
 }
