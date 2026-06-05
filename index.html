@@ -74,6 +74,16 @@
     --input-bg:  #272727;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  /* Permitir scroll táctil en contenedores scrollables */
+  .sheet, #content, .emoji-grid, .chart-wrap, .month-bar { touch-action: pan-y; }
+  /* Cualquier elemento con cursor:pointer debe ser tappable en móvil */
+  [onclick], .cat-item, .tx-item, .meta-card, .deudor-card, .comp-month-row,
+  .meta-selector-item, .emoji-opt, .wallet-action-btn, .tc-compra-item,
+  .setting-row[onclick], .recur-card { cursor: pointer; -webkit-user-select: none; user-select: none; }
+  /* Feedback táctil visual */
+  .cat-item:active, .tx-item:active, .meta-card:active, .deudor-card:active,
+  .comp-month-row:active, .meta-selector-item:active, .emoji-opt:active,
+  .wallet-action-btn:active, .tc-compra-item:active { opacity: .7; }
   html, body {
     height: 100%;
     background: var(--bg);
@@ -220,6 +230,7 @@
     z-index: 200; opacity: 0; pointer-events: none;
     transition: opacity .25s;
     backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
   }
   .overlay.open { opacity: 1; pointer-events: all; }
   .sheet {
@@ -231,7 +242,11 @@
     padding: 20px 20px calc(24px + var(--safe));
     z-index: 201;
     transition: transform .3s cubic-bezier(.32,1,.6,1);
-    max-height: 90dvh; overflow-y: auto;
+    max-height: 90dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
     box-shadow: 0 -8px 40px rgba(44,36,22,.15);
   }
   .sheet.open { transform: translateX(-50%) translateY(0); }
@@ -508,7 +523,74 @@
   .medio-pago-count { font-size: 11px; color: var(--muted); margin-top: 1px; }
   .medio-pago-amt { font-size: 16px; font-weight: 600; font-family: 'Lora', serif; }
 
-  /* ── RECURRENTES ── */
+  /* ── BOTONES QUE REEMPLAZAN DIVS INTERACTIVOS ─────────────────────────────── */
+  /* tx-item como button */
+  button.tx-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+    width: 100%;
+  }
+  button.tx-item:last-child { border-bottom: none; }
+  /* cat-item como button */
+  button.cat-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 0; border-bottom: 1px solid var(--border);
+    width: 100%;
+  }
+  button.cat-item:last-child { border-bottom: none; }
+  /* meta-card como button */
+  button.meta-card {
+    display: block; border-radius: var(--radius);
+    padding: 16px; margin-bottom: 12px;
+    box-shadow: var(--shadow);
+    width: 100%;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  button.meta-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+  /* meta-selector-item como button */
+  button.meta-selector-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px;
+    margin-bottom: 8px; width: 100%;
+  }
+  /* deudor-card como button */
+  button.deudor-card {
+    display: block; border-radius: var(--radius);
+    padding: 16px; margin-bottom: 10px;
+    box-shadow: var(--shadow); width: 100%;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  button.deudor-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+  button.deudor-card.pagado { opacity: .55; border-style: dashed; }
+  /* comp-month-row como button */
+  button.comp-month-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+    width: 100%;
+  }
+  button.comp-month-row:last-child { border-bottom: none; }
+  /* tc-compra-item como button */
+  button.tc-compra-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 0; border-bottom: 1px solid var(--border);
+    width: 100%;
+  }
+  button.tc-compra-item:last-child { border-bottom: none; }
+  /* wallet-action-btn como button */
+  button.wallet-action-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 8px; border-radius: 14px;
+    box-shadow: var(--shadow);
+    flex: 1;
+  }
+  /* emoji-opt como button */
+  button.emoji-opt {
+    padding: 8px; border-radius: 8px;
+    font-size: 20px; text-align: center;
+    transition: all .15s;
+  }
+  button.emoji-opt:hover { background: var(--surface2); }
+  button.emoji-opt.selected { border-color: var(--accent) !important; background: rgba(184,92,56,.1); }
   .recur-card {
     background: var(--surface); border-radius: var(--radius);
     padding: 14px 16px; margin-bottom: 10px;
@@ -1151,7 +1233,15 @@ function getAllCats() {
 }
 
 let currentTab = 'resumen';
-let editingMeta = null;
+let editingMeta    = null;
+let editingCat     = null;
+let selectedEmoji  = '📌';
+let selectedColor  = '#e8d5b7';
+let _selectedMeta  = '__libre__';
+let _tcFormId      = null;
+let _swipeStartX   = 0;
+let _swipeStartY   = 0;
+let _searchQuery   = '';
 let editingCat = null;
 let selectedEmoji = '🎯';
 let selectedColor = CAT_COLORS[0];
@@ -1294,7 +1384,7 @@ function renderResumen() {
     hasAny = true;
     const pct = pTotal > 0 ? Math.min(total / pTotal * 100, 100) : 0;
     const color = pct > 90 ? 'red' : pct > 70 ? 'yellow' : 'green';
-    html += `<div class="cat-item" onclick="openCatDetail('${cat.id}')">
+    html += `<button class="cat-item" style="width:100%;background:none;border:none;font-family:'Plus Jakarta Sans',sans-serif;text-align:left;" onclick="openCatDetail('${cat.id}')">
       <div class="cat-icon" style="background:${cat.color}">${cat.icon}</div>
       <div class="cat-info">
         <div class="cat-name">${cat.name}</div>
@@ -1327,7 +1417,7 @@ function renderResumen() {
     html += `<div class="card"><div class="card-title">Últimos movimientos</div>`;
     last.forEach(t => {
       const cat = getCat(t.cat);
-      html += `<div class="tx-item">
+      html += `<button class="tx-item" style="width:100%;background:none;border:none;font-family:'Plus Jakarta Sans',sans-serif;text-align:left;">
         <div class="tx-dot" style="background:${cat.color}">${cat.icon}</div>
         <div class="tx-info"><div class="tx-name">${t.desc||cat.name}</div><div class="tx-cat">${cat.name} · ${t.fecha||''}</div></div>
         <div class="tx-amt ${t.cat==='ingreso'?'ing':'gas'}">${t.cat==='ingreso'?'+':'-'}${fmt(t.monto)}</div>
@@ -1430,7 +1520,7 @@ function renderGastos(query) {
       const pagoBadge = (t.cat !== 'ingreso' && t.pago) ? `<span class="pago-badge ${t.pago}">${pagoLabels[t.pago]||t.pago}</span>` : '';
       const notaHtml = t.nota ? `<div class="tx-nota">💬 ${t.nota}</div>` : '';
       const recHtml = t.esRecurrente ? `<span style="font-size:9px;color:var(--accent)">🔁</span> ` : '';
-      html += `<div class="tx-item" onclick="openEditTx('${t.id}')">
+      html += `<button class="tx-item" style="width:100%;background:none;border:none;font-family:'Plus Jakarta Sans',sans-serif;text-align:left;" onclick="openEditTx('${t.id}')">
         <div class="tx-dot" style="background:${cat.color}">${cat.icon}</div>
         <div class="tx-info"><div class="tx-name">${recHtml}${t.desc||cat.name} ${pagoBadge}</div><div class="tx-cat">${cat.name}</div>${notaHtml}</div>
         <div class="tx-amt ${t.cat==='ingreso'?'ing':'gas'}">${t.cat==='ingreso'?'+':'-'}${fmt(t.monto)}</div>
@@ -1659,15 +1749,15 @@ function renderTarjeta() {
 
   // ── ACCIONES RÁPIDAS ──────────────────────────────────────────────────────────
   html += `<div class="wallet-actions">
-    <div class="wallet-action-btn" onclick="openAddCompraTC('${tc.id}')">
+    <button class="wallet-action-btn" onclick="openAddCompraTC('${tc.id}')">
       <div class="wallet-action-icon">🛒</div>
       <div class="wallet-action-label">Nueva compra</div>
     </div>
-    <div class="wallet-action-btn" onclick="openAddEstadoCuenta('${tc.id}')">
+    <button class="wallet-action-btn" onclick="openAddEstadoCuenta('${tc.id}')">
       <div class="wallet-action-icon">📄</div>
       <div class="wallet-action-label">Estado anterior</div>
     </div>
-    <div class="wallet-action-btn" onclick="openConfigTC('${tc.id}')">
+    <button class="wallet-action-btn" onclick="openConfigTC('${tc.id}')">
       <div class="wallet-action-icon">⚙️</div>
       <div class="wallet-action-label">Configurar</div>
     </div>
@@ -1707,7 +1797,7 @@ function renderTarjeta() {
       const cuotaActual=(cy-py)*12+(cm-pm)+1;
       const cuotasRestantes=Math.max(c.cuotas-cuotaActual+1,0);
       const enEsteCiclo=cuotaActual>=1&&cuotaActual<=c.cuotas;
-      html += `<div class="tc-compra-item" onclick="openEditCompraTC('${c.id}','${tc.id}')">
+      html += `<button class="tc-compra-item" style="width:100%;background:none;border:none;font-family:'Plus Jakarta Sans',sans-serif;text-align:left;" onclick="openEditCompraTC('${c.id}','${tc.id}')">
         <div class="tc-compra-icon">${c.emoji||'🛍️'}</div>
         <div class="tc-compra-info">
           <div class="tc-compra-name">${c.desc}</div>
@@ -1756,7 +1846,7 @@ function renderTarjeta() {
     </div>
     ${tc.mantencionSemestralUF>0?`<div class="setting-row" style="padding:6px 0"><span style="font-size:12px;color:var(--muted)">Cargo semestral</span><span style="color:var(--purple)">UF ${tc.mantencionSemestralUF.toFixed(2)} = ${fmt(Math.round(tc.mantencionSemestralUF*(tc.ufValue||38500)))}</span></div>`:''}
     ${(tc.cargosExtra||[]).map(x=>`
-      <div class="setting-row" style="padding:10px 0;cursor:pointer" onclick="openEditCargoTC('${x.id}','${tc.id}')">
+      <button class="setting-row" style="padding:10px 0;cursor:pointer;width:100%;background:none;border:none;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-family:'Plus Jakarta Sans',sans-serif;text-align:left;" onclick="openEditCargoTC('${x.id}','${tc.id}')">
         <span>${x.emoji||'💰'} ${x.desc}</span>
         <span style="font-weight:600;color:${x.activo?'var(--red)':'var(--muted)'}">${x.activo?fmt(x.monto):'Inactivo'}</span>
       </div>`).join('')}
@@ -2486,7 +2576,7 @@ function renderComparar() {
     const isCurrent = m.mk === monthKey(d);
     const balPos = m.balance >= 0;
     const pctGas = m.ingresos > 0 ? Math.min(m.gastos / m.ingresos * 100, 100) : 0;
-    html += `<div class="comp-month-row" onclick="setMonth('${m.mk}');showTab('resumen')" style="${isCurrent?'background:rgba(184,92,56,.04);border-radius:10px;padding:12px 8px;':''}">
+    html += `<button class="comp-month-row" onclick="setMonth('${m.mk}');showTab('resumen')" style="${isCurrent?'background:rgba(184,92,56,.04);border-radius:10px;padding:12px 8px;':''}width:100%;background:none;border:none;font-family:'Plus Jakarta Sans',sans-serif;text-align:left;">
       <div class="comp-month-label">
         <div style="font-weight:${isCurrent?'600':'400'};color:${isCurrent?'var(--accent)':'var(--text)'}">${MONTHS[parseInt(m.mk.slice(5))-1].slice(0,3)}</div>
         <div style="font-size:11px;color:var(--muted)">${m.mk.slice(0,4)}</div>
@@ -2633,7 +2723,7 @@ function renderMetas() {
       .filter(t => t.cat === 'ahorro' && t.metaId === m.id)
       .reduce((a,t) => a + t.monto, 0);
 
-    return `<div class="meta-card" onclick="openEditMeta('${m.id}')">
+    return `<button class="meta-card" style="width:100%;background:var(--surface);border:1px solid var(--border);font-family:'Plus Jakarta Sans',sans-serif;text-align:left;" onclick="openEditMeta('${m.id}')">
       <div class="meta-top">
         <div style="flex:1">
           <div style="font-size:16px;font-weight:600;font-family:'Lora',serif">${m.emoji||'🎯'} ${m.nombre}</div>
@@ -2935,13 +3025,13 @@ function openAddSheet() {
       <div id="f-meta-lista">
         ${metas.length === 0
           ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin metas activas. Créalas en la pestaña Metas.</div>`
-          : `<div class="meta-selector-item selected" onclick="selectMeta(this,'__libre__')">
+          : `<button class="meta-selector-item selected" style="width:100%;border:1.5px solid var(--accent);background:rgba(184,92,56,.07);font-family:'Plus Jakarta Sans',sans-serif;text-align:left;" onclick="selectMeta(this,'__libre__')">
               <div class="meta-sel-check">✓</div>
               <div class="meta-sel-info"><div class="meta-sel-name">Sin meta específica</div><div class="meta-sel-prog">Solo registrar el ahorro</div></div>
             </div>` +
             metas.map(m => {
               const pct = m.objetivo > 0 ? Math.min(((m.baseAhorrado||0)+(m.ahorroVinculado||0))/m.objetivo*100,100) : 0;
-              return `<div class="meta-selector-item" onclick="selectMeta(this,'${m.id}')">
+              return `<button class="meta-selector-item" style="width:100%;background:var(--bg);border:1.5px solid var(--border);font-family:'Plus Jakarta Sans',sans-serif;text-align:left;" onclick="selectMeta(this,'${m.id}')">
                 <div class="meta-sel-check"></div>
                 <div class="meta-sel-info">
                   <div class="meta-sel-name">${m.emoji||'🎯'} ${m.nombre}</div>
@@ -3350,7 +3440,7 @@ function openCatDetail(catId) {
   else {
     html += `<div class="card" style="padding:0 16px">`;
     txs.slice().reverse().forEach(t => {
-      html += `<div class="tx-item" onclick="closeSheet();openEditTx('${t.id}')">
+      html += `<button class="tx-item" style="width:100%;background:none;border:none;font-family:'Plus Jakarta Sans',sans-serif;text-align:left;" onclick="closeSheet();openEditTx('${t.id}')">
         <div class="tx-dot" style="background:${cat.color}">${cat.icon}</div>
         <div class="tx-info"><div class="tx-name">${t.desc||cat.name}</div><div class="tx-cat">${t.fecha||''}</div></div>
         <div class="tx-amt gas">-${fmt(t.monto)}</div>
@@ -3401,7 +3491,7 @@ function openAddMeta() {
         <input type="text" id="m-emoji" value="🎯" placeholder="🎯" style="width:80px" oninput="document.getElementById('m-emoji-preview').textContent=this.value||'🎯'">
       </div>
       <div class="emoji-grid">
-        ${['🎯','🏖️','🚗','🏠','✈️','💻','🎓','💊','🐾','📚','💎','🎁','🌿','🎵','🏋️','🍺','🚀','🏊','👶','🔧'].map(e=>`<div class="emoji-opt" onclick="pickEmoji('${e}','new')">${e}</div>`).join('')}
+        ${['🎯','🏖️','🚗','🏠','✈️','💻','🎓','💊','🐾','📚','💎','🎁','🌿','🎵','🏋️','🍺','🚀','🏊','👶','🔧'].map(e=>`<button class="emoji-opt" style="background:none;border:2px solid transparent;font-family:'Plus Jakarta Sans',sans-serif;" onclick="pickEmoji('${e}','new')">${e}</button>`).join('')}
       </div>
     </div>
     <div class="field"><label>Monto objetivo ($)</label><input type="number" id="m-objetivo" placeholder="0" inputmode="numeric"></div>
@@ -3548,13 +3638,13 @@ function openAddCat() {
     <div class="field"><label>Nombre</label><input type="text" id="c-nombre" placeholder="Ej: Mascota, Gym, Netflix..."></div>
     <div class="field"><label>Ícono (emoji)</label>
       <div class="emoji-grid" id="emoji-grid">
-        ${CAT_EMOJIS.map(e=>`<div class="emoji-opt${e===selectedEmoji?' selected':''}" onclick="selectEmoji('${e}')">${e}</div>`).join('')}
+        ${CAT_EMOJIS.map(e=>`<button class="emoji-opt${e===selectedEmoji?' selected':''}" style="background:none;border:2px solid transparent;font-family:'Plus Jakarta Sans',sans-serif;" onclick="selectEmoji('${e}')">${e}</button>`).join('')}
       </div>
       <input type="text" id="c-emoji" value="${selectedEmoji}" placeholder="o escribe un emoji" style="margin-top:8px" oninput="selectedEmoji=this.value||'🎯'">
     </div>
     <div class="field"><label>Color</label>
       <div class="color-grid">
-        ${CAT_COLORS.map((col,i)=>`<div class="color-opt${i===0?' selected':''}" style="background:${col}" onclick="selectColor(${i})"></div>`).join('')}
+        ${CAT_COLORS.map((col,i)=>`<button class="color-opt${i===0?' selected':''}" style="background:${col};border:2px solid transparent;border-radius:8px;cursor:pointer;" onclick="selectColor(${i})"></button>`).join('')}
       </div>
     </div>
     <button class="btn-primary" onclick="saveCat()">Guardar categoría</button>
@@ -3574,13 +3664,13 @@ function openEditCat(id) {
     <div class="field"><label>Nombre</label><input type="text" id="c-nombre" value="${cat.name}"></div>
     <div class="field"><label>Ícono (emoji)</label>
       <div class="emoji-grid">
-        ${CAT_EMOJIS.map(e=>`<div class="emoji-opt${e===cat.icon?' selected':''}" onclick="selectEmoji('${e}')">${e}</div>`).join('')}
+        ${CAT_EMOJIS.map(e=>`<button class="emoji-opt${e===cat.icon?' selected':''}" style="background:none;border:2px solid transparent;font-family:'Plus Jakarta Sans',sans-serif;" onclick="selectEmoji('${e}')">${e}</button>`).join('')}
       </div>
       <input type="text" id="c-emoji" value="${cat.icon}" placeholder="o escribe un emoji" style="margin-top:8px" oninput="selectedEmoji=this.value||'🎯'">
     </div>
     <div class="field"><label>Color</label>
       <div class="color-grid">
-        ${CAT_COLORS.map((col,i)=>`<div class="color-opt${col===cat.color?' selected':''}" style="background:${col}" onclick="selectColor(${i})"></div>`).join('')}
+        ${CAT_COLORS.map((col,i)=>`<button class="color-opt${col===cat.color?' selected':''}" style="background:${col};border:2px solid transparent;border-radius:8px;cursor:pointer;" onclick="selectColor(${i})"></button>`).join('')}
       </div>
     </div>
     <button class="btn-primary" onclick="saveCat()">Guardar</button>
@@ -3798,13 +3888,19 @@ function confirmClear() {
 
 // ── SHEET HELPERS ─────────────────────────────────────────────────────────────
 function openSheet() {
-  document.getElementById('overlay').classList.add('open');
-  document.getElementById('sheet').classList.add('open');
-  txType = 'gas';
+  const overlay = document.getElementById('overlay');
+  const sheet   = document.getElementById('sheet');
+  if (overlay) overlay.classList.add('open');
+  if (sheet)   sheet.classList.add('open');
+  // Scroll sheet to top
+  if (sheet) sheet.scrollTop = 0;
 }
+
 function closeSheet() {
-  document.getElementById('overlay').classList.remove('open');
-  document.getElementById('sheet').classList.remove('open');
+  const overlay = document.getElementById('overlay');
+  const sheet   = document.getElementById('sheet');
+  if (overlay) overlay.classList.remove('open');
+  if (sheet)   sheet.classList.remove('open');
 }
 
 
@@ -3877,7 +3973,7 @@ function renderDeudorCard(x) {
   if (x.cobrado) { statusClass = 'cobrado'; statusLabel = '✓ Cobrado'; }
   else if (abonado > 0) { statusClass = 'parcial'; statusLabel = `💧 Abonado ${fmt(abonado)}`; }
 
-  let html = `<div class="deudor-card${x.cobrado?' pagado':''}" onclick="openEditDeudor('${x.id}')">
+  let html = `<button class="deudor-card${x.cobrado?' pagado':''}" style="width:100%;background:var(--surface);border:1px solid var(--border);font-family:'Plus Jakarta Sans',sans-serif;text-align:left;" onclick="openEditDeudor('${x.id}')">
     <div class="deudor-top">
       <div class="deudor-avatar">${inicial}</div>
       <div class="deudor-info">
