@@ -164,6 +164,10 @@ html.dark #nav{background:rgba(17,17,17,.95);}
 .row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--bd);}
 .row:last-child{border-bottom:none;}
 .calcbox{background:var(--s2);border-radius:var(--rs);padding:14px;margin-top:12px;border:1px solid var(--bd);}
+/* Money input con formato de puntos */
+.money-input { position:relative; }
+.money-input::before { content:'$'; position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--mu); font-size:15px; pointer-events:none; z-index:1; }
+.money-input input { padding-left:28px !important; }
 .cr{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
 .cr.tot{font-weight:600;font-size:15px;border-top:1px solid var(--bd);padding-top:9px;margin-top:6px;}
 .wbk{display:flex;align-items:center;gap:14px;padding:18px;border-radius:var(--r);border:1.5px solid var(--bd);background:var(--sf);margin-bottom:10px;width:100%;text-align:left;box-shadow:var(--sh);touch-action:manipulation;}
@@ -228,6 +232,35 @@ html.dark #nav{background:rgba(17,17,17,.95);}
 // ═══════════════════════════════════════════════
 
 const KEY = 'bolsillo_v1';
+
+// ── FORMATO DE DINERO EN INPUTS ─────────────────────
+// Convierte "20000" → "20.000" mientras el usuario escribe
+function moneyFmt(raw) {
+  const n = raw.replace(/\D/g, '');          // solo dígitos
+  if (!n) return '';
+  return parseInt(n, 10).toLocaleString('es-CL'); // "20.000"
+}
+function moneyVal(id) {
+  const el = document.getElementById(id);
+  if (!el) return 0;
+  const raw = el.value.replace(/\./g, '').replace(',', '.').trim();
+  return parseFloat(raw) || 0;
+}
+function onMoneyInput(el) {
+  const pos = el.selectionStart;
+  const before = el.value.length;
+  const digits = el.value.replace(/\D/g, '');
+  if (!digits) { el.value = ''; return; }
+  el.value = parseInt(digits, 10).toLocaleString('es-CL');
+  // Mantener cursor en posición correcta
+  const diff = el.value.length - before;
+  try { el.setSelectionRange(pos + diff, pos + diff); } catch(e) {}
+}
+// Inicializar un input de monto: type=text, oninput formateador
+function mkMoneyInput(id, placeholder, val, extraAttrs) {
+  const displayVal = val ? parseInt(val, 10).toLocaleString('es-CL') : '';
+  return `<input type="text" inputmode="numeric" id="${id}" placeholder="${placeholder||'0'}" value="${displayVal}" oninput="onMoneyInput(this)" ${extraAttrs||''}>`;
+}
 const MS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -574,7 +607,7 @@ function renderCard(){
   h+=`</div></div>`;
   h+=cardProj(card);
   h+=`<div class="card"><div class="cb"><div class="ct">🧮 Calculadora de cuotas</div>
-    <div class="fld"><label>Monto ($)</label><input type="number" id="calc-a" placeholder="150000" inputmode="numeric" oninput="updCalc('${card.id}')"></div>
+    <div class="fld"><label>Monto ($)</label><input type="text" id="calc-a" placeholder="150000" inputmode="numeric" oninput="onMoneyInput(this);updCalc('${card.id}')"></div>
     <div class="fld"><label>Cuotas</label><select id="calc-i" onchange="updCalc('${card.id}')">
       <option value="1">1 cuota (contado)</option>
       ${[2,3,4,6,9,10,12,18,24,36,48].map(n=>`<option value="${n}">${n} cuotas</option>`).join('')}
@@ -635,7 +668,7 @@ function cardProj(card){
 }
 
 function updCalc(cardId){
-  const amt=parseFloat(document.getElementById('calc-a')?.value)||0;
+  const amt=moneyVal('calc-a');
   const inst=parseInt(document.getElementById('calc-i')?.value)||1;
   const withInt=document.getElementById('calc-t')?.value==='yes';
   const r=document.getElementById('calc-r');
@@ -728,7 +761,7 @@ function sheetContent(name, data){
         <button class="sb sr" id="b-exp" onclick="setTxType('exp')">▼ Gasto</button>
         <button class="sb" id="b-inc" onclick="setTxType('inc')">▲ Ingreso</button>
       </div>
-      <div class="fld"><label>Monto ($)</label><input type="number" id="f-a" placeholder="0" inputmode="numeric" oninput="onAmtCh()"></div>
+      <div class="fld"><label>Monto ($)</label><input type="text" id="f-a" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this);onAmtCh()"></div>
       <div class="fld"><label>Descripción (opcional)</label><input type="text" id="f-d" placeholder="Ej: Supermercado, Netflix..."></div>
       <div class="fld" id="f-cat-wrap"><label>Categoría</label>
         <select id="f-c" onchange="onCatCh()">
@@ -779,7 +812,7 @@ function sheetContent(name, data){
         <div style="font-size:12px;color:var(--mu);margin-top:2px">${t.dateLabel||''} ${pl?'· '+pl:''}</div>
         ${t.note?`<div style="font-size:12px;color:var(--mu);font-style:italic;margin-top:4px">💬 ${t.note}</div>`:''}
       </div></div>
-      <div class="fld"><label>Monto ($)</label><input type="number" id="e-a" value="${t.amount}" inputmode="numeric"></div>
+      <div class="fld"><label>Monto ($)</label><input type="text" id="e-a" value="${(t.amount||0).toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this)"></div>
       <div class="fld"><label>Descripción</label><input type="text" id="e-d" value="${t.desc||''}"></div>
       <div class="fld"><label>Nota</label><input type="text" id="e-n" value="${t.note||''}"></div>
       <div class="fld"><label>Categoría</label><select id="e-c">
@@ -818,8 +851,8 @@ function sheetContent(name, data){
         ${emojis.map(e=>`<button data-em="${e}" onclick="selEm(this,'${e}')" style="font-size:22px;padding:6px;border-radius:8px;border:2px solid transparent;">${e}</button>`).join('')}
       </div>
       <div class="fld"><label>Nombre</label><input type="text" id="g-n" placeholder="Ej: Viaje, Fondo emergencia..."></div>
-      <div class="fld"><label>Objetivo ($)</label><input type="number" id="g-t" placeholder="0" inputmode="numeric"></div>
-      <div class="fld"><label>Ya tengo ahorrado ($)</label><input type="number" id="g-s" value="0" inputmode="numeric"></div>
+      <div class="fld"><label>Objetivo ($)</label><input type="text" id="g-t" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      <div class="fld"><label>Ya tengo ahorrado ($)</label><input type="text" id="g-s" value="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
       <button class="btn btnp" onclick="saveGoal()">Crear meta</button>`;
   }
 
@@ -837,8 +870,8 @@ function sheetContent(name, data){
         ${contrib>0?`<div style="font-size:12px;color:var(--mu)">💰 ${fmt(contrib)} aportados desde movimientos</div>`:''}
       </div>
       <div class="fld"><label>Nombre</label><input type="text" id="g-n" value="${m.name}"></div>
-      <div class="fld"><label>Objetivo ($)</label><input type="number" id="g-t" value="${m.target}" inputmode="numeric"></div>
-      <div class="fld"><label>Ahorrado hasta ahora ($)</label><input type="number" id="g-s" value="${m.saved||0}" inputmode="numeric"></div>
+      <div class="fld"><label>Objetivo ($)</label><input type="text" id="g-t" value="${(m.target||0).toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      <div class="fld"><label>Ahorrado hasta ahora ($)</label><input type="text" id="g-s" value="${(m.saved||0).toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this)"></div>
       <button class="btn btnp" onclick="updateGoal()">Guardar</button>
       <button class="btn btng" onclick="markGoalDone('${data}')">${m.done?'↩️ Reabrir meta':'🎉 Marcar completada'}</button>
       <button class="btn btnd" onclick="deleteGoal('${data}')">Eliminar meta</button>`;
@@ -858,7 +891,7 @@ function sheetContent(name, data){
   if(name==='add-cobro'){
     return`<div class="stl">Agregar deuda</div>
       <div class="fld"><label>Nombre / quién debe</label><input type="text" id="co-n" placeholder="Ej: Juan, María..."></div>
-      <div class="fld"><label>Monto ($)</label><input type="number" id="co-a" placeholder="0" inputmode="numeric"></div>
+      <div class="fld"><label>Monto ($)</label><input type="text" id="co-a" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
       <div class="fld"><label>Motivo</label><input type="text" id="co-d" placeholder="Ej: Préstamo, cena..."></div>
       <div class="fld"><label>Fecha</label><input type="date" id="co-dt" value="${today()}"></div>
       <button class="btn btnp" onclick="saveCobro()">Guardar</button>`;
@@ -875,7 +908,7 @@ function sheetContent(name, data){
         <div style="font-size:12px;color:var(--mu);margin-top:2px">${c.desc||''} · ${c.date||''}</div>
       </div>
       ${(c.abonos||[]).length>0?`<div class="card"><div class="cb"><div class="ct">Abonos</div>${(c.abonos||[]).map(a=>`<div class="row"><span style="font-size:13px">${a.date}</span><span class="ff" style="color:var(--gn)">${fmt(a.amount)}</span></div>`).join('')}</div></div>`:''}
-      <div class="fld"><label>Registrar abono ($)</label><input type="number" id="co-ab" placeholder="0" inputmode="numeric"></div>
+      <div class="fld"><label>Registrar abono ($)</label><input type="text" id="co-ab" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
       <button class="btn btnp" onclick="saveAbono('${data}')">✓ Registrar abono</button>
       <button class="btn btng" onclick="markCobrado('${data}')">${c.done?'↩️ Reabrir':'🎉 Marcar como cobrado'}</button>
       <button class="btn btnd" onclick="deleteCobro('${data}')">Eliminar</button>`;
@@ -945,7 +978,7 @@ function sheetContent(name, data){
     return`<div class="stl">Presupuesto · ${mlabel(d.month)}</div>
       <div class="ibox">Define cuánto quieres gastar en cada categoría.</div>
       ${expCats.map(cat=>`<div class="fld"><label>${cat.icon} ${cat.name}</label>
-        <input type="number" id="b-${cat.id}" value="${budget[cat.id]||0}" placeholder="0" inputmode="numeric">
+        <input type="text" id="b-${cat.id}" value="${budget[cat.id]||0}" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)">
       </div>`).join('')}
       <button class="btn btnp" onclick="saveBudgets()">Guardar presupuesto</button>`;
   }
@@ -1031,7 +1064,7 @@ function sheetContent(name, data){
         <div class="fld"><label>Día de corte</label><input type="number" id="wz-ct" value="5" min="1" max="28" inputmode="numeric"></div>
         <div class="fld"><label>Días al vencimiento</label><input type="number" id="wz-du" value="12" min="1" max="30" inputmode="numeric"></div>
       </div>
-      <div class="fld"><label>Límite de crédito ($)</label><input type="number" id="wz-lm" value="0" inputmode="numeric"></div>
+      <div class="fld"><label>Límite de crédito ($)</label><input type="text" id="wz-lm" value="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
       <button class="btn btnp" onclick="saveNewCard('${banco}','${tipo}')">Agregar tarjeta ✓</button>`;
   }
 
@@ -1046,7 +1079,7 @@ function sheetContent(name, data){
         <div class="fld"><label>Día de corte</label><input type="number" id="ec-ct" value="${card.cut||5}" inputmode="numeric"></div>
         <div class="fld"><label>Días al vencimiento</label><input type="number" id="ec-du" value="${card.due||12}" inputmode="numeric"></div>
       </div>
-      <div class="fld"><label>Límite de crédito ($)</label><input type="number" id="ec-lm" value="${card.limit||0}" inputmode="numeric"></div>
+      <div class="fld"><label>Límite de crédito ($)</label><input type="text" id="ec-lm" value="${(card.limit||0).toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this)"></div>
       <button class="btn btnp" onclick="updateCard()">Guardar</button>
       ${d.cards.length>1?`<button class="btn btnd" onclick="deleteCard('${data}')">Eliminar tarjeta</button>`:''}`;
   }
@@ -1067,7 +1100,7 @@ function sheetContent(name, data){
         ${EMOJIS.map(e=>`<button data-pe="${e}" onclick="selPEm(this,'${e}')" style="font-size:20px;padding:5px;border-radius:8px;border:2px solid transparent;">${e}</button>`).join('')}
       </div>
       <div class="fld"><label>Descripción</label><input type="text" id="pu-d" placeholder="Ej: TV, Ropa..."></div>
-      <div class="fld"><label>Monto total ($)</label><input type="number" id="pu-a" placeholder="0" inputmode="numeric" oninput="prevPurch('${card.id}')"></div>
+      <div class="fld"><label>Monto total ($)</label><input type="text" id="pu-a" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this);prevPurch('${card.id}')"></div>
       <div class="fld"><label>Tipo</label>
         <select id="pu-t" onchange="prevPurch('${card.id}')">
           <option value="cash">Contado (sin cuotas)</option>
@@ -1097,7 +1130,7 @@ function sheetContent(name, data){
     return`<div class="stl">📄 Estado de cuenta anterior</div>
       <div class="ibox">Ingresa compras en cuotas que aún tienes pendientes de meses anteriores.</div>
       <div class="fld"><label>Descripción</label><input type="text" id="h-d" placeholder="Ej: Refrigerador..."></div>
-      <div class="fld"><label>Monto total original ($)</label><input type="number" id="h-a" placeholder="0" inputmode="numeric" oninput="prevHist('${card.id}')"></div>
+      <div class="fld"><label>Monto total original ($)</label><input type="text" id="h-a" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this);prevHist('${card.id}')"></div>
       <div class="fld"><label>Total de cuotas pactadas</label>
         <select id="h-i" onchange="prevHist('${card.id}')">
           ${[2,3,4,6,9,10,12,18,24,36,48].map(n=>`<option value="${n}">${n} cuotas</option>`).join('')}
@@ -1222,7 +1255,7 @@ function updCrInfo(){
   if(!te||!ie)return;
   const type=te.value;
   if(iw)iw.style.display=type==='cash'?'none':'block';
-  const amt=parseFloat(ae?.value)||0;
+  const amt=moneyVal('f-a');
   const inst=type==='cash'?1:(parseInt(document.getElementById('cr-ci')?.value)||2);
   if(amt<=0){ie.innerHTML='';return;}
   const d=getData();
@@ -1293,7 +1326,7 @@ function getSelPEm(){
 
 // ── GUARDAR MOVIMIENTO ─────────────────────────────
 function saveTx(){
-  const amt=parseFloat(document.getElementById('f-a')?.value||0);
+  const amt=moneyVal('f-a');
   if(!amt||amt<=0){alert('Ingresa un monto válido');return;}
   const d=getData();
   const dateVal=document.getElementById('f-dt')?.value||today();
@@ -1334,7 +1367,7 @@ function saveTx(){
 }
 
 function updateTx(){
-  const amt=parseFloat(document.getElementById('e-a')?.value||0);
+  const amt=moneyVal('e-a');
   if(!amt||amt<=0){alert('Monto inválido');return;}
   const d=getData();
   const t=d.txs.find(x=>x.id===EID);
@@ -1360,17 +1393,17 @@ function deleteTx(){
 function saveGoal(){
   const name=document.getElementById('g-n')?.value.trim();
   if(!name){alert('Ingresa un nombre');return;}
-  const target=parseFloat(document.getElementById('g-t')?.value||0);
+  const target=moneyVal('g-t');
   if(!target){alert('Ingresa un objetivo');return;}
   const d=getData();
-  d.metas.push({id:uid(),name,target,saved:parseFloat(document.getElementById('g-s')?.value||0),emoji:getSelEm('🎯'),done:false});
+  d.metas.push({id:uid(),name,target,saved:moneyVal('g-s'),emoji:getSelEm('🎯'),done:false});
   save(d);closeSheet();go('goals');
 }
 function updateGoal(){
   const d=getData(); const m=d.metas.find(x=>x.id===EID); if(!m)return;
   m.name=document.getElementById('g-n')?.value.trim()||m.name;
-  m.target=parseFloat(document.getElementById('g-t')?.value||m.target);
-  m.saved=parseFloat(document.getElementById('g-s')?.value||m.saved||0);
+  m.target=moneyVal('g-t')||m.target;
+  m.saved=moneyVal('g-s');
   save(d);closeSheet();go('goals');
 }
 function markGoalDone(id){
@@ -1403,13 +1436,13 @@ function cobroCard(c){
 }
 function saveCobro(){
   const name=document.getElementById('co-n')?.value.trim(); if(!name){alert('Ingresa un nombre');return;}
-  const amt=parseFloat(document.getElementById('co-a')?.value||0); if(!amt){alert('Ingresa un monto');return;}
+  const amt=moneyVal('co-a'); if(!amt){alert('Ingresa un monto');return;}
   const d=getData();
   d.cobros.push({id:uid(),name,amount:amt,desc:document.getElementById('co-d')?.value.trim()||'',date:document.getElementById('co-dt')?.value||today(),paid:0,abonos:[],done:false});
   save(d);closeSheet();openSheet('cobros');
 }
 function saveAbono(id){
-  const amt=parseFloat(document.getElementById('co-ab')?.value||0); if(!amt){alert('Ingresa un monto');return;}
+  const amt=moneyVal('co-ab'); if(!amt){alert('Ingresa un monto');return;}
   const d=getData(); const c=d.cobros.find(x=>x.id===id); if(!c)return;
   c.paid=(c.paid||0)+amt;
   if(!c.abonos)c.abonos=[];
@@ -1440,7 +1473,7 @@ function createMonth(){
 function saveBudgets(){
   const d=getData(); if(!d.budgets[d.month])d.budgets[d.month]={};
   allCats().filter(c=>c.id!=='income').forEach(cat=>{
-    const v=parseFloat(document.getElementById('b-'+cat.id)?.value||0);
+    const v=moneyVal('b-'+cat.id);
     d.budgets[d.month][cat.id]=v;
   });
   save(d);closeSheet();go(TAB);
@@ -1486,7 +1519,7 @@ function saveNewCard(banco,tipo){
     alias:document.getElementById('wz-al')?.value.trim()||'',
     cut:parseInt(document.getElementById('wz-ct')?.value||5),
     due:parseInt(document.getElementById('wz-du')?.value||12),
-    limit:parseFloat(document.getElementById('wz-lm')?.value||0),
+    limit:moneyVal('wz-lm'),
     mant:info.mant||0,sem:info.sem||0,tasa:info.tasa||1.5,
     purchases:[],extras:[],
   });
@@ -1497,7 +1530,7 @@ function updateCard(){
   card.alias=document.getElementById('ec-al')?.value.trim()||card.alias;
   card.cut=parseInt(document.getElementById('ec-ct')?.value||card.cut);
   card.due=parseInt(document.getElementById('ec-du')?.value||card.due);
-  card.limit=parseFloat(document.getElementById('ec-lm')?.value||card.limit);
+  card.limit=moneyVal('ec-lm')||card.limit;
   save(d);closeSheet();go('card');
 }
 function deleteCard(id){
@@ -1508,7 +1541,7 @@ function deleteCard(id){
 
 function savePurch(cardId){
   const desc=document.getElementById('pu-d')?.value.trim(); if(!desc){alert('Ingresa una descripción');return;}
-  const amt=parseFloat(document.getElementById('pu-a')?.value||0); if(!amt){alert('Ingresa un monto');return;}
+  const amt=moneyVal('pu-a'); if(!amt){alert('Ingresa un monto');return;}
   const type=document.getElementById('pu-t')?.value||'cash';
   const inst=type==='cash'?1:parseInt(document.getElementById('pu-i')?.value||2);
   const from=document.getElementById('pu-f')?.value;
@@ -1525,7 +1558,7 @@ function savePurch(cardId){
 
 function saveHist(cardId){
   const desc=document.getElementById('h-d')?.value.trim(); if(!desc){alert('Ingresa una descripción');return;}
-  const amt=parseFloat(document.getElementById('h-a')?.value||0); if(!amt){alert('Ingresa un monto');return;}
+  const amt=moneyVal('h-a'); if(!amt){alert('Ingresa un monto');return;}
   const inst=parseInt(document.getElementById('h-i')?.value||2);
   const type=document.getElementById('h-t')?.value||'no';
   const from=document.getElementById('h-f')?.value;
@@ -1551,7 +1584,7 @@ function prevPurch(cardId){
   const type=document.getElementById('pu-t')?.value||'cash';
   const iw=document.getElementById('pu-iw');
   if(iw)iw.style.display=type==='cash'?'none':'block';
-  const amt=parseFloat(document.getElementById('pu-a')?.value||0);
+  const amt=moneyVal('pu-a');
   const inst=type==='cash'?1:parseInt(document.getElementById('pu-i')?.value||2);
   const el=document.getElementById('pu-pv');
   if(!el||amt<=0)return;
@@ -1570,7 +1603,7 @@ function prevPurch(cardId){
 }
 
 function prevHist(cardId){
-  const amt=parseFloat(document.getElementById('h-a')?.value||0);
+  const amt=moneyVal('h-a');
   const inst=parseInt(document.getElementById('h-i')?.value||2);
   const paid=parseInt(document.getElementById('h-p')?.value||0);
   const type=document.getElementById('h-t')?.value||'no';
