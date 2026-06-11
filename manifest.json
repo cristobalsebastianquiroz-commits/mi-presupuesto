@@ -1,11 +1,11 @@
 {
-  "name": "Mi Presupuesto",
-  "short_name": "Presupuesto",
-  "description": "App de presupuesto mensual personal",
+  "name": "Bolsillo",
+  "short_name": "Bolsillo",
+  "description": "Tu presupuesto personal, ordenado",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#F5F0E8",
+  "theme_color": "#F5F0E8",
   "orientation": "portrait",
   "icons": [
     {
