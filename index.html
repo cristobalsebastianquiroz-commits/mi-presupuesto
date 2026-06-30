@@ -133,6 +133,21 @@ html.dark #nav{background:rgba(20,18,16,.96);}
 .pb.sd{background:var(--ad);border-color:var(--ac);color:var(--ac);}
 .pb.sk{background:var(--pd);border-color:var(--pu);color:var(--pu);}
 
+/* ── CATEGORY CHIPS (estilo Fleur: grid de íconos) ── */
+.catgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px;}
+.catchip{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:var(--r);border:1.5px solid var(--bd);background:var(--sf);touch-action:manipulation;transition:all .15s;}
+.catchip-ic{width:34px;height:34px;border-radius:50%;color:var(--cc);display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--cc-bg);}
+.catchip-lb{font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.catchip.on{border-color:var(--cc);background:var(--cc-bg);}
+.catchip.on .catchip-lb{color:var(--tx);font-weight:500;}
+
+/* ── DETALLES COLAPSABLES ──────────────────────────── */
+.more-opts{margin-bottom:16px;}
+.more-opts summary{font-size:12px;color:var(--ac);font-weight:500;padding:10px 2px;list-style:none;cursor:pointer;touch-action:manipulation;}
+.more-opts summary::-webkit-details-marker{display:none;}
+.more-opts summary::before{content:'+ ';}
+.more-opts[open] summary::before{content:'− ';}
+
 /* ── BUTTONS ─────────────────────────────────────── */
 .btn{width:100%;padding:16px;border-radius:var(--rs);font-size:15px;font-weight:500;transition:opacity .15s,transform .1s;}
 .btn:active{opacity:.85;transform:scale(.99);}
@@ -402,7 +417,7 @@ function getData(){
   if(!d.month){const n=new Date();d.month=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
   return d;
 }
-function save(d){localStorage.setItem(KEY,JSON.stringify(d));if(window._sync)window._sync();}
+function save(d){d.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(d));if(window._sync)window._sync();}
 
 // ── HELPERS ────────────────────────────────────────
 const fmt=n=>'$'+Math.round(n||0).toLocaleString('es-CL');
@@ -473,6 +488,9 @@ function openSheet(name,data){
   document.getElementById('ov').classList.add('on');
   document.getElementById('sh').classList.add('on');
   document.getElementById('sh').scrollTop=0;
+  if(name==='add'){
+    setTimeout(()=>{const a=document.getElementById('f-a');if(a)a.focus();},320);
+  }
 }
 function closeSheet(){
   document.getElementById('ov').classList.remove('on');
@@ -482,6 +500,23 @@ function closeSheet(){
 // ══════════════════════════════════════════════════
 // RENDERS
 // ══════════════════════════════════════════════════
+
+function donutSVG(spentSorted,total){
+  const R=15.9155,CIRC=2*Math.PI*R,SIZE=92;
+  let offset=0;
+  const segs=spentSorted.map(({c,spent})=>{
+    const frac=spent/total;
+    const len=Math.max(frac*CIRC,frac>0?1.5:0);
+    const seg=`<circle cx="18" cy="18" r="${R}" fill="none" stroke="${c.color}" stroke-width="4.2"
+      stroke-dasharray="${len} ${CIRC-len}" stroke-dashoffset="${-offset}" stroke-linecap="round" transform="rotate(-90 18 18)"/>`;
+    offset+=len+(spentSorted.length>1?CIRC*0.006:0);
+    return seg;
+  }).join('');
+  return`<svg width="${SIZE}" height="${SIZE}" viewBox="0 0 36 36" style="flex-shrink:0">
+    <circle cx="18" cy="18" r="${R}" fill="none" stroke="var(--s2)" stroke-width="4.2"/>
+    ${segs}
+  </svg>`;
+}
 
 function renderHome(){
   const d=getData();
@@ -498,6 +533,19 @@ function renderHome(){
 
   const catData=cats.map(c=>({c,spent:txs.filter(t=>t.type==='exp'&&t.cat===c.id).reduce((a,t)=>a+t.amount,0),b:budget[c.id]||0})).filter(x=>x.spent>0||x.b>0);
   if(catData.length>0){
+    const spentSorted=catData.filter(x=>x.spent>0).sort((a,b)=>b.spent-a.spent);
+    if(spentSorted.length>0&&exp>0){
+      h+=`<div class="card"><div class="cb" style="display:flex;align-items:center;gap:20px">
+        ${donutSVG(spentSorted,exp)}
+        <div style="flex:1;min-width:0">
+          ${spentSorted.slice(0,4).map(({c,spent})=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:12px">
+            <span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0"></span>
+            <span style="flex:1;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</span>
+            <span class="ff" style="font-style:italic;flex-shrink:0">${pct(spent,exp)}%</span>
+          </div>`).join('')}
+        </div>
+      </div></div>`;
+    }
     h+=`<div class="card"><div class="cb"><div class="ct">Por categoría</div>`;
     catData.forEach(({c,spent,b})=>{
       const p=pct(spent,b);
@@ -840,17 +888,24 @@ function sheetContent(name, data){
     TXT='exp'; PAGO='cash'; SEL_META=null;
     const expCats=cats.filter(c=>c.id!=='income');
     const metas=d.metas.filter(m=>!m.done);
-    return`<div class="stl">Nuevo movimiento</div>
-      <div class="seg">
+    return`<div class="seg">
         <button class="sb sr" id="b-exp" onclick="setTxType('exp')">▼ Gasto</button>
         <button class="sb" id="b-inc" onclick="setTxType('inc')">▲ Ingreso</button>
       </div>
-      <div class="fld"><label>Monto ($)</label><input type="text" id="f-a" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this);onAmtCh()"></div>
-      <div class="fld"><label>Descripción (opcional)</label><input type="text" id="f-d" placeholder="Ej: Supermercado, Netflix..."></div>
+      <div class="amt-display">
+        <div class="amt-label">Monto</div>
+        <input type="text" id="f-a" class="amt-val expense" inputmode="numeric" placeholder="$0" autofocus
+          style="border:none;background:none;text-align:center;width:100%;outline:none"
+          oninput="onMoneyInput(this);onAmtCh()">
+      </div>
+      <div class="fld" style="margin-top:18px"><input type="text" id="f-d" placeholder="¿En qué fue? (opcional)" style="width:100%;background:var(--s2);border:1.5px solid var(--bd);border-radius:var(--rs);padding:14px 16px;font-size:15px;outline:none;"></div>
       <div class="fld" id="f-cat-wrap"><label>Categoría</label>
-        <select id="f-c" onchange="onCatCh()">
-          ${expCats.map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
-        </select>
+        <div class="catgrid">
+          ${expCats.map((c,i)=>`<button type="button" class="catchip${i===0?' on':''}" data-cat="${c.id}" onclick="selCatChip(this)" style="--cc:${c.color};--cc-bg:${c.color}18">
+            <span class="catchip-ic">${c.icon}</span><span class="catchip-lb">${c.name}</span>
+          </button>`).join('')}
+        </div>
+        <input type="hidden" id="f-c" value="${expCats[0]?.id||''}">
       </div>
       <div id="f-pago-wrap">
         <label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--mu);font-weight:500;margin-bottom:7px">Medio de pago</label>
@@ -870,14 +925,17 @@ function sheetContent(name, data){
             <div style="font-size:11px;color:var(--mu)">${pct(m.saved||0,m.target)}% · faltan ${fmt(Math.max(m.target-(m.saved||0),0))}</div></div>
           </button>`).join('')}
       </div>
-      <div class="fld"><label>Fecha</label><input type="date" id="f-dt" value="${today()}"></div>
-      <div class="fld"><label>Nota (opcional)</label><input type="text" id="f-n" placeholder="Ej: cuota 3/12, con descuento..."></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--s2);border-radius:var(--rs);margin-bottom:14px">
-        <div><div style="font-size:13px;font-weight:500">🔁 Repetir cada mes</div><div style="font-size:11px;color:var(--mu);margin-top:2px">Se agrega automáticamente</div></div>
-        <button onclick="swToggle(this)" data-on="0" id="sw-r" style="width:44px;height:24px;border-radius:99px;background:var(--bd);position:relative;flex-shrink:0">
-          <span id="sw-k" style="position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:.25s"></span>
-        </button>
-      </div>
+      <details class="more-opts">
+        <summary>Más opciones (fecha, nota, repetir)</summary>
+        <div class="fld" style="margin-top:14px"><label>Fecha</label><input type="date" id="f-dt" value="${today()}"></div>
+        <div class="fld"><label>Nota (opcional)</label><input type="text" id="f-n" placeholder="Ej: cuota 3/12, con descuento..."></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--s2);border-radius:var(--rs);margin-bottom:14px">
+          <div><div style="font-size:13px;font-weight:500">🔁 Repetir cada mes</div><div style="font-size:11px;color:var(--mu);margin-top:2px">Se agrega automáticamente</div></div>
+          <button onclick="swToggle(this)" data-on="0" id="sw-r" style="width:44px;height:24px;border-radius:99px;background:var(--bd);position:relative;flex-shrink:0">
+            <span id="sw-k" style="position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:.25s"></span>
+          </button>
+        </div>
+      </details>
       <button class="btn btnp" onclick="saveTx()">Guardar</button>`;
   }
 
@@ -1279,6 +1337,8 @@ function setTxType(t){
   TXT=t;
   document.getElementById('b-exp').className='sb'+(t==='exp'?' sr':'');
   document.getElementById('b-inc').className='sb'+(t==='inc'?' sg':'');
+  const amt=document.getElementById('f-a');
+  if(amt)amt.className='amt-val '+(t==='inc'?'income':'expense');
   const cw=document.getElementById('f-cat-wrap');
   const pw=document.getElementById('f-pago-wrap');
   const cp=document.getElementById('f-credit-panel');
@@ -1287,6 +1347,15 @@ function setTxType(t){
   if(pw)pw.style.display=t==='inc'?'none':'block';
   if(cp)cp.style.display='none';
   if(mp)mp.style.display='none';
+}
+
+function selCatChip(el){
+  document.querySelectorAll('.catchip').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  const catId=el.dataset.cat;
+  document.getElementById('f-c').value=catId;
+  const mp=document.getElementById('f-meta-panel');
+  if(mp)mp.style.display=catId==='savings'?'block':'none';
 }
 
 function setPago(p){
@@ -1797,35 +1866,55 @@ async function loadCloud(){
   if(!window.currentUser)return;
   try{
     const snap=await getDoc(doc(db,'usuarios',window.currentUser.uid));
+    const local=JSON.parse(localStorage.getItem('bolsillo_v1')||'{}');
     if(snap.exists()){
       const remote=snap.data();
-      const local=JSON.parse(localStorage.getItem('bolsillo_v1')||'{}');
-      // Merge: el mes local tiene prioridad, datos remotos se mezclan
+      const localTime=local.updatedAt||0;
+      const remoteTime=remote.updatedAt||0;
+      if(localTime>=remoteTime){
+        // Lo local es igual o más reciente: nunca lo pisamos.
+        // Si la nube está atrasada, la actualizamos con lo local (sin tocar la UI).
+        if(remoteTime<localTime)saveCloud(local);
+        return;
+      }
+      // La nube tiene una versión más reciente (ej: editaste desde otro dispositivo).
+      // Se reemplaza el documento completo (última escritura gana), conservando
+      // únicamente el mes que se estaba viendo en este dispositivo para no
+      // descolocar al usuario en medio de su sesión.
       const merged={...remote};
       if(local.month)merged.month=local.month;
-      // Conservar txs y cards locales si hay más datos
-      if((local.txs||[]).length>(remote.txs||[]).length)merged.txs=local.txs;
-      if((local.cards||[]).length>(remote.cards||[]).length)merged.cards=local.cards;
       localStorage.setItem('bolsillo_v1',JSON.stringify(merged));
-    } else {
-      const local=JSON.parse(localStorage.getItem('bolsillo_v1')||'{}');
-      if(Object.keys(local).length>0)await saveCloud(local);
+      go(TAB);
+    } else if(Object.keys(local).length>0){
+      await saveCloud(local);
     }
   }catch(e){console.warn('Cloud load:',e);}
 }
 
 async function saveCloud(data){
   if(!window.currentUser)return;
-  try{await setDoc(doc(db,'usuarios',window.currentUser.uid),data);}catch(e){}
+  try{await setDoc(doc(db,'usuarios',window.currentUser.uid),data);}
+  catch(e){console.error('No se pudo respaldar en la nube:',e);}
 }
 
 window._sync=function(){
   if(syncT)clearTimeout(syncT);
   syncT=setTimeout(()=>{
+    syncT=null;
     const d=JSON.parse(localStorage.getItem('bolsillo_v1')||'{}');
     saveCloud(d);
   },2500);
 };
+
+// Si la app se va a segundo plano o se cierra con un guardado pendiente,
+// lo subimos de inmediato para no perder los últimos cambios.
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'&&syncT){
+    clearTimeout(syncT);syncT=null;
+    const d=JSON.parse(localStorage.getItem('bolsillo_v1')||'{}');
+    saveCloud(d);
+  }
+});
 
 window.signInWithGoogle=async function(){
   const btn=document.getElementById('btn-google');
