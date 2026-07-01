@@ -57,9 +57,9 @@ input::placeholder,textarea::placeholder{color:var(--mu);}
 #app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative;}
 #hdr{flex-shrink:0;padding:52px 22px 18px;background:var(--bg);}
 #con{flex:1;overflow-y:auto;padding:18px 16px;padding-bottom:calc(var(--nh) + 20px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
-#nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(244,237,224,.98);border-top:1px solid var(--bd);display:flex;align-items:stretch;padding-bottom:var(--sb);z-index:50;}
+#nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(244,237,224,.98);border-top:1px solid var(--bd);display:flex;align-items:stretch;padding-bottom:env(safe-area-inset-bottom,0px);z-index:50;}
 html.dark #nav{background:rgba(24,20,15,.98);}
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 2px;color:var(--mu);font-size:9px;font-weight:500;touch-action:manipulation;transition:color .15s;}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 2px 5px;color:var(--mu);font-size:9px;font-weight:500;touch-action:manipulation;transition:color .15s;}
 .nb svg{width:18px;height:18px;}
 .nb.on{color:var(--ac);}
 
@@ -356,13 +356,25 @@ const MS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','D
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 const BASE_CATS = [
-  {id:'food',     name:'Alimentación', icon:'🛒', color:'#3A7D52'},
-  {id:'transport',name:'Transporte',   icon:'🚌', color:'#2E6B9E'},
-  {id:'home',     name:'Hogar',        icon:'🏠', color:'#7054A8'},
-  {id:'health',   name:'Salud',        icon:'💊', color:'#B83232'},
-  {id:'leisure',  name:'Ocio',         icon:'🎬', color:'#C4622D'},
-  {id:'savings',  name:'Ahorro',       icon:'💰', color:'#B07D2A'},
-  {id:'income',   name:'Ingreso',      icon:'💵', color:'#3A7D52'},
+  {id:'food',     name:'Alimentación', icon:'🛒', color:'#3A8C5E'},
+  {id:'restaurant',name:'Restaurantes',icon:'🍽️', color:'#D4682A'},
+  {id:'transport',name:'Transporte',   icon:'🚌', color:'#2E7AB5'},
+  {id:'car',      name:'Auto/Bencina', icon:'⛽', color:'#5C6BC0'},
+  {id:'home',     name:'Hogar',        icon:'🏠', color:'#7B5EA7'},
+  {id:'rent',     name:'Arriendo',     icon:'🔑', color:'#C05E8E'},
+  {id:'health',   name:'Salud',        icon:'💊', color:'#C94040'},
+  {id:'gym',      name:'Deporte/Gym',  icon:'🏋️', color:'#2E9E80'},
+  {id:'leisure',  name:'Ocio/Entret.', icon:'🎬', color:'#E07840'},
+  {id:'clothes',  name:'Ropa',         icon:'👕', color:'#9B59B6'},
+  {id:'tech',     name:'Tecnología',   icon:'📱', color:'#2980B9'},
+  {id:'subs',     name:'Suscripciones',icon:'📺', color:'#E91E8C'},
+  {id:'travel',   name:'Viajes',       icon:'✈️', color:'#0097A7'},
+  {id:'edu',      name:'Educación',    icon:'📚', color:'#5D7A3E'},
+  {id:'pets',     name:'Mascotas',     icon:'🐾', color:'#A0522D'},
+  {id:'gifts',    name:'Regalos',      icon:'🎁', color:'#D4A017'},
+  {id:'savings',  name:'Ahorro',       icon:'🐷', color:'#C89030'},
+  {id:'invest',   name:'Inversión',    icon:'📈', color:'#1B6B38'},
+  {id:'income',   name:'Ingreso',      icon:'💵', color:'#3A8C5E'},
 ];
 
 const TARIFAS = {
@@ -626,19 +638,35 @@ function renderHome(){
     <button class="btn btnp" onclick="openSheet('add')">+ Registrar primer movimiento</button>`;
   }
 
-  // ── TASA DE AHORRO ──
-  if(inc>0){
-    const rate=bal/inc*100;
-    const col=rate>=20?'g':rate>=10?'y':'r';
-    const colvar=rate>=20?'var(--gn)':rate>=10?'var(--go)':'var(--rd)';
-    h+=`<div class="card"><div class="cb">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div class="ct" style="margin:0">Tasa de ahorro</div>
-        <span style="font-weight:700;font-size:18px;color:${colvar}">${rate.toFixed(1)}%</span>
-      </div>
-      <div class="pg"><div class="pf ${col}" style="width:${Math.max(0,Math.min(rate,100))}%"></div></div>
-      <div style="font-size:11px;color:var(--mu);margin-top:5px">Objetivo: 20% del ingreso</div>
-    </div></div>`;
+  // ── PROGRESO DE AHORRO (vs categoría Ahorro) ──
+  const savCat=allCats().find(c=>c.id==='savings'||c.name.toLowerCase().includes('ahorro'));
+  if(savCat){
+    const savSpent=txs.filter(t=>t.type==='exp'&&t.cat===savCat.id).reduce((a,t)=>a+t.amount,0);
+    const savBudget=(d.budgets[d.month]||{})[savCat.id]||0;
+    const savPct=inc>0?Math.round(savSpent/inc*100):0;
+    const savCol=savPct>=20?'g':savPct>=10?'y':'r';
+    const savColvar=savPct>=20?'var(--gn)':savPct>=10?'var(--go)':'var(--rd)';
+    if(savSpent>0||savBudget>0){
+      h+=`<div class="card"><div class="cb">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:34px;height:34px;border-radius:50%;background:${savCat.color}40;display:flex;align-items:center;justify-content:center;font-size:17px">${savCat.icon}</div>
+            <div>
+              <div class="ct" style="margin:0">Ahorro del mes</div>
+              <div style="font-size:11px;color:var(--mu);margin-top:1px">${savPct}% del ingreso</div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;font-size:17px;color:${savColvar}">${fmt(savSpent)}</div>
+            ${savBudget>0?`<div style="font-size:11px;color:var(--mu)">meta ${fmt(savBudget)}</div>`:''}
+          </div>
+        </div>
+        <div class="pg"><div class="pf ${savCol}" style="width:${Math.min(savPct*5,100)}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:5px">
+          <span>0%</span><span style="color:${savColvar};font-weight:600">▲ 20% recomendado</span><span>100%</span>
+        </div>
+      </div></div>`;
+    }
   }
 
   // ── ÚLTIMOS MOVIMIENTOS ──
