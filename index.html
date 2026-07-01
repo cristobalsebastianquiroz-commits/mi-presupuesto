@@ -14,35 +14,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Allura&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 :root{
-  /* Paleta cálida con acento rosa vivo — fiel a la referencia real de Fleur */
-  --bg:#F7F1E4;--sf:#FFFCF5;--s2:#F0E8D6;--bd:#E2D6BE;
-  --tx:#1E1A14;--mu:#8C7E68;--ac:#E0507E;--ad:rgba(224,80,126,.13);
-  --gn:#3FA77C;--gd:rgba(63,167,124,.13);
-  --rd:#D85C5C;--rr:rgba(216,92,92,.12);
-  --go:#D49A3C;--gq:rgba(212,154,60,.14);
-  --pu:#9B6FD6;--pd:rgba(155,111,214,.13);
-  --tc:#E8895E;--tcd:rgba(232,137,94,.14);
-  --tl:#4CA0A0;--tld:rgba(76,160,160,.14);
-  --grad:linear-gradient(135deg,#E0507E 0%,#E8895E 100%);
-  --nh:calc(54px + env(safe-area-inset-bottom,0px));
+  --bg:#F4EDE0;--sf:#FFFDF8;--s2:#EDE5D6;--bd:#DDD3C0;
+  --tx:#1A1510;--mu:#9A8A74;--ac:#E0507E;--ad:rgba(224,80,126,.12);
+  --gn:#2E9E6B;--gd:rgba(46,158,107,.13);
+  --rd:#C94848;--rr:rgba(201,72,72,.11);
+  --go:#C98A2A;--gq:rgba(201,138,42,.13);
+  --pu:#8B5ED6;--pd:rgba(139,94,214,.12);
+  --tc:#D4783A;--tcd:rgba(212,120,58,.12);
+  --tl:#3A8A8A;--tld:rgba(58,138,138,.12);
+  --nh:calc(50px + env(safe-area-inset-bottom,0px));
   --sb:env(safe-area-inset-bottom,0px);
   --r:20px;--rs:14px;
-  --sh:0 2px 16px rgba(30,26,20,.06);
-  --sm:0 8px 32px rgba(30,26,20,.12);
+  --sh:0 1px 12px rgba(26,21,16,.07);
+  --sm:0 6px 28px rgba(26,21,16,.12);
   --fd:'Allura',cursive;
   --fb:'DM Sans',system-ui,sans-serif;
   color-scheme:light;
 }
 html.dark{
-  --bg:#171310;--sf:#211C18;--s2:#2A241F;--bd:#3A332B;
-  --tx:#F4EEE2;--mu:#9C8B70;--ac:#EE7099;--ad:rgba(238,112,153,.17);
-  --gn:#5BC79A;--gd:rgba(91,199,154,.15);
-  --rd:#E58787;--rr:rgba(229,135,135,.16);
-  --go:#E0B454;--gq:rgba(224,180,84,.16);
-  --pu:#B591EC;--pd:rgba(181,145,236,.17);
-  --tc:#F0A276;--tcd:rgba(240,162,118,.17);
-  --tl:#69BCBC;--tld:rgba(105,188,188,.17);
-  --grad:linear-gradient(135deg,#EE7099 0%,#F0A276 100%);
+  --bg:#18140F;--sf:#211C16;--s2:#2B241C;--bd:#3D352B;
+  --tx:#F2EAD8;--mu:#9A8A72;--ac:#F06090;--ad:rgba(240,96,144,.16);
+  --gn:#4EC48A;--gd:rgba(78,196,138,.14);
+  --rd:#E07070;--rr:rgba(224,112,112,.14);
+  --go:#E0A840;--gq:rgba(224,168,64,.14);
+  --pu:#AA80F0;--pd:rgba(170,128,240,.15);
+  --tc:#E89060;--tcd:rgba(232,144,96,.15);
+  --tl:#56B4B4;--tld:rgba(86,180,180,.15);
   --sh:0 2px 14px rgba(0,0,0,.45);--sm:0 8px 28px rgba(0,0,0,.55);
   color-scheme:dark;
 }
@@ -60,21 +57,24 @@ input::placeholder,textarea::placeholder{color:var(--mu);}
 #app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative;}
 #hdr{flex-shrink:0;padding:52px 22px 18px;background:var(--bg);}
 #con{flex:1;overflow-y:auto;padding:18px 16px;padding-bottom:calc(var(--nh) + 20px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
-#nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(247,241,228,.97);border-top:1px solid var(--bd);display:flex;align-items:stretch;padding-bottom:var(--sb);z-index:50;}
-html.dark #nav{background:rgba(23,19,16,.97);}
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 4px;color:var(--mu);font-size:9.5px;font-weight:500;touch-action:manipulation;transition:color .18s;position:relative;}
-.nb svg{width:19px;height:19px;transition:transform .18s;}
+#nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(244,237,224,.98);border-top:1px solid var(--bd);display:flex;align-items:stretch;padding-bottom:var(--sb);z-index:50;}
+html.dark #nav{background:rgba(24,20,15,.98);}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 2px;color:var(--mu);font-size:9px;font-weight:500;touch-action:manipulation;transition:color .15s;}
+.nb svg{width:18px;height:18px;}
 .nb.on{color:var(--ac);}
-.nb.on svg{transform:translateY(-1px);}
 
 
-@keyframes tabIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-.con-anim{animation:tabIn .26s cubic-bezier(.22,1,.36,1);}
+@keyframes slideInR{from{opacity:0;transform:translateX(22px);}to{opacity:1;transform:translateX(0);}}
+@keyframes slideInL{from{opacity:0;transform:translateX(-22px);}to{opacity:1;transform:translateX(0);}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.con-r{animation:slideInR .28s cubic-bezier(.22,1,.36,1);}
+.con-l{animation:slideInL .28s cubic-bezier(.22,1,.36,1);}
+.con-u{animation:fadeUp .26s cubic-bezier(.22,1,.36,1);}
 
 /* ── HEADER (degradado vívido — pieza visual fuerte) ── */
 .hlb{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:2px;font-weight:500;}
 .ham{font-size:38px;font-weight:700;letter-spacing:-1px;font-family:var(--fb);line-height:1.05;color:var(--tx);}
-.ham.p{color:#fff;}.ham.n{color:#fff;}
+.ham.p{color:var(--tx);}.ham.n{color:var(--rd);}
 .hsb{font-size:12px;color:var(--mu);margin-top:6px;letter-spacing:.2px;}
 .hbt{width:36px;height:36px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1px solid var(--bd);color:var(--tx);}
 
@@ -459,7 +459,9 @@ function toggleDark(){
 }
 
 // ── NAVEGACIÓN ─────────────────────────────────────
+const TAB_ORDER=['home','moves','goals','card','more'];
 function go(tab){
+  const prev=TAB;
   TAB=tab;
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
   const btn=document.getElementById('t-'+tab);
@@ -470,9 +472,11 @@ function go(tab){
   c.scrollTop=0;
   const renders={home:renderHome,moves:renderMoves,goals:renderGoals,card:renderCard,more:renderMore};
   c.innerHTML=(renders[tab]||renderHome)();
-  c.classList.remove('con-anim');
+  const pi=TAB_ORDER.indexOf(prev),ci=TAB_ORDER.indexOf(tab);
+  c.classList.remove('con-r','con-l','con-u');
   void c.offsetWidth;
-  c.classList.add('con-anim');
+  if(pi<0||ci<0||pi===ci)c.classList.add('con-u');
+  else c.classList.add(ci>pi?'con-r':'con-l');
 }
 function updateHdr(){
   const d=getData();
@@ -517,28 +521,31 @@ function closeSheet(){
 // RENDERS
 // ══════════════════════════════════════════════════
 
-function donutSVG(spentSorted,total){
-  const R=14,CIRC=2*Math.PI*R,SIZE=104;
-  let offset=0;
-  const defs=spentSorted.map(({c})=>{
-    const pid='stripe-'+c.color.replace('#','');
-    return`<pattern id="${pid}" patternUnits="userSpaceOnUse" width="2.6" height="2.6" patternTransform="rotate(45)">
-      <rect width="2.6" height="2.6" fill="${c.color}22"/>
-      <line x1="0" y1="0" x2="0" y2="2.6" stroke="${c.color}" stroke-width="1.1"/>
+function donutSVG(items,total){
+  const R=38,CIRC=2*Math.PI*R,CX=52,CY=52,SIZE=104,SW=11;
+  const COLORS=items.map(x=>x.c.color);
+  let offset=CIRC*0.25; // start from top (12 o'clock)
+  const GAP=items.length>1?CIRC*0.012:0;
+  const defs=items.map(({c})=>{
+    const id='p'+c.color.replace('#','');
+    return`<pattern id="${id}" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
+      <rect width="4" height="4" fill="${c.color}1A"/>
+      <line x1="0" y1="0" x2="0" y2="4" stroke="${c.color}" stroke-width="1.4"/>
     </pattern>`;
   }).join('');
-  const segs=spentSorted.map(({c,spent})=>{
+  const segs=items.map(({c,spent})=>{
     const frac=spent/total;
-    const len=Math.max(frac*CIRC,frac>0?1.2:0);
-    const pid='stripe-'+c.color.replace('#','');
-    const seg=`<circle cx="18" cy="18" r="${R}" fill="none" stroke="url(#${pid})" stroke-width="6.5"
-      stroke-dasharray="${len} ${CIRC-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 18 18)"/>`;
-    offset+=len+(spentSorted.length>1?CIRC*0.01:0);
+    const len=Math.max(frac*CIRC-GAP,0.5);
+    const seg=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
+      stroke="url(#p${c.color.replace('#','')})" stroke-width="${SW}"
+      stroke-dasharray="${len} ${CIRC-len}"
+      stroke-dashoffset="${-offset}" />`;
+    offset+=frac*CIRC;
     return seg;
   }).join('');
-  return`<svg width="${SIZE}" height="${SIZE}" viewBox="0 0 36 36" style="flex-shrink:0">
+  return`<svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}" style="transform:rotate(-90deg)">
     <defs>${defs}</defs>
-    <circle cx="18" cy="18" r="${R}" fill="none" stroke="var(--s2)" stroke-width="6.5"/>
+    <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--s2)" stroke-width="${SW}"/>
     ${segs}
   </svg>`;
 }
@@ -551,72 +558,94 @@ function renderHome(){
   const cats=allCats().filter(c=>c.id!=='income');
   let h='';
 
+  // ── PILLS INGRESOS / GASTOS ──
   h+=`<div class="pills">
-    <div class="pill"><div class="plb">Ingresos</div><div class="pv g ff">${fmt(inc)}</div></div>
-    <div class="pill"><div class="plb">Gastos</div><div class="pv r ff">${fmt(exp)}</div></div>
+    <div class="pill"><div class="plb">Ingresos</div><div class="pv g">${fmt(inc)}</div></div>
+    <div class="pill"><div class="plb">Gastos</div><div class="pv r">${fmt(exp)}</div></div>
   </div>`;
 
-  const catData=cats.map(c=>({c,spent:txs.filter(t=>t.type==='exp'&&t.cat===c.id).reduce((a,t)=>a+t.amount,0),b:budget[c.id]||0})).filter(x=>x.spent>0||x.b>0);
-  if(catData.length>0){
-    const spentSorted=catData.filter(x=>x.spent>0).sort((a,b)=>b.spent-a.spent);
-    if(spentSorted.length>0&&exp>0){
-      h+=`<div class="card"><div class="cb" style="display:flex;align-items:center;gap:20px">
-        ${donutSVG(spentSorted,exp)}
-        <div style="flex:1;min-width:0">
-          ${spentSorted.slice(0,4).map(({c,spent})=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:12px">
-            <span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0"></span>
-            <span style="flex:1;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</span>
-            <span class="fn" style="flex-shrink:0">${pct(spent,exp)}%</span>
-          </div>`).join('')}
+  // ── DONUT CARD — centrado, grande, con número central ──
+  const catData=cats.map(c=>({
+    c,
+    spent:txs.filter(t=>t.type==='exp'&&t.cat===c.id).reduce((a,t)=>a+t.amount,0),
+    b:budget[c.id]||0
+  })).filter(x=>x.spent>0||x.b>0);
+
+  const spentSorted=catData.filter(x=>x.spent>0).sort((a,b)=>b.spent-a.spent);
+
+  if(spentSorted.length>0&&exp>0){
+    const top4=spentSorted.slice(0,4);
+    h+=`<div class="card"><div class="cb">
+      <div class="ct">Distribución del mes</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+        <div style="position:relative;width:104px;height:104px;margin:0 auto 18px">
+          ${donutSVG(top4,exp)}
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+            <div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.8px">Gastado</div>
+            <div style="font-size:14px;font-weight:700;color:var(--tx);line-height:1.2">${fmt(exp)}</div>
+          </div>
         </div>
-      </div></div>`;
-    }
+        <div style="width:100%;display:flex;flex-direction:column;gap:9px">
+          ${top4.map(({c,spent})=>`
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:10px;height:10px;border-radius:3px;background:${c.color};flex-shrink:0"></div>
+              <div style="flex:1;font-size:13px;color:var(--tx)">${c.name}</div>
+              <div style="font-weight:700;font-size:13px;color:var(--tx)">${pct(spent,exp)}%</div>
+              <div style="font-size:12px;color:var(--mu);min-width:64px;text-align:right">${fmt(spent)}</div>
+            </div>
+            <div style="height:3px;background:var(--s2);border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:${pct(spent,exp)}%;background:${c.color};border-radius:99px;transition:width .6s ease"></div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  // ── POR CATEGORÍA con barra de presupuesto ──
+  if(catData.length>0){
     h+=`<div class="card"><div class="cb"><div class="ct">Por categoría</div>`;
     catData.forEach(({c,spent,b})=>{
-      const p=pct(spent,b);
+      const p=b>0?pct(spent,b):0;
       const col=p>=90?'r':p>=70?'y':'g';
       h+=`<button class="li" onclick="openSheet('cat-detail','${c.id}')">
-        <div class="lii" style="background:${c.color}45;color:${c.color}">${c.icon}</div>
-        
-        <div class="lin"><div class="lim">${c.name}</div>${b>0?`<div class="pg"><div class="pf ${col}" style="width:${p}%"></div></div>`:''}</div>
-        <div class="lir"><div class="lia r">${fmt(spent)}</div>${b>0?`<div style="font-size:11px;color:var(--mu)">de ${fmt(b)}</div>`:''}</div>
+        <div class="lii" style="background:${c.color}40;color:${c.color};font-size:20px">${c.icon}</div>
+        <div class="lin">
+          <div class="lim">${c.name}</div>
+          ${b>0?`<div class="pg" style="margin-top:5px"><div class="pf ${col}" style="width:${Math.min(p,100)}%"></div></div>`:''}
+        </div>
+        <div class="lir">
+          <div class="lia r">${fmt(spent)}</div>
+          ${b>0?`<div style="font-size:11px;color:var(--mu)">de ${fmt(b)}</div>`:''}
+        </div>
       </button>`;
     });
     h+=`</div></div>`;
   } else {
-    h+=`<div class="empty"><div class="eico">📊</div><p>Aún no hay movimientos<br>este mes.</p></div><button class="btn btnp" onclick="openSheet('add')">+ Registrar primer movimiento</button>`;
+    h+=`<div class="empty"><div class="eico">📊</div><p>Aún no hay movimientos<br>este mes.</p></div>
+    <button class="btn btnp" onclick="openSheet('add')">+ Registrar primer movimiento</button>`;
   }
 
+  // ── TASA DE AHORRO ──
   if(inc>0){
     const rate=bal/inc*100;
     const col=rate>=20?'g':rate>=10?'y':'r';
     const colvar=rate>=20?'var(--gn)':rate>=10?'var(--go)':'var(--rd)';
-    h+=`<div class="card"><div class="cb"><div class="ct">Tasa de ahorro</div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:13px;color:var(--mu)">Objetivo: 20%</span>
-        <span class="fn" style="font-size:20px;color:${colvar}">${rate.toFixed(1)}%</span>
+    h+=`<div class="card"><div class="cb">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="ct" style="margin:0">Tasa de ahorro</div>
+        <span style="font-weight:700;font-size:18px;color:${colvar}">${rate.toFixed(1)}%</span>
       </div>
       <div class="pg"><div class="pf ${col}" style="width:${Math.max(0,Math.min(rate,100))}%"></div></div>
+      <div style="font-size:11px;color:var(--mu);margin-top:5px">Objetivo: 20% del ingreso</div>
     </div></div>`;
   }
 
+  // ── ÚLTIMOS MOVIMIENTOS ──
   const last5=[...txs].reverse().slice(0,5);
   if(last5.length>0){
     h+=`<div class="card"><div class="cb"><div class="ct">Últimos movimientos</div>`;
     last5.forEach(t=>h+=txRow(t,false));
-    h+=`</div></div>`;
-  }
-
-  const exps=txs.filter(t=>t.type==='exp');
-  if(exps.length>0){
-    const byP={cash:0,debit:0,credit:0};
-    exps.forEach(t=>{if(byP[t.pago]!==undefined)byP[t.pago]+=t.amount});
-    const tot=exps.reduce((a,t)=>a+t.amount,0);
-    const pl={cash:'💵 Efectivo',debit:'💳 Débito',credit:'🏦 Crédito'};
-    h+=`<div class="card"><div class="cb"><div class="ct">Medio de pago</div>`;
-    Object.entries(byP).filter(([,v])=>v>0).forEach(([k,v])=>{
-      h+=`<div class="row"><span>${pl[k]}</span><div style="text-align:right"><div class="fn" style="font-size:14px">${fmt(v)}</div><div style="font-size:11px;color:var(--mu)">${pct(v,tot)}%</div></div></div>`;
-    });
     h+=`</div></div>`;
   }
   return h;
