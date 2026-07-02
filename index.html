@@ -55,8 +55,8 @@ input::placeholder,textarea::placeholder{color:var(--mu);}
 
 /* ── LAYOUT ──────────────────────────────────────── */
 #app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative;}
-#hdr{flex-shrink:0;padding:52px 22px 18px;background:var(--bg);}
-#con{flex:1;overflow-y:auto;padding:18px 16px;padding-bottom:calc(var(--nh) + 20px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+
+#con{flex:1;overflow-y:auto;padding:env(safe-area-inset-top,44px) 16px;padding-bottom:calc(var(--nh) + 20px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 #nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(244,237,224,.98);border-top:1px solid var(--bd);display:flex;flex-direction:column;align-items:stretch;z-index:50;}
 html.dark #nav{background:rgba(24,20,15,.98);}
 #nav-buttons{display:flex;align-items:stretch;}
@@ -74,16 +74,22 @@ html.dark #nav{background:rgba(24,20,15,.98);}
 .con-u{animation:fadeUp .26s cubic-bezier(.22,1,.36,1);}
 
 /* ── HEADER (degradado vívido — pieza visual fuerte) ── */
-.hlb{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:2px;font-weight:500;}
-.ham{font-size:38px;font-weight:700;letter-spacing:-1px;font-family:var(--fb);line-height:1.05;color:var(--tx);}
-.ham.p{color:var(--tx);}.ham.n{color:var(--rd);}
-.hsb{font-size:12px;color:var(--mu);margin-top:6px;letter-spacing:.2px;}
-.hbt{width:36px;height:36px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1px solid var(--bd);color:var(--tx);}
+
+
+
+
+
 
 /* ── CARDS ───────────────────────────────────────── */
 .card{background:var(--sf);border-radius:var(--r);border:1px solid var(--bd);box-shadow:var(--sh);margin-bottom:14px;overflow:hidden;}
 .cb{padding:18px;}
 .ct{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--mu);font-weight:500;margin-bottom:14px;}
+
+/* ── MONTH NAV (flota en cada tab) ──────────────────── */
+.mnav{display:flex;align-items:center;justify-content:center;gap:12px;padding:4px 0 16px;position:relative;}
+.mnav-lbl{font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--mu);text-transform:uppercase;min-width:120px;text-align:center;}
+.mnav-arr{width:28px;height:28px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;color:var(--tx);flex-shrink:0;border:1px solid var(--bd);touch-action:manipulation;}
+.mnav-dk{position:absolute;right:0;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;touch-action:manipulation;}
 
 /* ── HOME FLAT STYLE (Fleur-inspired) ──────────────── */
 .home-sec-title{font-family:var(--fd);font-size:38px;color:var(--tx);margin:24px 0 8px;line-height:1;padding:0 2px;}
@@ -321,12 +327,6 @@ html.dark #nav{background:rgba(24,20,15,.98);}
   <div style="margin-top:14px;font-size:13px;color:var(--mu)" id="ls"></div>
 </div>
 <div id="app" style="display:none;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative;">
-  <div id="hdr">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-      <div><div class="hlb" id="hm">—</div><div class="ham" id="hb">$0</div><div class="hsb" id="hs"></div><div id="hpgw" style="display:none;margin-top:10px;width:160px"><div class="pg" style="margin:0"><div class="pf" id="hpf" style="width:0%"></div></div><div id="hpl" style="font-size:10px;color:var(--mu);margin-top:4px"></div></div></div>
-      <button class="hbt" onclick="toggleDark()" id="btn-dark">🌙</button>
-    </div>
-  </div>
   <div id="con"></div>
   <nav id="nav" style="display:none;"><div id="nav-buttons">
     <button class="nb on" id="t-home" onclick="go('home')">
@@ -507,7 +507,8 @@ function totals(txs){
 function toggleDark(){
   const on=document.documentElement.classList.toggle('dark');
   localStorage.setItem('dk',on?'1':'0');
-  document.getElementById('btn-dark').textContent=on?'☀️':'🌙';
+  // btn-dark vive en el contenido renderizado de cada tab
+  const bd=document.getElementById('btn-dark');if(bd)bd.textContent=on?'☀️':'🌙';
   document.getElementById('mc').content=on?'#171310':'#F7F1E4';
 }
 
@@ -531,29 +532,7 @@ function go(tab){
   if(pi<0||ci<0||pi===ci)c.classList.add('con-u');
   else c.classList.add(ci>pi?'con-r':'con-l');
 }
-function updateHdr(){
-  const d=getData();
-  const txs=mTxs(d,d.month);
-  const{inc,exp,bal}=totals(txs);
-  document.getElementById('hm').textContent=mlabel(d.month);
-  const el=document.getElementById('hb');
-  el.textContent=fmt(bal);
-  el.className='ham'+(bal>=0?' p':' n');
-  document.getElementById('hs').textContent=`↑ ${fmt(inc)}  ↓ ${fmt(exp)}`;
-  const budget=d.budgets[d.month]||{};
-  const totalBudget=Object.values(budget).reduce((a,v)=>a+(v||0),0);
-  const wrap=document.getElementById('hpgw');
-  if(totalBudget>0){
-    const p=pct(exp,totalBudget);
-    const col=p>=100?'r':p>=80?'y':'g';
-    wrap.style.display='block';
-    document.getElementById('hpf').className='pf '+col;
-    document.getElementById('hpf').style.width=p+'%';
-    document.getElementById('hpl').textContent=p>=100?'Presupuesto superado':`${fmt(Math.max(totalBudget-exp,0))} disponible este mes`;
-  } else {
-    wrap.style.display='none';
-  }
-}
+function updateHdr(){}
 
 // ── SHEET ──────────────────────────────────────────
 function openSheet(name,data){
@@ -573,6 +552,25 @@ function closeSheet(){
 // ══════════════════════════════════════════════════
 // RENDERS
 // ══════════════════════════════════════════════════
+
+
+// ── NAVEGADOR DE MES (aparece en todas las pestañas) ─────────────────
+function monthNav(){
+  const d=getData();
+  const isDark=document.documentElement.classList.contains('dark');
+  return`<div class="mnav">
+    <button class="mnav-arr" onclick="changeMonth(prevMonth(getData().month))">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="mnav-lbl">${mlabel(d.month).toUpperCase()}</div>
+    <button class="mnav-arr" onclick="changeMonth(nextMonth(getData().month))">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <button class="mnav-dk" id="btn-dark" onclick="toggleDark()">${isDark?'☀️':'🌙'}</button>
+  </div>`;
+}
+function prevMonth(m){const[y,mo]=m.split('-').map(Number);return mo===1?`${y-1}-12`:`${y}-${String(mo-1).padStart(2,'0')}`;}
+function nextMonth(m){const[y,mo]=m.split('-').map(Number);return mo===12?`${y+1}-01`:`${y}-${String(mo+1).padStart(2,'0')}`;}
 
 function donutSVG(items,total){
   const R=38,CIRC=2*Math.PI*R,CX=52,CY=52,SIZE=104,SW=11;
@@ -605,11 +603,11 @@ function donutSVG(items,total){
 
 function renderHome(){
   const d=getData();
+  let h=monthNav();
   const txs=mTxs(d,d.month);
   const{inc,exp,bal}=totals(txs);
   const budget=d.budgets[d.month]||{};
   const allCatsArr=allCats();
-  let h='';
 
   // ── SECCIÓN RESUMEN (3 columnas como Fleur) ──────────────────────────────
   h+=`<div class="home-sec-title">Resumen</div>
@@ -749,7 +747,7 @@ function txRow(t,clickable){
 }
 
 function renderMoves(){
-  let h=`<div class="sbar">
+  let h=monthNav()+`<div class="sbar">
     <svg width="16" height="16" fill="none" stroke="var(--mu)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input type="text" placeholder="Buscar..." value="${SEARCH}" oninput="searchMoves(this.value)" id="movesSearchInput">
     ${SEARCH?`<button onclick="SEARCH='';go('moves')" style="color:var(--mu);font-size:20px">×</button>`:''}
@@ -781,9 +779,10 @@ function renderMovesList(){
 
 function renderGoals(){
   const d=getData();
+  let h=monthNav();
   const savingsTx=mTxs(d,d.month).filter(t=>t.cat==='savings');
   const totSav=savingsTx.reduce((a,t)=>a+t.amount,0);
-  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+  h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
     <span class="ff" style="font-size:24px;font-style:italic">Metas de ahorro</span>
     <button onclick="openSheet('add-goal')" style="background:var(--ad);border:1px solid rgba(122,158,126,.25);color:var(--ac);border-radius:var(--rs);padding:7px 14px;font-size:13px;font-weight:500">+ Nueva</button>
   </div>`;
@@ -816,13 +815,13 @@ function goalCard(m,d){
 
 function renderCard(){
   const d=getData();
-  if(d.cards.length===0) return`<div style="padding-top:20px"><div class="empty"><div class="eico">💳</div><p>Agrega tu tarjeta<br>para controlar cuotas y gastos.</p></div><button class="btn btnp" onclick="openSheet('add-card-step1')">+ Agregar tarjeta</button></div>`;
+  let h=monthNav();
+  if(d.cards.length===0) return h+`<div style="padding-top:20px"><div class="empty"><div class="eico">💳</div><p>Agrega tu tarjeta<br>para controlar cuotas y gastos.</p></div><button class="btn btnp" onclick="openSheet('add-card-step1')">+ Agregar tarjeta</button></div>`;
   const idx=Math.min(CC_IDX,d.cards.length-1);
   const card=d.cards[idx];
   const grad=ccGrad(card.tipo);
   const mo=calcMonthly(card);
   const mantEst=Math.round((card.mant||0)*UF);
-  let h='';
   if(d.cards.length>1){
     h+=`<div class="cctab">`;
     d.cards.forEach((c,i)=>h+=`<button class="cct2${i===idx?' on':''}" onclick="CC_IDX=${i};go('card')">${c.alias||c.tipo}</button>`);
@@ -962,9 +961,10 @@ function updCalc(cardId){
 
 function renderMore(){
   const d=getData();
+  let h=monthNav();
   const pend=d.cobros.filter(c=>!c.done);
   const pendAmt=pend.reduce((a,c)=>a+(c.amount-(c.paid||0)),0);
-  let h=`<div class="ff" style="font-size:26px;font-style:italic;margin-bottom:18px">Más</div>`;
+  h+=`<div class="home-sec-title" style="font-size:30px;margin:8px 0 16px">Más</div>`;
   h+=`<div class="card"><div class="cb">
     <button class="li" onclick="openSheet('cobros')" style="padding:0;border-bottom:1px solid var(--bd)">
       <div class="lii" style="background:var(--gq);color:var(--go)">💸</div>
@@ -1999,7 +1999,7 @@ function showApp(user){
   app.style.display='flex';app.style.flexDirection='column';
   document.getElementById('nav').style.display='flex';
   document.getElementById('fab').style.display='flex';
-  document.getElementById('btn-dark').textContent=document.documentElement.classList.contains('dark')?'☀️':'🌙';
+
 }
 function hideApp(){
   document.getElementById('login').style.display='flex';
