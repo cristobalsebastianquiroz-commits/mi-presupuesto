@@ -60,7 +60,13 @@ input::placeholder,textarea::placeholder{color:var(--mu);}
 #nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(244,237,224,.98);border-top:1px solid var(--bd);display:flex;flex-direction:column;align-items:stretch;z-index:50;}
 html.dark #nav{background:rgba(24,20,15,.98);}
 #nav-buttons{display:flex;align-items:stretch;}
-#nav-sa{height:env(safe-area-inset-bottom,0px);min-height:0;}
+/* En browser: safe-area-inset-bottom incluye la barra del navegador → 0 */
+#nav-sa{height:0;min-height:0;}
+/* En PWA instalada (standalone): solo ahí aplicamos el home indicator real (~34px) */
+@media(display-mode:standalone){
+  #nav-sa{height:env(safe-area-inset-bottom,0px);}
+  :root{--nh:calc(44px + env(safe-area-inset-bottom,0px));}
+}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 2px 6px;color:var(--mu);font-size:9px;font-weight:500;touch-action:manipulation;transition:color .15s;}
 .nb svg{width:18px;height:18px;}
 .nb.on{color:var(--ac);}
