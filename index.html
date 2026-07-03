@@ -22,7 +22,7 @@
   --pu:#8B5ED6;--pd:rgba(139,94,214,.12);
   --tc:#D4783A;--tcd:rgba(212,120,58,.12);
   --tl:#3A8A8A;--tld:rgba(58,138,138,.12);
-  --nh:calc(50px + env(safe-area-inset-bottom,0px)); /* botones ~44px + safe area */
+  --nh:0px; /* nav en flujo — no se necesita compensación de padding */
   --sb:env(safe-area-inset-bottom,0px);
   --r:20px;--rs:14px;
   --sh:0 1px 12px rgba(26,21,16,.07);
@@ -56,19 +56,38 @@ input::placeholder,textarea::placeholder{color:var(--mu);}
 /* ── LAYOUT ──────────────────────────────────────── */
 #app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative;}
 
-#con{flex:1;overflow-y:auto;padding:env(safe-area-inset-top,44px) 16px;padding-bottom:calc(var(--nh) + 20px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
-#nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(244,237,224,.98);border-top:1px solid var(--bd);display:flex;flex-direction:column;align-items:stretch;z-index:50;}
-html.dark #nav{background:rgba(24,20,15,.98);}
-#nav-buttons{display:flex;align-items:stretch;}
-/* En browser: safe-area-inset-bottom incluye la barra del navegador → 0 */
-#nav-sa{height:0;min-height:0;}
-/* En PWA instalada (standalone): solo ahí aplicamos el home indicator real (~34px) */
-@media(display-mode:standalone){
-  #nav-sa{height:env(safe-area-inset-bottom,0px);}
-  :root{--nh:calc(44px + env(safe-area-inset-bottom,0px));}
+/* ── LAYOUT PRINCIPAL — nav en flujo natural, sin fixed ── */
+html,body{height:100%;overflow:hidden;}
+#app{overflow:hidden;}
+#con{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding:16px 16px 24px;
 }
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 2px 6px;color:var(--mu);font-size:9px;font-weight:500;touch-action:manipulation;transition:color .15s;}
-.nb svg{width:18px;height:18px;}
+#nav{
+  flex-shrink:0;
+  background:rgba(244,237,224,.97);
+  border-top:1.5px solid var(--bd);
+}
+html.dark #nav{background:rgba(24,20,15,.97);}
+#nav-buttons{display:flex;align-items:stretch;}
+.nb{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  padding:9px 4px 8px;
+  color:var(--mu);
+  font-size:9.5px;
+  font-weight:500;
+  touch-action:manipulation;
+  transition:color .15s;
+}
+.nb svg{width:20px;height:20px;}
 .nb.on{color:var(--ac);}
 
 
@@ -229,7 +248,7 @@ html.dark #nav{background:rgba(24,20,15,.98);}
 .bg{background:var(--gq);color:var(--go);border:1px solid rgba(160,128,64,.2);}
 
 /* ── FAB ─────────────────────────────────────────── */
-#fab{position:fixed;bottom:calc(var(--nh) + 14px);right:calc(50% - 205px);width:54px;height:54px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(224,80,126,.35);z-index:40;touch-action:manipulation;transition:transform .15s;}
+#fab{position:absolute;bottom:68px;right:16px;width:54px;height:54px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(224,80,126,.35);z-index:40;touch-action:manipulation;transition:transform .15s;}
 #fab:active{transform:scale(.92);}
 #fab svg{width:22px;height:22px;}
 
@@ -332,9 +351,9 @@ html.dark #nav{background:rgba(24,20,15,.98);}
   </button>
   <div style="margin-top:14px;font-size:13px;color:var(--mu)" id="ls"></div>
 </div>
-<div id="app" style="display:none;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative;">
+<div id="app" style="display:none;flex-direction:column;height:100%;max-width:430px;margin:0 auto;position:fixed;inset:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;">
   <div id="con"></div>
-  <nav id="nav" style="display:none;"><div id="nav-buttons">
+  <nav id="nav" style="display:none;flex-shrink:0"><div id="nav-buttons">
     <button class="nb on" id="t-home" onclick="go('home')">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       Inicio
@@ -355,8 +374,8 @@ html.dark #nav{background:rgba(24,20,15,.98);}
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       Más
     </button>
-  </div><div id="nav-sa"></div></nav>
-  <button id="fab" onclick="openSheet('add')" style="display:none;">
+  </div></nav>
+  <button id="fab" onclick="openSheet('add')" style="display:none;position:absolute;">
     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
 </div>
@@ -2003,7 +2022,8 @@ function showApp(user){
   document.getElementById('login').style.display='none';
   const app=document.getElementById('app');
   app.style.display='flex';app.style.flexDirection='column';
-  document.getElementById('nav').style.display='flex';
+  document.getElementById('nav').style.display='block';
+  document.getElementById('nav-buttons').style.display='flex';
   document.getElementById('fab').style.display='flex';
 
 }
