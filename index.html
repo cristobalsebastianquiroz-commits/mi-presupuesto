@@ -78,27 +78,27 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;}
 #nav{
   display:flex;
   flex-shrink:0;
+  align-items:center;
   background:rgba(244,237,224,.98);
   border-top:1px solid var(--bd);
+  padding-bottom:env(safe-area-inset-bottom,0);
 }
 html.dark #nav{background:rgba(24,20,15,.98);}
 .nb{
   flex:1;
   display:flex;
-  flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:5px;
-  height:72px;
+  height:52px;
   color:var(--mu);
-  font-size:12px;
-  font-weight:500;
-  line-height:1;
   touch-action:manipulation;
-  transition:color .15s;
+  transition:color .15s,transform .15s;
 }
-.nb svg{width:30px;height:30px;flex-shrink:0;}
+.nb svg{width:26px;height:26px;flex-shrink:0;transition:transform .15s,stroke-width .15s;}
+.nb .nb-txt{display:none;}
 .nb.on{color:var(--ac);}
+.nb.on svg{stroke-width:2.2;transform:scale(1.08);}
+.nb:active svg{transform:scale(.86);}
 
 
 @keyframes slideInR{from{opacity:0;transform:translateX(22px);}to{opacity:1;transform:translateX(0);}}
@@ -258,7 +258,7 @@ html.dark #nav{background:rgba(24,20,15,.98);}
 .bg{background:var(--gq);color:var(--go);border:1px solid rgba(160,128,64,.2);}
 
 /* ── FAB ─────────────────────────────────────────── */
-#fab{position:absolute;bottom:68px;right:16px;width:54px;height:54px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(224,80,126,.35);z-index:40;touch-action:manipulation;transition:transform .15s;}
+#fab{position:absolute;bottom:calc(52px + env(safe-area-inset-bottom,0) + 16px);right:16px;width:54px;height:54px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(224,80,126,.35);z-index:40;touch-action:manipulation;transition:transform .15s;}
 #fab:active{transform:scale(.92);}
 #fab svg{width:22px;height:22px;}
 
@@ -364,25 +364,25 @@ html.dark #nav{background:rgba(24,20,15,.98);}
 <div id="app" style="display:none;">
   <div id="con"></div>
   <nav id="nav" style="display:none;">
-    <button class="nb on" id="t-home" onclick="go('home')">
+    <button class="nb on" id="t-home" onclick="go('home')" aria-label="Inicio">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-      Inicio
+      <span class="nb-txt">Inicio</span>
     </button>
-    <button class="nb" id="t-moves" onclick="go('moves')">
+    <button class="nb" id="t-moves" onclick="go('moves')" aria-label="Movimientos">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-      Movimientos
+      <span class="nb-txt">Movimientos</span>
     </button>
-    <button class="nb" id="t-goals" onclick="go('goals')">
+    <button class="nb" id="t-goals" onclick="go('goals')" aria-label="Metas">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="3" x2="12" y2="5"/></svg>
-      Metas
+      <span class="nb-txt">Metas</span>
     </button>
-    <button class="nb" id="t-card" onclick="go('card')">
+    <button class="nb" id="t-card" onclick="go('card')" aria-label="Tarjeta">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
-      Tarjeta
+      <span class="nb-txt">Tarjeta</span>
     </button>
-    <button class="nb" id="t-more" onclick="go('more')">
+    <button class="nb" id="t-more" onclick="go('more')" aria-label="Más">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-      Más
+      <span class="nb-txt">Más</span>
     </button>
   </nav>
   <button id="fab" onclick="openSheet('add')" style="display:none;position:absolute;">
