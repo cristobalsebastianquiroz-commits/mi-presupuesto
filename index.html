@@ -26,7 +26,9 @@
   --pu:#8B5ED6;--pd:rgba(139,94,214,.12);
   --tc:#D4783A;--tcd:rgba(212,120,58,.12);
   --tl:#3A8A8A;--tld:rgba(58,138,138,.12);
-  --nh:0px; /* nav en flujo — no se necesita compensación de padding */
+  --nav-gap:18px;   /* distancia del pill flotante al borde inferior */
+  --nav-h:64px;     /* alto del pill de navegación */
+  --nh:calc(var(--nav-gap) + var(--nav-h) + 18px); /* espacio total a reservar sobre el pill */
   --sb:0px;
   --r:20px;--rs:14px;
   --sh:0 1px 12px rgba(26,21,16,.07);
@@ -73,23 +75,38 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;}
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
-  padding:12px 16px 16px;
+  padding:12px 16px calc(var(--nh) + env(safe-area-inset-bottom,0));
 }
+/* ── NAV FLOTANTE ESTILO INSTAGRAM ──────────────────────
+   Pill ovalado, separado del borde inferior, flotando
+   sobre el contenido con fondo esmerilado (glass) y sombra. */
 #nav{
+  position:absolute;
+  left:18px;
+  right:18px;
+  bottom:calc(var(--nav-gap) + env(safe-area-inset-bottom,0));
+  height:var(--nav-h);
   display:flex;
-  flex-shrink:0;
   align-items:center;
-  background:rgba(244,237,224,.98);
-  border-top:1px solid var(--bd);
-  padding-bottom:env(safe-area-inset-bottom,0);
+  border-radius:999px;
+  background:rgba(255,253,248,.82);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  backdrop-filter:blur(22px) saturate(180%);
+  border:1px solid rgba(255,255,255,.5);
+  box-shadow:0 12px 32px rgba(26,21,16,.16),0 2px 8px rgba(26,21,16,.08);
+  z-index:50;
 }
-html.dark #nav{background:rgba(24,20,15,.98);}
+html.dark #nav{
+  background:rgba(33,28,22,.78);
+  border:1px solid rgba(255,255,255,.06);
+  box-shadow:0 12px 32px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
+}
 .nb{
   flex:1;
   display:flex;
   align-items:center;
   justify-content:center;
-  height:52px;
+  height:100%;
   color:var(--mu);
   touch-action:manipulation;
   transition:color .15s,transform .15s;
@@ -258,7 +275,7 @@ html.dark #nav{background:rgba(24,20,15,.98);}
 .bg{background:var(--gq);color:var(--go);border:1px solid rgba(160,128,64,.2);}
 
 /* ── FAB ─────────────────────────────────────────── */
-#fab{position:absolute;bottom:calc(52px + env(safe-area-inset-bottom,0) + 16px);right:16px;width:54px;height:54px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(224,80,126,.35);z-index:40;touch-action:manipulation;transition:transform .15s;}
+#fab{position:absolute;bottom:calc(var(--nh) + env(safe-area-inset-bottom,0) - 6px);right:18px;width:54px;height:54px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(224,80,126,.35);z-index:55;touch-action:manipulation;transition:transform .15s;}
 #fab:active{transform:scale(.92);}
 #fab svg{width:22px;height:22px;}
 
