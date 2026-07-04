@@ -2,9 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Bolsillo">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/cristobalsebastianquiroz-commits/mi-presupuesto/main/icon.png">
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/cristobalsebastianquiroz-commits/mi-presupuesto/main/icon.png">
@@ -55,7 +55,7 @@ input::placeholder,textarea::placeholder{color:var(--mu);}
 .ff{font-family:var(--fd);}
 .fn{font-family:var(--fb);font-weight:700;}
 
-/* ── LAYOUT — iPhone 17 Pro / Dynamic Island safe ── */
+/* ── LAYOUT — sin viewport-fit, nav en flujo natural ── */
 html,body{height:100%;margin:0;padding:0;overflow:hidden;}
 #app{
   position:fixed;
@@ -73,8 +73,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;}
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
-  /* padding-top se gestiona por .mnav con el safe-area-top */
-  padding:0 16px 16px;
+  padding:12px 16px 16px;
 }
 #nav{
   display:flex;
@@ -83,27 +82,22 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;}
   border-top:1px solid var(--bd);
 }
 html.dark #nav{background:rgba(24,20,15,.98);}
-/* Los botones se extienden hacia abajo absorbiendo la zona del home indicator.
-   El contenido (ícono+label) queda en la parte superior del botón.
-   Así NO hay espacio vacío visible — el botón llena toda la zona. */
 .nb{
   flex:1;
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:flex-start;
-  gap:2px;
-  padding-top:9px;
-  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 7px);
+  justify-content:center;
+  gap:3px;
+  height:54px;
   color:var(--mu);
-  font-size:9px;
+  font-size:10px;
   font-weight:500;
   line-height:1;
   touch-action:manipulation;
   transition:color .15s;
 }
-.nb svg{width:19px;height:19px;flex-shrink:0;}
-.nb-lbl{display:block;}
+.nb svg{width:22px;height:22px;flex-shrink:0;}
 .nb.on{color:var(--ac);}
 
 
@@ -127,10 +121,7 @@ html.dark #nav{background:rgba(24,20,15,.98);}
 .ct{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--mu);font-weight:500;margin-bottom:14px;}
 
 /* ── MONTH NAV (flota en cada tab) ──────────────────── */
-.mnav{display:flex;align-items:center;justify-content:center;gap:12px;
-  padding-top:max(env(safe-area-inset-top,16px),16px);
-  padding-bottom:12px;
-  position:relative;}
+.mnav{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 0 14px;position:relative;}
 .mnav-lbl{font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--mu);text-transform:uppercase;min-width:120px;text-align:center;}
 .mnav-arr{width:28px;height:28px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;color:var(--tx);flex-shrink:0;border:1px solid var(--bd);touch-action:manipulation;}
 .mnav-dk{position:absolute;right:0;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;touch-action:manipulation;}
