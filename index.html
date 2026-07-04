@@ -119,15 +119,15 @@ html.dark #nav{background:rgba(24,20,15,.98);}
 .ct{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--mu);font-weight:500;margin-bottom:14px;}
 
 /* ── MONTH NAV (flota en cada tab) ──────────────────── */
-.mnav{display:flex;align-items:center;justify-content:center;gap:12px;padding:4px 0 16px;position:relative;}
+.mnav{display:flex;align-items:center;justify-content:center;gap:12px;padding:4px 0 12px;position:relative;}
 .mnav-lbl{font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--mu);text-transform:uppercase;min-width:120px;text-align:center;}
 .mnav-arr{width:28px;height:28px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;color:var(--tx);flex-shrink:0;border:1px solid var(--bd);touch-action:manipulation;}
 .mnav-dk{position:absolute;right:0;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;touch-action:manipulation;}
 
 /* ── HOME FLAT STYLE (Fleur-inspired) ──────────────── */
-.home-sec-title{font-family:var(--fd);font-size:38px;color:var(--tx);margin:24px 0 8px;line-height:1;padding:0 2px;}
+.home-sec-title{font-family:var(--fd);font-size:36px;color:var(--tx);margin:20px 0 4px;line-height:1.1;padding:0 2px;}
 .h3col{display:flex;align-items:stretch;gap:0;margin:8px 0 16px;}
-.h3item{flex:1;display:flex;flex-direction:column;gap:4px;padding:14px 8px;}
+.h3item{flex:1;display:flex;flex-direction:column;gap:3px;padding:12px 8px;}
 .h3item:first-child{padding-left:0;}
 .h3item:last-child{padding-right:0;}
 .h3sep{width:1px;background:var(--bd);margin:10px 0;}
@@ -151,7 +151,7 @@ html.dark #nav{background:rgba(24,20,15,.98);}
 .hleg-pct{font-size:12px;font-weight:700;color:var(--tx);}
 /* Lista plana de items (estilo Fleur) */
 .flat-list{display:flex;flex-direction:column;}
-.flat-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed var(--bd);}
+.flat-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--bd);}
 .flat-item:last-child{border-bottom:none;}
 .flat-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
 .flat-body{flex:1;min-width:0;}
@@ -1614,11 +1614,6 @@ function updCrInfo(){
 
 function onAmtCh(){if(PAGO==='credit')updCrInfo();}
 
-function onCatCh(){
-  const cat=document.getElementById('f-c')?.value;
-  const mp=document.getElementById('f-meta-panel');
-  if(mp)mp.style.display=cat==='savings'?'block':'none';
-}
 
 function selMeta(id,el){
   SEL_META=id===SEL_META?null:id;
