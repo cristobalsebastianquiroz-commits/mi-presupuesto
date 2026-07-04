@@ -44,27 +44,17 @@ html.dark{
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;background-color:var(--bg);color:var(--tx);font-family:var(--fb);font-size:15px;overflow:hidden;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-}
+
 button{font-family:var(--fb);cursor:pointer;border:none;background:none;color:inherit;touch-action:manipulation;}
 input,select,textarea{font-family:var(--fb);color:var(--tx);-webkit-appearance:none;background:none;}
 input::placeholder,textarea::placeholder{color:var(--mu);}
 .ff{font-family:var(--fd);}
 .fn{font-family:var(--fb);font-weight:700;}
 
-/* ── LAYOUT ──────────────────────────────────────── */
-html,body{
-  height:100%;
-  margin:0;padding:0;
-  overflow:hidden;
-  background-color:var(--bg);
-  color:var(--tx);
-  font-family:var(--fb);
-  font-size:15px;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-}
+/* ── LAYOUT DEFINITIVO ───────────────────────────── */
+html,body{height:100%;margin:0;padding:0;overflow:hidden;}
 #app{
+  /* Ocupa EXACTAMENTE el viewport visible — sin dvh, sin safe-area */
   position:fixed;
   top:0;left:0;right:0;bottom:0;
   max-width:430px;
@@ -73,21 +63,23 @@ html,body{
   flex-direction:column;
   overflow:hidden;
   background:var(--bg);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
 }
 #con{
   flex:1;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
-  padding:12px 16px 20px;
+  padding:12px 16px 16px;
 }
+/* Nav: flex directo, sin wrapper, sin display:block */
 #nav{
+  display:flex;
   flex-shrink:0;
-  background:rgba(244,237,224,.97);
+  background:rgba(244,237,224,.98);
   border-top:1px solid var(--bd);
 }
-html.dark #nav{background:rgba(24,20,15,.97);}
-#nav-buttons{display:flex;}
+html.dark #nav{background:rgba(24,20,15,.98);}
 .nb{
   flex:1;
   display:flex;
@@ -95,15 +87,15 @@ html.dark #nav{background:rgba(24,20,15,.97);}
   align-items:center;
   justify-content:center;
   gap:2px;
-  padding:8px 2px 7px;
+  height:46px;
   color:var(--mu);
   font-size:9px;
   font-weight:500;
-  letter-spacing:-.1px;
+  line-height:1;
   touch-action:manipulation;
   transition:color .15s;
 }
-.nb svg{width:19px;height:19px;}
+.nb svg{width:19px;height:19px;flex-shrink:0;}
 .nb.on{color:var(--ac);}
 
 
@@ -369,7 +361,7 @@ html.dark #nav{background:rgba(24,20,15,.97);}
 </div>
 <div id="app" style="display:none;">
   <div id="con"></div>
-  <nav id="nav" style="display:none;flex-shrink:0"><div id="nav-buttons">
+  <nav id="nav" style="display:none;">
     <button class="nb on" id="t-home" onclick="go('home')">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       Inicio
@@ -390,7 +382,7 @@ html.dark #nav{background:rgba(24,20,15,.97);}
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       Más
     </button>
-  </div></nav>
+  </nav>
   <button id="fab" onclick="openSheet('add')" style="display:none;position:absolute;">
     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
@@ -2038,8 +2030,7 @@ function showApp(user){
   document.getElementById('login').style.display='none';
   const app=document.getElementById('app');
   app.style.display='flex';
-  document.getElementById('nav').style.display='block';
-  document.getElementById('nav-buttons').style.display='flex';
+  document.getElementById('nav').style.display='flex';
   document.getElementById('fab').style.display='flex';
 
 }
