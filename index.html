@@ -26,10 +26,10 @@
   --pu:#8B5ED6;--pd:rgba(139,94,214,.12);
   --tc:#D4783A;--tcd:rgba(212,120,58,.12);
   --tl:#3A8A8A;--tld:rgba(58,138,138,.12);
-  --nav-gap:18px;   /* distancia mínima del pill flotante al borde, en pantallas sin isla/inset */
-  --nav-h:64px;     /* alto del pill de navegación */
-  --nav-bottom:max(var(--nav-gap),calc(env(safe-area-inset-bottom,0px) + 10px)); /* respeta el home-indicator sin sumar espacio de más */
-  --nh:calc(var(--nav-bottom) + var(--nav-h) + 18px); /* espacio total a reservar sobre el pill */
+  --nav-gap:10px;   /* distancia mínima del pill flotante al borde, en pantallas sin isla/inset */
+  --nav-h:56px;     /* alto del pill de navegación */
+  --nav-bottom:max(var(--nav-gap),calc(env(safe-area-inset-bottom,0px) + 6px)); /* respeta el home-indicator sin sumar espacio de más */
+  --nh:calc(var(--nav-bottom) + var(--nav-h) + 8px); /* espacio total a reservar sobre el pill */
   --sb:0px;
   --r:20px;--rs:14px;
   --sh:0 1px 12px rgba(26,21,16,.07);
@@ -60,6 +60,7 @@ input::placeholder,textarea::placeholder{color:var(--mu);}
 
 /* ── LAYOUT — sin viewport-fit, nav en flujo natural ── */
 html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);}
+@supports (height:100dvh){html,body{height:100dvh;}}
 html{transition:background-color .35s ease;}
 #app{transition:background-color .35s ease;}
 #app{
