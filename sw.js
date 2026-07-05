@@ -1,6 +1,6 @@
 // ── VERSIÓN: cambia este número cada vez que subas cambios ──────────────────
 // El navegador detecta que el número cambió y descarga todo de nuevo
-const VERSION = '2.5.4';
+const VERSION = '2.5.5';
 const CACHE = `presupuesto-${VERSION}`;
 const FILES = ['./index.html', './manifest.json', './icon.png'];
 
