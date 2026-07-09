@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Bolsillo">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/cristobalsebastianquiroz-commits/mi-presupuesto/main/icon.png">
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/cristobalsebastianquiroz-commits/mi-presupuesto/main/icon.png">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#F7F1E4" id="mc">
+<meta name="theme-color" content="#F4EDE0" id="mc">
 <title>Bolsillo — Tu presupuesto</title>
 <script>try{if(localStorage.getItem('dk')==='1'){document.documentElement.classList.add('dark');var m=document.getElementById('mc');if(m)m.content='#0A0B0E'}}catch(e){}</script>
 
@@ -62,7 +62,7 @@ input::placeholder,textarea::placeholder{color:var(--mu);}
 .ff{font-family:var(--fd);}
 .fn{font-family:var(--fb);font-weight:700;}
 
-/* ── LAYOUT — sin viewport-fit, nav en flujo natural ── */
+/* ── LAYOUT — viewport-fit=cover activo (arriba y abajo); nav flotante compensa con safe-area-inset-bottom ── */
 html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);}
 html{transition:background-color .35s ease;}
 #app{transition:background-color .35s ease;}
@@ -96,7 +96,7 @@ html.dark #app{
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
-  padding:12px 16px calc(var(--nh) + env(safe-area-inset-bottom,0));
+  padding:calc(12px + env(safe-area-inset-top,0)) 16px calc(var(--nh) + env(safe-area-inset-bottom,0));
 }
 /* ── NAV FLOTANTE ESTILO INSTAGRAM ──────────────────────
    Pill ovalado, separado del borde inferior, flotando
@@ -116,6 +116,9 @@ html.dark #app{
   border:1px solid rgba(255,255,255,.55);
   box-shadow:0 12px 32px rgba(26,21,16,.18),0 2px 8px rgba(26,21,16,.08),inset 0 1px 0 rgba(255,255,255,.6);
   z-index:50;
+  isolation:isolate;
+  -webkit-transform:translateZ(0);
+  transform:translateZ(0);
 }
 html.dark #nav{
   background:rgba(15,17,21,.58);
@@ -306,8 +309,8 @@ html.dark #nav{
 .bg{background:var(--gq);color:var(--go);border:1px solid rgba(160,128,64,.2);}
 
 /* ── FAB ─────────────────────────────────────────── */
-#fab{position:absolute;bottom:calc(var(--nh) + env(safe-area-inset-bottom,0) - 6px);right:18px;width:54px;height:54px;border-radius:50%;background:linear-gradient(160deg,rgba(255,255,255,.4),rgba(255,255,255,0) 50%),var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(224,80,126,.4),inset 0 1px 0 rgba(255,255,255,.45);z-index:55;touch-action:manipulation;transition:transform .15s;border:1px solid rgba(255,255,255,.25);}
-#fab:active{transform:scale(.92);}
+#fab{position:absolute;bottom:calc(var(--nh) + env(safe-area-inset-bottom,0) - 6px);right:18px;width:54px;height:54px;border-radius:50%;background:linear-gradient(160deg,rgba(255,255,255,.4),rgba(255,255,255,0) 50%),var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(224,80,126,.4),inset 0 1px 0 rgba(255,255,255,.45);z-index:55;touch-action:manipulation;transition:transform .15s;border:1px solid rgba(255,255,255,.25);isolation:isolate;-webkit-transform:translateZ(0);transform:translateZ(0);}
+#fab:active{transform:translateZ(0) scale(.92);}
 #fab svg{width:22px;height:22px;}
 
 /* ── EMPTY STATES ────────────────────────────────── */
@@ -606,7 +609,7 @@ function toggleDark(){
   localStorage.setItem('dk',on?'1':'0');
   // btn-dark vive en el contenido renderizado de cada tab
   const bd=document.getElementById('btn-dark');if(bd)bd.textContent=on?'☀️':'🌙';
-  document.getElementById('mc').content=on?'#0A0B0E':'#F7F1E4';
+  document.getElementById('mc').content=on?'#0A0B0E':'#F4EDE0';
 }
 
 // ── NAVEGACIÓN ─────────────────────────────────────
