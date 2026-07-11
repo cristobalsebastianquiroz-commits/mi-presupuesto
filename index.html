@@ -608,7 +608,20 @@ function toggleDark(){
   localStorage.setItem('dk',on?'1':'0');
   // btn-dark vive en el contenido renderizado de cada tab
   const bd=document.getElementById('btn-dark');if(bd)bd.textContent=on?'☀️':'🌙';
-  document.getElementById('mc').content=on?'#0A0B0E':'#F7F1E4';
+  setThemeColor(on);
+}
+// Actualiza el color de la barra de estado (arriba) y fuerza su repintado inmediato.
+// Nota: algunos navegadores (Chrome Android, algunos WebView de iOS) no repintan
+// la barra de estado solo con cambiar el atributo "content" del meta tag: lo dejan
+// "cacheado" hasta el próximo arranque en frío. Sacar y reinsertar el <meta> del DOM
+// obliga al repintado inmediato, sin tocar nada del layout ni del nav inferior.
+function setThemeColor(isDark){
+  const color=isDark?'#0A0B0E':'#F7F1E4';
+  const meta=document.getElementById('mc');
+  if(!meta) return;
+  meta.setAttribute('content',color);
+  meta.remove();
+  document.head.appendChild(meta);
 }
 
 // ── NAVEGACIÓN ─────────────────────────────────────
