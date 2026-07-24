@@ -190,15 +190,21 @@ html.dark #nav{
 .hbar-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1);}
 .hbar-label{font-size:12px;color:var(--mu);}
 /* Donut row */
-.hdonut-row{display:flex;align-items:center;gap:18px;margin:0 0 8px;padding:16px;background:var(--sf);border-radius:var(--r);border:1px solid var(--bd);box-shadow:var(--sh);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);}
-.hdonut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;}
-.hdonut-lbl{font-size:8px;color:var(--mu);text-transform:uppercase;letter-spacing:.7px;}
-.hdonut-val{font-size:12px;font-weight:700;color:var(--tx);line-height:1.2;}
-.hdonut-legend{flex:1;display:flex;flex-direction:column;gap:7px;}
-.hleg-row{display:flex;align-items:center;gap:7px;}
-.hleg-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
-.hleg-name{flex:1;font-size:12px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hleg-pct{font-size:12px;font-weight:700;color:var(--tx);}
+.donut-card-row{display:flex;align-items:center;gap:22px;}
+.donut-wrap{position:relative;width:132px;height:132px;flex-shrink:0;}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;}
+.donut-center-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--mu);font-weight:600;}
+.donut-center-val{font-size:17px;font-weight:700;color:var(--tx);font-family:var(--fb);margin-top:3px;line-height:1.1;}
+.donut-center-sub{font-size:10px;color:var(--mu);margin-top:2px;}
+.donut-legend{flex:1;min-width:0;display:flex;flex-direction:column;gap:11px;}
+.dleg-row{display:flex;flex-direction:column;gap:4px;}
+.dleg-top{display:flex;align-items:center;gap:7px;}
+.dleg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dleg-name{flex:1;font-size:12.5px;color:var(--tx);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dleg-pct{font-size:12px;font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums;}
+.dleg-bar{height:4px;border-radius:99px;background:var(--s2);overflow:hidden;margin-left:15px;}
+.dleg-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.22,1,.36,1);}
+
 /* Lista plana de items (estilo Fleur) */
 .flat-list{display:flex;flex-direction:column;}
 .flat-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--bd);}
@@ -700,29 +706,21 @@ function prevMonth(m){const[y,mo]=m.split('-').map(Number);return mo===1?`${y-1}
 function nextMonth(m){const[y,mo]=m.split('-').map(Number);return mo===12?`${y+1}-01`:`${y}-${String(mo+1).padStart(2,'0')}`;}
 
 function donutSVG(items,total){
-  const R=38,CIRC=2*Math.PI*R,CX=52,CY=52,SIZE=104,SW=11;
-  const COLORS=items.map(x=>x.c.color);
-  let offset=CIRC*0.25; // start from top (12 o'clock)
-  const GAP=items.length>1?CIRC*0.012:0;
-  const defs=items.map(({c})=>{
-    const id='p'+c.color.replace('#','');
-    return`<pattern id="${id}" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
-      <rect width="4" height="4" fill="${c.color}1A"/>
-      <line x1="0" y1="0" x2="0" y2="4" stroke="${c.color}" stroke-width="1.4"/>
-    </pattern>`;
-  }).join('');
+  const R=48,CIRC=2*Math.PI*R,CX=66,CY=66,SIZE=132,SW=13;
+  const n=items.length;
+  const GAP=n>1?CIRC*0.016:0;
+  let offset=CIRC*0.25; // empieza arriba (12 en punto)
   const segs=items.map(({c,spent})=>{
-    const frac=spent/total;
-    const len=Math.max(frac*CIRC-GAP,0.5);
-    const seg=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
-      stroke="url(#p${c.color.replace('#','')})" stroke-width="${SW}"
+    const frac=total>0?spent/total:0;
+    const len=frac>0?Math.max(frac*CIRC-GAP,1.5):0;
+    const seg=len>0?`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
+      stroke="${c.color}" stroke-width="${SW}" stroke-linecap="round"
       stroke-dasharray="${len} ${CIRC-len}"
-      stroke-dashoffset="${-offset}" />`;
+      stroke-dashoffset="${-offset}" />`:'';
     offset+=frac*CIRC;
     return seg;
   }).join('');
   return`<svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}" style="transform:rotate(-90deg)">
-    <defs>${defs}</defs>
     <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--s2)" stroke-width="${SW}"/>
     ${segs}
   </svg>`;
@@ -771,7 +769,7 @@ function renderHome(){
     </div>`;
   }
 
-  // ── DONUT (pequeño, inline, derecho del resumen cuando hay datos) ─────────
+  // ── DONUT: gastos por categoría (tarjeta propia, informativa y visual) ────
   const catData=allCatsArr.filter(c=>c.id!=='income').map(c=>({
     c,
     spent:txs.filter(t=>t.type==='exp'&&t.cat===c.id).reduce((a,t)=>a+t.amount,0),
@@ -781,24 +779,39 @@ function renderHome(){
 
   if(spentSorted.length>0&&exp>0){
     const top5=spentSorted.slice(0,5);
-    h+=`<div class="hdonut-row">
-      <div style="position:relative;width:108px;height:108px;flex-shrink:0">
-        ${donutSVG(top5,exp)}
-        <div class="hdonut-center">
-          <div class="hdonut-lbl">gastado</div>
-          <div class="hdonut-val">${fmt(exp)}</div>
+    const rest=spentSorted.slice(5);
+    const otherAmt=rest.reduce((a,x)=>a+x.spent,0);
+    const ringItems=otherAmt>0?[...top5,{c:{color:'var(--mu)'},spent:otherAmt}]:top5;
+    const legendRows=[
+      ...top5.map(({c,spent})=>({name:c.name,color:c.color,spent})),
+      ...(otherAmt>0?[{name:`Otros (${rest.length})`,color:'var(--mu)',spent:otherAmt}]:[])
+    ];
+    h+=`<div class="home-sec-title" style="font-size:24px;margin:22px 0 10px">Gastos por categoría</div>`;
+    h+=`<div class="card"><div class="cb">
+      <div class="donut-card-row">
+        <div class="donut-wrap">
+          ${donutSVG(ringItems,exp)}
+          <div class="donut-center">
+            <div class="donut-center-lbl">Total gastado</div>
+            <div class="donut-center-val">${fmt(exp)}</div>
+            <div class="donut-center-sub">100% · ${spentSorted.length} categoría${spentSorted.length!==1?'s':''}</div>
+          </div>
+        </div>
+        <div class="donut-legend">
+          ${legendRows.map(({name,color,spent})=>{
+            const p=pct(spent,exp);
+            return`<div class="dleg-row">
+              <div class="dleg-top">
+                <span class="dleg-dot" style="background:${color}"></span>
+                <span class="dleg-name">${name}</span>
+                <span class="dleg-pct">${p}%</span>
+              </div>
+              <div class="dleg-bar"><div class="dleg-fill" style="width:${p}%;background:${color}"></div></div>
+            </div>`;
+          }).join('')}
         </div>
       </div>
-      <div class="hdonut-legend">
-        ${top5.map(({c,spent})=>`
-          <div class="hleg-row">
-            <span class="hleg-dot" style="background:${c.color}"></span>
-            <span class="hleg-name">${c.name}</span>
-            <span class="hleg-pct">${pct(spent,exp)}%</span>
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
+    </div></div>`;
   }
 
   // ── INGRESOS (sección con título script) ─────────────────────────────────
