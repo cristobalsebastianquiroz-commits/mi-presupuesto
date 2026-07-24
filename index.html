@@ -204,6 +204,21 @@ html.dark #nav{
 .dleg-pct{font-size:12px;font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums;}
 .dleg-bar{height:4px;border-radius:99px;background:var(--s2);overflow:hidden;margin-left:15px;}
 .dleg-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.22,1,.36,1);}
+.donut-wrap{cursor:pointer;touch-action:manipulation;}
+.kpi-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:14px 16px;margin-bottom:10px;}
+.kpi-top{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.kpi-ic{font-size:19px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--s2);border-radius:10px;flex-shrink:0;}
+.kpi-info{flex:1;min-width:0;}
+.kpi-lbl{font-size:10.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;font-weight:600;}
+.kpi-val{font-size:19px;font-weight:700;color:var(--tx);font-family:var(--fb);line-height:1.3;}
+.kpi-suf{font-size:13px;font-weight:600;color:var(--mu);margin-left:2px;}
+.kpi-pill{font-size:10px;font-weight:700;padding:5px 10px;border-radius:99px;white-space:nowrap;flex-shrink:0;}
+.kpi-bar-wrap{height:5px;border-radius:99px;background:var(--s2);overflow:hidden;margin-bottom:9px;}
+.kpi-bar-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1);}
+.kpi-desc{font-size:12px;color:var(--mu);line-height:1.45;}
+.kpi-tip{font-size:12px;color:var(--tx);background:var(--ad);border-radius:10px;padding:9px 11px;margin-top:9px;line-height:1.45;}
+.nw-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:20px 16px;margin-bottom:14px;text-align:center;box-shadow:var(--sh);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);}
+.nw-split{display:flex;justify-content:space-around;margin-top:16px;padding-top:16px;border-top:1px solid var(--bd);}
 
 /* Lista plana de items (estilo Fleur) */
 .flat-list{display:flex;flex-direction:column;}
@@ -525,6 +540,11 @@ const BASE_CATS = [
   {id:'income',   name:'Ingreso',      icon:'💵', color:'#3A8C5E'},
 ];
 
+// Categorías que cuentan como "costo de vida fijo" (necesidades) en los KPIs.
+// Todo lo que no esté aquí (y no sea ahorro/inversión) se trata como gasto discrecional.
+const FIXED_CAT_IDS = ['food','transport','car','home','rent','health','edu','pets'];
+const SAVINGS_CAT_IDS = ['savings','invest'];
+
 const TARIFAS = {
   'Banco de Chile': [
     {tipo:'Visa FAN',           mant:0.00,sem:0,   tasa:2.20},
@@ -584,6 +604,8 @@ function getData(){
   if(!d.metas)  d.metas=[];
   if(!d.cobros) d.cobros=[];
   if(!d.cards)  d.cards=[];
+  if(!d.assets) d.assets=[];
+  if(!d.netWorthHist) d.netWorthHist={};
   if(!d.budgets)d.budgets={};
   if(!d.recur)  d.recur=[];
   if(!d.applied)d.applied={};
@@ -621,6 +643,57 @@ function totals(txs){
   const inc=txs.filter(t=>t.type==='inc').reduce((a,t)=>a+t.amount,0);
   const exp=txs.filter(t=>t.type==='exp').reduce((a,t)=>a+t.amount,0);
   return{inc,exp,bal:inc-exp};
+}
+
+// ── KPIs DE FINANZAS PERSONALES ─────────────────────
+function finKPIs(){
+  const d=getData();
+  const nowKey=nowMk();
+  // Promedio de los últimos 3 meses con movimientos (más estable que un solo mes)
+  const monthData=[0,1,2].map(off=>{
+    const mk=shiftMk(nowKey,-off);
+    const txs=mTxs(d,mk);
+    const inc=txs.filter(t=>t.type==='inc').reduce((a,t)=>a+t.amount,0);
+    const consumo=txs.filter(t=>t.type==='exp'&&!SAVINGS_CAT_IDS.includes(t.cat)).reduce((a,t)=>a+t.amount,0);
+    const fijo=txs.filter(t=>t.type==='exp'&&FIXED_CAT_IDS.includes(t.cat)).reduce((a,t)=>a+t.amount,0);
+    return{mk,inc,consumo,fijo,discre:Math.max(consumo-fijo,0)};
+  });
+  const withData=monthData.filter(m=>m.inc>0||m.consumo>0);
+  const n=Math.max(withData.length,1);
+  const sum=k=>withData.reduce((a,m)=>a+m[k],0);
+  const avgInc=sum('inc')/n,avgConsumo=sum('consumo')/n,avgFijo=sum('fijo')/n,avgDiscre=sum('discre')/n;
+  const avgSaved=avgInc-avgConsumo;
+  const savingsRate=avgInc>0?avgSaved/avgInc*100:0;
+  const fixedRatio=avgInc>0?avgFijo/avgInc*100:0;
+  const discreRatio=avgInc>0?avgDiscre/avgInc*100:0;
+
+  // Deuda: cuota mensual total de tarjetas + saldo pendiente real (cuotas restantes)
+  const cardsMonthly=(d.cards||[]).reduce((a,c)=>a+calcMonthly(c).total,0);
+  const dti=avgInc>0?cardsMonthly/avgInc*100:0;
+  const totalDebt=(d.cards||[]).reduce((a,c)=>a+calcMonthly(c).bal,0);
+
+  // Patrimonio: lo ahorrado en metas + bienes ingresados manualmente, menos deuda
+  const savedInGoals=(d.metas||[]).reduce((a,m)=>a+(m.saved||0),0);
+  const assetsVal=(d.assets||[]).filter(x=>x.active!==false).reduce((a,x)=>a+(x.value||0),0);
+  const totalAssets=savedInGoals+assetsVal;
+  const netWorth=totalAssets-totalDebt;
+
+  // Fondo de emergencia: meses de gasto fijo cubiertos por lo ahorrado en metas
+  const denomEmerg=avgFijo>0?avgFijo:avgConsumo;
+  const emergMonths=denomEmerg>0?savedInGoals/denomEmerg:(savedInGoals>0?6:0);
+
+  // Guardar un snapshot mensual del patrimonio para poder mostrar tendencia
+  if(d.netWorthHist[nowKey]!==netWorth){
+    d.netWorthHist[nowKey]=netWorth;
+    save(d);
+  }
+  const histKeys=Object.keys(d.netWorthHist).filter(k=>k!==nowKey).sort();
+  const lastKey=histKeys[histKeys.length-1]||null;
+  const trend=lastKey?netWorth-d.netWorthHist[lastKey]:null;
+
+  return{avgInc,avgConsumo,avgFijo,avgDiscre,avgSaved,savingsRate,fixedRatio,discreRatio,
+    cardsMonthly,dti,totalDebt,savedInGoals,assetsVal,totalAssets,netWorth,emergMonths,
+    trend,lastKey,monthsUsed:n};
 }
 
 // ── DARK MODE ──────────────────────────────────────
@@ -704,6 +777,24 @@ function monthNav(){
 }
 function prevMonth(m){const[y,mo]=m.split('-').map(Number);return mo===1?`${y-1}-12`:`${y}-${String(mo-1).padStart(2,'0')}`;}
 function nextMonth(m){const[y,mo]=m.split('-').map(Number);return mo===12?`${y+1}-01`:`${y}-${String(mo+1).padStart(2,'0')}`;}
+
+function kpiCard({icon,label,value,suf,status,statusLabel,barPct,desc,tip}){
+  const colors={g:'var(--gn)',y:'var(--tc)',r:'var(--rd)'};
+  const bgs={g:'var(--gd)',y:'var(--tcd)',r:'var(--rr)'};
+  return`<div class="kpi-card">
+    <div class="kpi-top">
+      <div class="kpi-ic">${icon}</div>
+      <div class="kpi-info">
+        <div class="kpi-lbl">${label}</div>
+        <div class="kpi-val">${value}${suf?`<span class="kpi-suf">${suf}</span>`:''}</div>
+      </div>
+      <div class="kpi-pill" style="background:${bgs[status]};color:${colors[status]}">${statusLabel}</div>
+    </div>
+    <div class="kpi-bar-wrap"><div class="kpi-bar-fill" style="width:${Math.min(Math.max(barPct,4),100)}%;background:${colors[status]}"></div></div>
+    <div class="kpi-desc">${desc}</div>
+    ${tip?`<div class="kpi-tip">💡 ${tip}</div>`:''}
+  </div>`;
+}
 
 function donutSVG(items,total){
   const R=48,CIRC=2*Math.PI*R,CX=66,CY=66,SIZE=132,SW=13;
@@ -789,7 +880,7 @@ function renderHome(){
     h+=`<div class="home-sec-title" style="font-size:24px;margin:22px 0 10px">Gastos por categoría</div>`;
     h+=`<div class="card"><div class="cb">
       <div class="donut-card-row">
-        <div class="donut-wrap">
+        <div class="donut-wrap" onclick="openSheet('fin-kpis')">
           ${donutSVG(ringItems,exp)}
           <div class="donut-center">
             <div class="donut-center-lbl">Total gastado</div>
@@ -811,6 +902,7 @@ function renderHome(){
           }).join('')}
         </div>
       </div>
+      <button onclick="openSheet('fin-kpis')" style="width:100%;margin-top:16px;padding:11px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);font-size:12.5px;font-weight:600;color:var(--ac);display:flex;align-items:center;justify-content:center;gap:6px">📊 Ver mi salud financiera</button>
     </div></div>`;
   }
 
@@ -1052,7 +1144,13 @@ function calcMonthly(card){
   });
   const mant=Math.round((card.mant||0)*UF);
   const ext=(card.extras||[]).filter(e=>e.active).reduce((a,e)=>a+e.amount,0);
-  const bal=(card.purchases||[]).filter(p=>p.active).reduce((a,p)=>a+p.instAmt*(p.installments-1),0);
+  const bal=(card.purchases||[]).filter(p=>p.active).reduce((a,p)=>{
+    const[py,pm]=p.from.split('-').map(Number);
+    const[ny,nm]=nk.split('-').map(Number);
+    const el=(ny-py)*12+(nm-pm);
+    const rem=Math.min(Math.max(p.installments-el,0),p.installments);
+    return a+p.instAmt*rem;
+  },0);
   return{purch,mant,ext,tax,total:purch+mant+ext+tax,bal};
 }
 
@@ -1169,6 +1267,95 @@ function renderMore(){
 function sheetContent(name, data){
   const d=getData();
   const cats=allCats();
+
+  // ── SALUD FINANCIERA (KPIs) ───────────────────────
+  if(name==='fin-kpis'){
+    const k=finKPIs();
+    const trendTxt=k.trend==null?'Aún no hay mes anterior con datos para comparar':
+      (k.trend>=0?`▲ +${fmt(k.trend)} vs ${mlabel(k.lastKey)}`:`▼ ${fmt(Math.abs(k.trend))} vs ${mlabel(k.lastKey)}`);
+    const trendColor=k.trend==null?'var(--mu)':(k.trend>=0?'var(--gn)':'var(--rd)');
+
+    // Tasa de ahorro: ideal 10-20%+
+    const savStatus=k.savingsRate>=10?'g':k.savingsRate>=0?'y':'r';
+    const savLabel=k.savingsRate>=20?'Excelente':k.savingsRate>=10?'Saludable':k.savingsRate>=0?'Bajo lo ideal':'En negativo';
+
+    // Deuda/ingresos: seguro hasta 30-40%
+    const dtiStatus=k.dti<=30?'g':k.dti<=40?'y':'r';
+    const dtiLabel=k.dti<=30?'Saludable':k.dti<=40?'Cuidado':'Alerta';
+
+    // Fondo de emergencia: meta 3-6 meses
+    const emStatus=k.emergMonths>=3?'g':k.emergMonths>=1?'y':'r';
+    const emLabel=k.emergMonths>=6?'Excelente':k.emergMonths>=3?'Cubierto':k.emergMonths>=1?'En construcción':'Vulnerable';
+
+    // Costo de vida fijo: regla 50/30/20 como referencia
+    const fxStatus=k.fixedRatio<=50?'g':k.fixedRatio<=65?'y':'r';
+    const fxLabel=k.fixedRatio<=50?'Saludable':k.fixedRatio<=65?'Ajustado':'Muy alto';
+
+    // Gasto discrecional: referencia 30%
+    const dsStatus=k.discreRatio<=30?'g':k.discreRatio<=45?'y':'r';
+    const dsLabel=k.discreRatio<=30?'Bajo control':k.discreRatio<=45?'Elevado':'Muy alto';
+
+    return`<div class="stl">📊 Tu salud financiera</div>
+      <div class="ibox">Calculado con el promedio de los últimos ${k.monthsUsed} mes${k.monthsUsed!==1?'es':''} con movimientos registrados. Te ayuda a decidir a corto, mediano y largo plazo.</div>
+
+      <div class="nw-card">
+        <div style="font-size:10.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Patrimonio neto</div>
+        <div class="fn" style="font-size:31px;margin:7px 0 3px;color:${k.netWorth>=0?'var(--tx)':'var(--rd)'}">${fmt(k.netWorth)}</div>
+        <div style="font-size:12px;font-weight:600;color:${trendColor}">${trendTxt}</div>
+        <div class="nw-split">
+          <div><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px">Activos</div><div class="fn" style="font-size:15px;color:var(--gn);margin-top:3px">${fmt(k.totalAssets)}</div></div>
+          <div><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px">Deudas</div><div class="fn" style="font-size:15px;color:var(--rd);margin-top:3px">${fmt(k.totalDebt)}</div></div>
+        </div>
+        <button onclick="openSheet('manage-assets')" style="margin-top:16px;font-size:12px;color:var(--ac);font-weight:600">⚙️ Gestionar mis bienes →</button>
+      </div>
+
+      <div class="date-sep" style="font-size:19px;padding-top:2px">Indicadores principales</div>
+      ${kpiCard({icon:'💰',label:'Tasa de ahorro',value:k.savingsRate.toFixed(0),suf:'%',status:savStatus,statusLabel:savLabel,barPct:Math.min(k.savingsRate,40)/40*100,
+        desc:`Ahorras en promedio ${fmt(Math.max(k.avgSaved,0))}/mes de ${fmt(k.avgInc)} de ingreso. Lo ideal es 10%–20% o más.`,
+        tip:savStatus==='r'?'Estás gastando más de lo que ganas. Revisa tus gastos discrecionales antes de que la deuda crezca.':savStatus==='y'?'Vas bien, pero aún no llegas al 10% recomendado. Prueba automatizar un ahorro fijo apenas recibas tu ingreso.':null})}
+      ${kpiCard({icon:'💳',label:'Deuda / Ingresos',value:k.dti.toFixed(0),suf:'%',status:dtiStatus,statusLabel:dtiLabel,barPct:Math.min(k.dti,60)/60*100,
+        desc:`${fmt(k.cardsMonthly)}/mes en tarjetas sobre ${fmt(k.avgInc)} de ingreso. Lo seguro es no pasar de 30%–40%.`,
+        tip:dtiStatus==='r'?'Tu deuda está comprometiendo una parte muy grande de tu ingreso. Evita nuevas cuotas hasta bajar este número.':dtiStatus==='y'?'Estás cerca del límite recomendado. Evita agregar más cuotas por ahora.':null})}
+
+      <div class="date-sep" style="font-size:19px">Control y respaldo</div>
+      ${kpiCard({icon:'🛟',label:'Fondo de emergencia',value:k.emergMonths.toFixed(1),suf:' meses',status:emStatus,statusLabel:emLabel,barPct:Math.min(k.emergMonths,6)/6*100,
+        desc:`Con ${fmt(k.savedInGoals)} ahorrados en metas, cubrirías ${k.emergMonths.toFixed(1)} mes${k.emergMonths.toFixed(1)!=='1.0'?'es':''} de tus gastos fijos si dejaras de recibir ingresos. Meta sana: 3 a 6 meses.`,
+        tip:emStatus==='r'?'Tu respaldo es muy bajo. Antes de cualquier meta grande, prioriza construir este fondo.':emStatus==='y'?'Vas construyendo tu fondo. Sigue sumando hasta cubrir 3 meses completos.':null})}
+      ${kpiCard({icon:'🏠',label:'Costo de vida fijo',value:k.fixedRatio.toFixed(0),suf:'%',status:fxStatus,statusLabel:fxLabel,barPct:Math.min(k.fixedRatio,80)/80*100,
+        desc:`${fmt(k.avgFijo)}/mes en cuentas obligatorias (vivienda, alimentación, transporte, salud) sobre tu ingreso.`,
+        tip:fxStatus==='r'?'Tus gastos obligatorios dejan muy poco margen. Busca reducir el más grande de esta lista o aumentar tu ingreso.':fxStatus==='y'?'Tienes margen ajustado. Antes de nuevos compromisos, revisa si algún gasto fijo puede bajar.':null})}
+      ${kpiCard({icon:'🎯',label:'Gasto discrecional',value:fmt(k.avgDiscre),suf:'',status:dsStatus,statusLabel:dsLabel,barPct:Math.min(k.discreRatio,60)/60*100,
+        desc:`${k.discreRatio.toFixed(0)}% de tu ingreso se va en gustos, salidas y compras no esenciales (${fmt(k.avgDiscre)}/mes).`,
+        tip:dsStatus==='r'?'Aquí está tu mayor margen de maniobra: cada peso que bajes acá se convierte directo en ahorro.':null})}`;
+  }
+
+  // ── GESTIONAR MIS BIENES (para patrimonio neto) ───
+  if(name==='manage-assets'){
+    const assets=d.assets||[];
+    let h=`<div class="stl">🏦 Mis bienes</div>
+      <div class="ibox">Ingresa lo que tienes fuera de tus metas de ahorro: propiedades, vehículos, inversiones u otros ahorros. Se suman a tu patrimonio neto.</div>`;
+    if(assets.length===0) h+=`<div style="text-align:center;padding:20px 0;color:var(--mu);font-size:13px">Aún no agregas bienes. Tu patrimonio hoy se calcula solo con lo ahorrado en metas.</div>`;
+    else assets.forEach(a=>{
+      h+=`<div class="li">
+        <div class="lii" style="background:var(--s2)">${a.icon||'💰'}</div>
+        <div class="lin"><div class="lim">${a.name}</div></div>
+        <div class="lir"><div class="lia r">${fmt(a.value)}</div></div>
+        <button onclick="delAsset('${a.id}')" style="padding:6px 4px 6px 10px;color:var(--rd);font-size:15px;flex-shrink:0">✕</button>
+      </div>`;
+    });
+    h+=`<button class="btn btnp" style="margin-top:16px" onclick="openSheet('add-asset')">+ Agregar bien</button>`;
+    return h;
+  }
+  if(name==='add-asset'){
+    const EMOJIS=['💰','🏠','🚗','📈','🏦','💵','🪙','💎'];
+    return`<div class="stl">Nuevo bien</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        ${EMOJIS.map(e=>`<button data-ae="${e}" onclick="selAEm(this,'${e}')" style="font-size:20px;padding:5px;border-radius:8px;border:2px solid transparent;">${e}</button>`).join('')}
+      </div>
+      <div class="fld"><label>Descripción</label><input type="text" id="as-n" placeholder="Ej: Ahorro en cuenta, Auto, Depto..."></div>
+      <div class="fld"><label>Valor estimado ($)</label><input type="text" id="as-v" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      <button class="btn btnp" onclick="saveAsset()">Agregar</button>`;
+  }
 
   // ── AGREGAR MOVIMIENTO ──────────────────────────
   if(name==='add'){
@@ -1787,6 +1974,27 @@ function selPEm(el,e){
 function getSelPEm(){
   const s=document.querySelector('[data-pe][style*="var(--ac)"]');
   return s?s.dataset.pe:'🛍️';
+}
+function selAEm(el,e){
+  document.querySelectorAll('[data-ae]').forEach(b=>{b.style.borderColor='transparent';b.style.background='';});
+  el.style.borderColor='var(--ac)';el.style.background='var(--ad)';
+}
+function getSelAEm(){
+  const s=document.querySelector('[data-ae][style*="var(--ac)"]');
+  return s?s.dataset.ae:'💰';
+}
+function saveAsset(){
+  const name=document.getElementById('as-n')?.value.trim(); if(!name){alert('Ingresa una descripción');return;}
+  const value=moneyVal('as-v'); if(!value){alert('Ingresa un valor');return;}
+  const d=getData();
+  if(!d.assets)d.assets=[];
+  d.assets.push({id:uid(),name,value,icon:getSelAEm(),active:true});
+  save(d);closeSheet();openSheet('manage-assets');
+}
+function delAsset(id){
+  if(!confirm('¿Eliminar este bien?'))return;
+  const d=getData(); d.assets=(d.assets||[]).filter(a=>a.id!==id);
+  save(d);closeSheet();openSheet('manage-assets');
 }
 
 // ── GUARDAR MOVIMIENTO ─────────────────────────────
