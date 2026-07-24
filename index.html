@@ -336,6 +336,8 @@ button.flat-item:active{opacity:.65;}
 .ccdot{width:6px;height:6px;border-radius:50%;background:var(--bd);transition:all .25s;}
 .ccdot.on{width:18px;border-radius:99px;background:var(--ac);}
 .ccax{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+.ccrec{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:var(--pd);border:1px solid rgba(112,84,168,.25);border-radius:var(--rs);margin-bottom:14px;font-size:13px;font-weight:500;}
+.ccrec button{background:var(--pu);color:#fff;border-radius:99px;padding:7px 14px;font-size:12px;font-weight:600;white-space:nowrap;touch-action:manipulation;}
 .cca2{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 6px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);color:var(--mu);font-size:11px;box-shadow:var(--sh);touch-action:manipulation;-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);}
 .cca2:active{background:var(--s2);}
 .cca2 em{font-size:20px;font-style:normal;}
@@ -590,6 +592,19 @@ const pct=(a,b)=>b>0?Math.min(Math.round(a/b*100),100):0;
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const today=()=>new Date().toISOString().split('T')[0];
 const nowMk=()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`};
+const billingCycle=(card)=>{
+  const n=new Date();const cut=card?.cut||5;
+  let y=n.getFullYear(),m=n.getMonth();
+  if(n.getDate()>cut){m+=1;if(m>11){m=0;y+=1;}}
+  return`${y}-${String(m+1).padStart(2,'0')}`;
+};
+const shiftMk=(mk,delta)=>{
+  let[y,m]=mk.split('-').map(Number);
+  m+=delta;
+  while(m<1){m+=12;y--;}
+  while(m>12){m-=12;y++;}
+  return`${y}-${String(m).padStart(2,'0')}`;
+};
 const mkLabel=s=>{const[y,m,dd]=s.split('-');return`${parseInt(dd)} ${MS[parseInt(m)-1]} ${y}`};
 const mlabel=mk=>{const[y,m]=mk.split('-');return MONTHS[parseInt(m)-1]+' '+y};
 const prevMk=mk=>{const[y,m]=mk.split('-').map(Number);const d=new Date(y,m-2,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`};
@@ -948,10 +963,12 @@ function renderCard(){
     <div class="ccm">
       <div class="ccmi">Compras<strong>${fmt(mo.purch)}</strong></div>
       <div class="ccmi">Mantención<strong>${fmt(mantEst)}/mes</strong></div>
+      ${mo.tax>0?`<div class="ccmi">Impuesto DL3475<strong>${fmt(mo.tax)}</strong></div>`:''}
       ${mo.ext>0?`<div class="ccmi">Otros<strong>${fmt(mo.ext)}</strong></div>`:''}
     </div>
     ${card.limit>0?`<div class="ccbar"><div class="ccbf" style="width:${pct(mo.bal,card.limit)}%"></div></div>`:''}
   </div>`;
+  h+=`<div class="ccrec"><span>📄 ¿Llegó tu estado de cuenta?</span><button onclick="openSheet('reconcile-card','${card.id}')">Cotejar ahora →</button></div>`;
   h+=`<div class="ccax">
     <button class="cca2" onclick="openSheet('add-purchase','${card.id}')"><em>🛒</em>Nueva compra</button>
     <button class="cca2" onclick="openSheet('add-history','${card.id}')"><em>📄</em>Estado anterior</button>
@@ -978,7 +995,7 @@ function renderCard(){
       const el=(ny-py)*12+(nm-pm);
       const cur=el+1; const rem=Math.max(p.installments-el,0);
       const active2=cur>=1&&cur<=p.installments;
-      const badge=p.type==='credit'?`<span class="bdg" style="background:var(--rr);color:var(--rd);border:1px solid rgba(184,50,50,.2)">Con interés</span>`:p.installments>1?`<span class="bdg bc">Sin interés</span>`:`<span class="bdg" style="background:var(--s2);color:var(--mu);border:1px solid var(--bd)">Contado</span>`;
+      const badge=p.type==='yes'?`<span class="bdg" style="background:var(--rr);color:var(--rd);border:1px solid rgba(184,50,50,.2)">Con interés</span>`:p.installments>1?`<span class="bdg bc">Sin interés</span>`:`<span class="bdg" style="background:var(--s2);color:var(--mu);border:1px solid var(--bd)">Contado</span>`;
       h+=`<button class="li" onclick="openSheet('edit-purchase','${card.id}|${p.id}')">
         <div class="lii" style="background:var(--s2)">${p.emoji||'🛍️'}</div>
         <div class="lin"><div class="lim">${p.desc} ${badge}</div><div class="lis">${p.installments>1?`Cuota ${cur}/${p.installments} · ${rem} restantes`:'Pago único'}</div></div>
@@ -1010,17 +1027,20 @@ function renderCard(){
 
 function calcMonthly(card){
   const nk=nowMk();
-  let purch=0;
+  let purch=0,tax=0;
   (card.purchases||[]).filter(p=>p.active).forEach(p=>{
     const[py,pm]=p.from.split('-').map(Number);
     const[ny,nm]=nk.split('-').map(Number);
     const el=(ny-py)*12+(nm-pm); const cur=el+1;
-    if(cur>=1&&cur<=p.installments) purch+=p.instAmt;
+    if(cur>=1&&cur<=p.installments){
+      purch+=p.instAmt;
+      if(p.stamps) tax+=Math.round(p.stamps/p.installments);
+    }
   });
   const mant=Math.round((card.mant||0)*UF);
   const ext=(card.extras||[]).filter(e=>e.active).reduce((a,e)=>a+e.amount,0);
   const bal=(card.purchases||[]).filter(p=>p.active).reduce((a,p)=>a+p.instAmt*(p.installments-1),0);
-  return{purch,mant,ext,total:purch+mant+ext,bal};
+  return{purch,mant,ext,tax,total:purch+mant+ext+tax,bal};
 }
 
 function cardProj(card){
@@ -1033,7 +1053,10 @@ function cardProj(card){
       const[py,pm]=p.from.split('-').map(Number);
       const[ny,nm]=key.split('-').map(Number);
       const el=(ny-py)*12+(nm-pm); const cur=el+1;
-      if(cur>=1&&cur<=p.installments) total+=p.instAmt;
+      if(cur>=1&&cur<=p.installments){
+        total+=p.instAmt;
+        if(p.stamps) total+=Math.round(p.stamps/p.installments);
+      }
     });
     return{label:MS[dd.getMonth()]+' '+String(dd.getFullYear()).slice(2),total};
   });
@@ -1487,10 +1510,11 @@ function sheetContent(name, data){
     if(!card) return'';
     const EMOJIS=['🛍️','🛒','🏪','🍔','✈️','⛽','💊','🎬','📱','💻','👕','🏠','🚗','🎁','🔧','🌐'];
     const now=new Date();
+    const defCyc=billingCycle(card);
     const cycs=[0,1,2,3].map(off=>{
       const dd=new Date(now.getFullYear(),now.getMonth()+off,1);
       const k=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}`;
-      return`<option value="${k}">${MS[dd.getMonth()]} ${dd.getFullYear()} (vence día ${(card.cut||5)+(card.due||12)})</option>`;
+      return`<option value="${k}" ${k===defCyc?'selected':''}>${MS[dd.getMonth()]} ${dd.getFullYear()} (vence día ${(card.cut||5)+(card.due||12)})</option>`;
     }).join('');
     return`<div class="stl">Nueva compra · ${card.alias||card.tipo}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
@@ -1519,31 +1543,49 @@ function sheetContent(name, data){
   if(name==='add-history'){
     const card=d.cards.find(c=>c.id===data);
     if(!card) return'';
-    const past=[-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1].map(off=>{
-      const now=new Date(); const dd=new Date(now.getFullYear(),now.getMonth()+off,1);
-      const k=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}`;
-      return`<option value="${k}">${MS[dd.getMonth()]} ${dd.getFullYear()}</option>`;
-    }).reverse().join('');
     return`<div class="stl">📄 Estado de cuenta anterior</div>
-      <div class="ibox">Ingresa compras en cuotas que aún tienes pendientes de meses anteriores.</div>
-      <div class="fld"><label>Descripción</label><input type="text" id="h-d" placeholder="Ej: Refrigerador..."></div>
+      <div class="ibox">Ingresa compras o deudas en cuotas que aún tienes pendientes. Usa el mismo Nº de cuota que aparece en tu estado de cuenta (ej. "03/12").</div>
+      <div class="fld"><label>Descripción</label><input type="text" id="h-d" placeholder="Ej: Refrigerador, Avance en efectivo..."></div>
       <div class="fld"><label>Monto total original ($)</label><input type="text" id="h-a" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this);prevHist('${card.id}')"></div>
-      <div class="fld"><label>Total de cuotas pactadas</label>
-        <select id="h-i" onchange="prevHist('${card.id}')">
-          ${[2,3,4,6,9,10,12,18,24,36,48].map(n=>`<option value="${n}">${n} cuotas</option>`).join('')}
-        </select>
-      </div>
-      <div class="fld"><label>Cuotas ya pagadas</label>
-        <select id="h-p">${[1,2,3,4,5,6,7,8,9,10,11,12].map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fld"><label>Total cuotas pactadas</label>
+          <select id="h-i" onchange="prevHist('${card.id}')">
+            ${[2,3,4,6,9,10,12,18,24,36,48].map(n=>`<option value="${n}">${n} cuotas</option>`).join('')}
+          </select>
+        </div>
+        <div class="fld"><label>Vas en la cuota Nº</label><input type="number" id="h-cur" value="1" min="1" inputmode="numeric" oninput="prevHist('${card.id}')"></div>
       </div>
       <div class="fld"><label>Tipo</label>
         <select id="h-t" onchange="prevHist('${card.id}')">
           <option value="no">Sin interés</option><option value="yes">Con interés</option>
         </select>
       </div>
-      <div class="fld"><label>Mes que comenzó</label><select id="h-f">${past}</select></div>
       <div id="h-pv"></div>
       <button class="btn btnp" onclick="saveHist('${card.id}')">Agregar</button>`;
+  }
+
+  // ── TARJETA: COTEJAR CON ESTADO DE CUENTA ─────────
+  if(name==='reconcile-card'){
+    const card=d.cards.find(c=>c.id===data);
+    if(!card) return'';
+    const mo=calcMonthly(card);
+    const mantEst=Math.round((card.mant||0)*UF);
+    return`<div class="stl">🧾 Cotejar con tu estado de cuenta</div>
+      <div class="ibox">Ingresa el <strong>monto total facturado a pagar</strong> que aparece en tu EECC (sección "III. Información de pago"). Bolsillo lo compara al instante con lo que tienes registrado en este ciclo.</div>
+      <div class="card" style="margin-bottom:16px"><div class="cb">
+        <div class="row" style="border:none"><span>Calculado por Bolsillo este ciclo</span><span class="fn" style="color:var(--ac)">${fmt(mo.total)}</span></div>
+      </div></div>
+      <div class="fld"><label>Monto total facturado a pagar ($)</label><input type="text" id="rc-t" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this);prevReconcile('${card.id}')"></div>
+      <div class="fld"><label>Pagar hasta (fecha de vencimiento)</label><input type="date" id="rc-dt"></div>
+      <details class="more-opts">
+        <summary>Desglosar cargos reales (opcional)</summary>
+        <div class="fld" style="margin-top:14px"><label>Mantención cobrada ($)</label><input type="text" id="rc-m" value="${mantEst.toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+        <div class="fld"><label>Impuesto DL3475 cobrado ($)</label><input type="text" id="rc-x" value="${mo.tax.toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+        <div class="fld"><label>Interés rotativo / avances / otros ($)</label><input type="text" id="rc-o" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      </details>
+      <div id="rc-pv"></div>
+      <button class="btn btnp" onclick="saveReconcile('${card.id}')">Guardar cotejo</button>
+      ${(card.reconciliations||[]).length>0?reconcileHistory(card):''}`;
   }
 
   // ── TARJETA: EDITAR COMPRA ────────────────────────
@@ -1770,7 +1812,7 @@ function saveTx(){
       else{monthly=Math.round(amt*(rate*Math.pow(1+rate,inst))/(Math.pow(1+rate,inst)-1));}
       const stamps=inst>1?Math.round(amt*S*inst):0;
       if(!card.purchases)card.purchases=[];
-      card.purchases.push({id:uid(),desc:tx.desc||'Compra',amount:amt,type:crType,installments:inst,instAmt:monthly,stamps,from:d.month,emoji:'🛍️',active:true,fromTx:true});
+      card.purchases.push({id:uid(),desc:tx.desc||'Compra',amount:amt,type:crType,installments:inst,instAmt:monthly,stamps,from:billingCycle(card),emoji:'🛍️',active:true,fromTx:true});
     }
   }
   save(d);closeSheet();go(TAB);
@@ -1931,7 +1973,7 @@ function saveNewCard(banco,tipo){
     due:parseInt(document.getElementById('wz-du')?.value||12),
     limit:moneyVal('wz-lm'),
     mant:info.mant||0,sem:info.sem||0,tasa:info.tasa||1.5,
-    purchases:[],extras:[],
+    purchases:[],extras:[],reconciliations:[],
   });
   save(d); CC_IDX=d.cards.length-1; closeSheet(); go('card');
 }
@@ -1947,6 +1989,61 @@ function deleteCard(id){
   if(!confirm('¿Eliminar esta tarjeta?'))return;
   const d=getData(); d.cards=d.cards.filter(c=>c.id!==id);
   CC_IDX=0;save(d);closeSheet();go('card');
+}
+
+// ── COTEJO CON ESTADO DE CUENTA REAL ──────────────
+function prevReconcile(cardId){
+  const real=moneyVal('rc-t');
+  const pv=document.getElementById('rc-pv');
+  if(!pv)return;
+  if(!real||real<=0){pv.innerHTML='';return;}
+  const d=getData(); const card=d.cards.find(c=>c.id===cardId); if(!card)return;
+  const mo=calcMonthly(card);
+  const diff=real-mo.total;
+  const abs=Math.abs(diff);
+  const pctD=mo.total>0?((abs/mo.total)*100).toFixed(1):0;
+  let msg;
+  if(abs<=500) msg=`<div style="font-size:12px;color:var(--gn);margin-top:8px">✅ Calza con lo registrado en Bolsillo.</div>`;
+  else if(diff>0) msg=`<div style="font-size:12px;color:var(--rd);margin-top:8px">⚠️ El banco cobra ${fmt(abs)} más (${pctD}%) de lo registrado. Puede ser una compra, avance o interés que falta ingresar este ciclo.</div>`;
+  else msg=`<div style="font-size:12px;color:var(--gn);margin-top:8px">ℹ️ El banco cobra ${fmt(abs)} menos (${pctD}%) de lo registrado. Revisa si alguna cuota ya terminó o si mantención/impuesto estimados difieren.</div>`;
+  pv.innerHTML=`<div class="calcbox">
+    <div class="cr"><span>Calculado por Bolsillo</span><span>${fmt(mo.total)}</span></div>
+    <div class="cr"><span>Real (tu EECC)</span><span>${fmt(real)}</span></div>
+    <div class="cr tot"><span>Diferencia</span><span style="color:${abs<=500?'var(--gn)':'var(--rd)'}">${diff>0?'+':''}${fmt(diff)}</span></div>
+    ${msg}
+  </div>`;
+}
+
+function saveReconcile(cardId){
+  const real=moneyVal('rc-t');
+  if(!real||real<=0){alert('Ingresa el monto total facturado de tu estado de cuenta');return;}
+  const d=getData(); const card=d.cards.find(c=>c.id===cardId); if(!card)return;
+  const mo=calcMonthly(card);
+  if(!card.reconciliations)card.reconciliations=[];
+  card.reconciliations.push({
+    id:uid(),month:nowMk(),calc:mo.total,real,
+    due:document.getElementById('rc-dt')?.value||'',
+    mant:moneyVal('rc-m')||mo.mant,
+    tax:moneyVal('rc-x')||mo.tax,
+    other:moneyVal('rc-o')||0,
+    date:today(),
+  });
+  save(d);closeSheet();go('card');
+}
+
+function reconcileHistory(card){
+  const list=[...(card.reconciliations||[])].reverse().slice(0,6);
+  let h=`<div class="date-sep">Historial de cotejos</div>`;
+  list.forEach(r=>{
+    const diff=r.real-r.calc;
+    const ok=Math.abs(diff)<=500;
+    h+=`<div class="li" style="cursor:default">
+      <div class="lii" style="background:${ok?'var(--ad)':'var(--rr)'}">${ok?'✅':'⚠️'}</div>
+      <div class="lin"><div class="lim">${mlabel(r.month)}</div><div class="lis">Bolsillo ${fmt(r.calc)} · EECC ${fmt(r.real)}</div></div>
+      <div class="lir"><div class="lia r" style="color:${diff===0?'var(--mu)':diff>0?'var(--rd)':'var(--gn)'}">${diff===0?'Exacto':(diff>0?'+':'')+fmt(diff)}</div></div>
+    </div>`;
+  });
+  return h;
 }
 
 function savePurch(cardId){
@@ -1970,9 +2067,11 @@ function saveHist(cardId){
   const desc=document.getElementById('h-d')?.value.trim(); if(!desc){alert('Ingresa una descripción');return;}
   const amt=moneyVal('h-a'); if(!amt){alert('Ingresa un monto');return;}
   const inst=parseInt(document.getElementById('h-i')?.value||2);
+  let cur=parseInt(document.getElementById('h-cur')?.value||1);
+  if(cur<1)cur=1; if(cur>inst)cur=inst;
   const type=document.getElementById('h-t')?.value||'no';
-  const from=document.getElementById('h-f')?.value;
   const d=getData(); const card=d.cards.find(c=>c.id===cardId); if(!card)return;
+  const from=shiftMk(billingCycle(card),-(cur-1));
   const rate=(card.tasa||1.5)/100;
   let monthly;
   if(type==='no'){monthly=Math.round(amt/inst);}
@@ -2015,7 +2114,8 @@ function prevPurch(cardId){
 function prevHist(cardId){
   const amt=moneyVal('h-a');
   const inst=parseInt(document.getElementById('h-i')?.value||2);
-  const paid=parseInt(document.getElementById('h-p')?.value||0);
+  let cur=parseInt(document.getElementById('h-cur')?.value||1);
+  if(cur<1)cur=1; if(cur>inst)cur=inst;
   const type=document.getElementById('h-t')?.value||'no';
   const el=document.getElementById('h-pv');
   if(!el||amt<=0)return;
@@ -2024,10 +2124,10 @@ function prevHist(cardId){
   let monthly;
   if(type==='no'){monthly=Math.round(amt/inst);}
   else{monthly=Math.round(amt*(rate*Math.pow(1+rate,inst))/(Math.pow(1+rate,inst)-1));}
-  const rem=Math.max(inst-paid,0);
+  const rem=Math.max(inst-cur+1,0);
   el.innerHTML=`<div class="calcbox">
     <div class="cr"><span>Cuota mensual</span><span class="fn">${fmt(monthly)}</span></div>
-    <div class="cr"><span>Cuotas restantes</span><span>${rem}</span></div>
+    <div class="cr"><span>Cuotas restantes</span><span>${rem} (vas en la ${cur}/${inst})</span></div>
     <div class="cr tot"><span>Deuda pendiente</span><span style="color:var(--rd)">${fmt(monthly*rem)}</span></div>
   </div>`;
 }
