@@ -196,12 +196,15 @@ html.dark #nav{
 .donut-center-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--mu);font-weight:600;}
 .donut-center-val{font-size:17px;font-weight:700;color:var(--tx);font-family:var(--fb);margin-top:3px;line-height:1.1;}
 .donut-center-sub{font-size:10px;color:var(--mu);margin-top:2px;}
+.seg-lbl-bg{fill:rgba(0,0,0,.42);}
+.seg-lbl-txt{fill:#fff;font-family:var(--fb);font-weight:700;font-size:9.5px;}
 .donut-legend{flex:1;min-width:0;display:flex;flex-direction:column;gap:11px;}
 .dleg-row{display:flex;flex-direction:column;gap:4px;}
 .dleg-top{display:flex;align-items:center;gap:7px;}
 .dleg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .dleg-name{flex:1;font-size:12.5px;color:var(--tx);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dleg-pct{font-size:12px;font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums;}
+.dleg-amt{font-size:12px;font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums;}
+.dleg-pct{font-size:11px;color:var(--mu);font-weight:600;margin-left:5px;font-variant-numeric:tabular-nums;}
 .dleg-bar{height:4px;border-radius:99px;background:var(--s2);overflow:hidden;margin-left:15px;}
 .dleg-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.22,1,.36,1);}
 .donut-wrap{cursor:pointer;touch-action:manipulation;}
@@ -797,23 +800,37 @@ function kpiCard({icon,label,value,suf,status,statusLabel,barPct,desc,tip}){
 }
 
 function donutSVG(items,total){
-  const R=48,CIRC=2*Math.PI*R,CX=66,CY=66,SIZE=132,SW=13;
+  const R=42,CIRC=2*Math.PI*R,CX=66,CY=66,SIZE=132,SW=20;
   const n=items.length;
-  const GAP=n>1?CIRC*0.016:0;
-  let offset=CIRC*0.25; // empieza arriba (12 en punto)
-  const segs=items.map(({c,spent})=>{
+  const GAP=n>1?CIRC*0.018:0;
+  let offsetDeg=0,ringSegs='',labels='';
+  items.forEach(({c,spent})=>{
     const frac=total>0?spent/total:0;
     const len=frac>0?Math.max(frac*CIRC-GAP,1.5):0;
-    const seg=len>0?`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
-      stroke="${c.color}" stroke-width="${SW}" stroke-linecap="round"
-      stroke-dasharray="${len} ${CIRC-len}"
-      stroke-dashoffset="${-offset}" />`:'';
-    offset+=frac*CIRC;
-    return seg;
-  }).join('');
-  return`<svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}" style="transform:rotate(-90deg)">
+    const dashOffset=-((offsetDeg/360)*CIRC+CIRC*0.25);
+    if(len>0){
+      ringSegs+=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
+        stroke="${c.color}" stroke-width="${SW}" stroke-linecap="round"
+        stroke-dasharray="${len} ${CIRC-len}"
+        stroke-dashoffset="${dashOffset}" />`;
+    }
+    // Etiqueta de % incrustada en el punto medio del segmento (estilo r-charts)
+    const midDeg=offsetDeg+(frac*360)/2;
+    const rad=(midDeg-90)*Math.PI/180;
+    const lx=(CX+R*Math.cos(rad)).toFixed(2),ly=(CY+R*Math.sin(rad)).toFixed(2);
+    const pctVal=Math.round(frac*100);
+    if(pctVal>=8){
+      labels+=`<g transform="translate(${lx},${ly})">
+        <rect class="seg-lbl-bg" x="-15" y="-9.5" width="30" height="19" rx="9.5"/>
+        <text class="seg-lbl-txt" x="0" y="1" text-anchor="middle" dominant-baseline="middle">${pctVal}%</text>
+      </g>`;
+    }
+    offsetDeg+=frac*360;
+  });
+  return`<svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
     <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--s2)" stroke-width="${SW}"/>
-    ${segs}
+    ${ringSegs}
+    ${labels}
   </svg>`;
 }
 
@@ -880,14 +897,14 @@ function renderHome(){
     h+=`<div class="home-sec-title" style="font-size:24px;margin:22px 0 10px">Gastos por categoría</div>`;
     h+=`<div class="card"><div class="cb">
       <div class="donut-card-row">
-        <div class="donut-wrap" onclick="openSheet('fin-kpis')">
+        <button class="donut-wrap" onclick="openSheet('fin-kpis')" aria-label="Ver salud financiera">
           ${donutSVG(ringItems,exp)}
           <div class="donut-center">
             <div class="donut-center-lbl">Total gastado</div>
             <div class="donut-center-val">${fmt(exp)}</div>
             <div class="donut-center-sub">100% · ${spentSorted.length} categoría${spentSorted.length!==1?'s':''}</div>
           </div>
-        </div>
+        </button>
         <div class="donut-legend">
           ${legendRows.map(({name,color,spent})=>{
             const p=pct(spent,exp);
@@ -895,6 +912,7 @@ function renderHome(){
               <div class="dleg-top">
                 <span class="dleg-dot" style="background:${color}"></span>
                 <span class="dleg-name">${name}</span>
+                <span class="dleg-amt">${fmt(spent)}</span>
                 <span class="dleg-pct">${p}%</span>
               </div>
               <div class="dleg-bar"><div class="dleg-fill" style="width:${p}%;background:${color}"></div></div>
