@@ -190,12 +190,12 @@ html.dark #nav{
 .hbar-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1);}
 .hbar-label{font-size:12px;color:var(--mu);}
 /* Donut row */
-.donut-card-row{display:flex;align-items:center;gap:22px;}
-.donut-wrap{position:relative;width:132px;height:132px;flex-shrink:0;}
+.donut-card-row{display:flex;align-items:center;justify-content:center;gap:22px;padding:6px 0 4px;}
+.donut-wrap{position:relative;width:232px;height:232px;flex-shrink:0;}
 .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;}
-.donut-center-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--mu);font-weight:600;}
-.donut-center-val{font-size:17px;font-weight:700;color:var(--tx);font-family:var(--fb);margin-top:3px;line-height:1.1;}
-.donut-center-sub{font-size:10px;color:var(--mu);margin-top:2px;}
+.donut-center-lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);font-weight:600;}
+.donut-center-val{font-size:28px;font-weight:700;color:var(--tx);font-family:var(--fb);margin-top:5px;line-height:1.1;}
+.donut-center-sub{font-size:12px;color:var(--mu);margin-top:4px;}
 .seg-lbl-bg{fill:rgba(0,0,0,.42);}
 .seg-lbl-txt{fill:#fff;font-family:var(--fb);font-weight:700;font-size:9.5px;}
 .donut-legend{flex:1;min-width:0;display:flex;flex-direction:column;gap:11px;}
@@ -649,6 +649,29 @@ function totals(txs){
 }
 
 // ── KPIs DE FINANZAS PERSONALES ─────────────────────
+// ── DESGLOSE DE GASTOS POR CATEGORÍA (compartido entre Home y Salud financiera) ──
+function categoryBreakdown(d){
+  const mk=d.month;
+  const txs=mTxs(d,mk);
+  const budget=d.budgets[mk]||{};
+  const exp=txs.filter(t=>t.type==='exp').reduce((a,t)=>a+t.amount,0);
+  const catData=allCats().filter(c=>c.id!=='income').map(c=>({
+    c,
+    spent:txs.filter(t=>t.type==='exp'&&t.cat===c.id).reduce((a,t)=>a+t.amount,0),
+    b:budget[c.id]||0
+  })).filter(x=>x.spent>0||x.b>0);
+  const spentSorted=catData.filter(x=>x.spent>0).sort((a,b)=>b.spent-a.spent);
+  const top5=spentSorted.slice(0,5);
+  const rest=spentSorted.slice(5);
+  const otherAmt=rest.reduce((a,x)=>a+x.spent,0);
+  const ringItems=otherAmt>0?[...top5,{c:{color:'var(--mu)'},spent:otherAmt}]:top5;
+  const legendRows=[
+    ...top5.map(({c,spent})=>({name:c.name,color:c.color,spent})),
+    ...(otherAmt>0?[{name:`Otros (${rest.length})`,color:'var(--mu)',spent:otherAmt}]:[])
+  ];
+  return{exp,catData,spentSorted,ringItems,legendRows};
+}
+
 function finKPIs(){
   const d=getData();
   const nowKey=nowMk();
@@ -827,9 +850,14 @@ function donutSVG(items,total){
     }
     offsetDeg+=frac*360;
   });
-  return`<svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  const shineStartDeg=-35,shineArcDeg=65;
+  const shineLen=(shineArcDeg/360)*CIRC;
+  const shineOffset=-((shineStartDeg/360)*CIRC+CIRC*0.25);
+  return`<svg width="100%" height="100%" viewBox="0 0 ${SIZE} ${SIZE}" style="filter:drop-shadow(0 6px 14px rgba(26,21,16,.16))">
     <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--s2)" stroke-width="${SW}"/>
     ${ringSegs}
+    <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="${SW*0.4}"
+      stroke-linecap="round" stroke-dasharray="${shineLen} ${CIRC-shineLen}" stroke-dashoffset="${shineOffset}" />
     ${labels}
   </svg>`;
 }
@@ -878,22 +906,9 @@ function renderHome(){
   }
 
   // ── DONUT: gastos por categoría (tarjeta propia, informativa y visual) ────
-  const catData=allCatsArr.filter(c=>c.id!=='income').map(c=>({
-    c,
-    spent:txs.filter(t=>t.type==='exp'&&t.cat===c.id).reduce((a,t)=>a+t.amount,0),
-    b:budget[c.id]||0
-  })).filter(x=>x.spent>0||x.b>0);
-  const spentSorted=catData.filter(x=>x.spent>0).sort((a,b)=>b.spent-a.spent);
+  const{catData,spentSorted,ringItems}=categoryBreakdown(d);
 
   if(spentSorted.length>0&&exp>0){
-    const top5=spentSorted.slice(0,5);
-    const rest=spentSorted.slice(5);
-    const otherAmt=rest.reduce((a,x)=>a+x.spent,0);
-    const ringItems=otherAmt>0?[...top5,{c:{color:'var(--mu)'},spent:otherAmt}]:top5;
-    const legendRows=[
-      ...top5.map(({c,spent})=>({name:c.name,color:c.color,spent})),
-      ...(otherAmt>0?[{name:`Otros (${rest.length})`,color:'var(--mu)',spent:otherAmt}]:[])
-    ];
     h+=`<div class="home-sec-title" style="font-size:24px;margin:22px 0 10px">Gastos por categoría</div>`;
     h+=`<div class="card"><div class="cb">
       <div class="donut-card-row">
@@ -905,22 +920,8 @@ function renderHome(){
             <div class="donut-center-sub">100% · ${spentSorted.length} categoría${spentSorted.length!==1?'s':''}</div>
           </div>
         </button>
-        <div class="donut-legend">
-          ${legendRows.map(({name,color,spent})=>{
-            const p=pct(spent,exp);
-            return`<div class="dleg-row">
-              <div class="dleg-top">
-                <span class="dleg-dot" style="background:${color}"></span>
-                <span class="dleg-name">${name}</span>
-                <span class="dleg-amt">${fmt(spent)}</span>
-                <span class="dleg-pct">${p}%</span>
-              </div>
-              <div class="dleg-bar"><div class="dleg-fill" style="width:${p}%;background:${color}"></div></div>
-            </div>`;
-          }).join('')}
-        </div>
       </div>
-      <button onclick="openSheet('fin-kpis')" style="width:100%;margin-top:16px;padding:11px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);font-size:12.5px;font-weight:600;color:var(--ac);display:flex;align-items:center;justify-content:center;gap:6px">📊 Ver mi salud financiera</button>
+      <button onclick="openSheet('fin-kpis')" style="width:100%;margin-top:16px;padding:11px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);font-size:12.5px;font-weight:600;color:var(--ac);display:flex;align-items:center;justify-content:center;gap:6px">📊 Ver el desglose completo en Salud financiera</button>
     </div></div>`;
   }
 
@@ -1289,6 +1290,7 @@ function sheetContent(name, data){
   // ── SALUD FINANCIERA (KPIs) ───────────────────────
   if(name==='fin-kpis'){
     const k=finKPIs();
+    const{exp:catExp,spentSorted:catSorted,legendRows}=categoryBreakdown(d);
     const trendTxt=k.trend==null?'Aún no hay mes anterior con datos para comparar':
       (k.trend>=0?`▲ +${fmt(k.trend)} vs ${mlabel(k.lastKey)}`:`▼ ${fmt(Math.abs(k.trend))} vs ${mlabel(k.lastKey)}`);
     const trendColor=k.trend==null?'var(--mu)':(k.trend>=0?'var(--gn)':'var(--rd)');
@@ -1326,6 +1328,24 @@ function sheetContent(name, data){
         </div>
         <button onclick="openSheet('manage-assets')" style="margin-top:16px;font-size:12px;color:var(--ac);font-weight:600">⚙️ Gestionar mis bienes →</button>
       </div>
+
+      ${legendRows.length>0?`<div class="date-sep" style="font-size:19px;padding-top:2px">Gastos por categoría</div>
+      <div class="card" style="margin-bottom:14px"><div class="cb">
+        <div class="donut-legend">
+          ${legendRows.map(({name,color,spent})=>{
+            const p=pct(spent,catExp);
+            return`<div class="dleg-row">
+              <div class="dleg-top">
+                <span class="dleg-dot" style="background:${color}"></span>
+                <span class="dleg-name">${name}</span>
+                <span class="dleg-amt">${fmt(spent)}</span>
+                <span class="dleg-pct">${p}%</span>
+              </div>
+              <div class="dleg-bar"><div class="dleg-fill" style="width:${p}%;background:${color}"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div></div>`:''}
 
       <div class="date-sep" style="font-size:19px;padding-top:2px">Indicadores principales</div>
       ${kpiCard({icon:'💰',label:'Tasa de ahorro',value:k.savingsRate.toFixed(0),suf:'%',status:savStatus,statusLabel:savLabel,barPct:Math.min(k.savingsRate,40)/40*100,
@@ -1628,10 +1648,22 @@ function sheetContent(name, data){
     h+=`</div></div>`;
     if(d.cats.length>0){
       h+=`<div class="card"><div class="cb"><div class="ct">Personalizadas</div>`;
-      d.cats.forEach(c=>{ h+=`<div class="row"><span>${c.icon} ${c.name}</span><button onclick="delCat('${c.id}')" style="color:var(--rd);font-size:13px;padding:4px 8px;border-radius:6px;background:var(--rr)">Eliminar</button></div>`; });
+      d.cats.forEach(c=>{ h+=`<button class="li" onclick="openSheet('edit-cat','${c.id}')">
+        <div class="lii" style="background:var(--s2)">${c.icon}</div>
+        <div class="lin"><div class="lim">${c.name}</div></div>
+        <div style="color:var(--mu);font-size:18px;flex-shrink:0">›</div>
+      </button>`; });
       h+=`</div></div>`;
     }
     return h+`<button onclick="openSheet('add-cat')" class="btn btng">+ Nueva categoría</button>`;
+  }
+  if(name==='edit-cat'){
+    const cat=d.cats.find(c=>c.id===data); if(!cat) return'';
+    return`<div class="stl">Editar categoría</div>
+      <div class="fld"><label>Emoji</label><input type="text" id="cat-ico" value="${cat.icon}" style="width:70px"></div>
+      <div class="fld"><label>Nombre</label><input type="text" id="cat-nm" value="${cat.name}" placeholder="Ej: Mascotas, Ropa..."></div>
+      <button class="btn btnp" onclick="saveCatEdit('${cat.id}')">Guardar cambios</button>
+      <button class="btn btnd" style="margin-top:10px" onclick="delCat('${cat.id}')">Eliminar categoría</button>`;
   }
   if(name==='add-cat'){
     return`<div class="stl">Nueva categoría</div>
@@ -2176,6 +2208,14 @@ function saveCat(){
   const icon=document.getElementById('cat-ico')?.value||'📌';
   const d=getData();
   d.cats.push({id:'c_'+uid(),name,icon,color:'#7054A8'});
+  save(d);closeSheet();openSheet('cats');
+}
+function saveCatEdit(id){
+  const name=document.getElementById('cat-nm')?.value.trim(); if(!name){alert('Ingresa un nombre');return;}
+  const icon=document.getElementById('cat-ico')?.value||'📌';
+  const d=getData();
+  const cat=d.cats.find(c=>c.id===id); if(!cat)return;
+  cat.name=name; cat.icon=icon;
   save(d);closeSheet();openSheet('cats');
 }
 function delCat(id){
