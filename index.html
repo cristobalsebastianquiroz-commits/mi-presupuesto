@@ -189,6 +189,10 @@ html.dark #nav{
   background-image:repeating-linear-gradient(90deg,transparent 0,transparent 3px,var(--bg) 3px,var(--bg) 5px);}
 .hbar-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1);}
 .hbar-label{font-size:12px;color:var(--mu);}
+/* Alerta: presupuesto planificado supera el ingreso del mes */
+.budget-warn{display:flex;align-items:flex-start;gap:9px;background:var(--rr);border:1px solid rgba(201,72,72,.22);border-radius:var(--rs);padding:12px 14px;margin:0 0 16px;font-size:12.5px;line-height:1.5;color:var(--rd);font-weight:500;-webkit-backdrop-filter:var(--glass-blur-sm);backdrop-filter:var(--glass-blur-sm);}
+.budget-warn strong{font-weight:700;}
+.budget-warn .bw-ic{font-size:15px;flex-shrink:0;line-height:1.5;}
 /* Donut row */
 .donut-card-row{display:flex;align-items:center;justify-content:center;gap:22px;padding:6px 0 4px;}
 .donut-wrap{position:relative;width:232px;height:232px;flex-shrink:0;}
@@ -208,6 +212,20 @@ html.dark #nav{
 .dleg-bar{height:4px;border-radius:99px;background:var(--s2);overflow:hidden;margin-left:15px;}
 .dleg-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.22,1,.36,1);}
 .donut-wrap{cursor:pointer;touch-action:manipulation;}
+/* Gráfico de barras: gastos por categoría (reemplaza el donut en Home) */
+.cbar-card-btn{width:100%;text-align:left;background:none;border:none;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.cbar-card-btn:active{opacity:.75;}
+.cbar-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;}
+.cbar-head-val{font-size:26px;font-weight:700;color:var(--tx);font-family:var(--fb);margin-top:4px;line-height:1.1;}
+.cbar-list{display:flex;flex-direction:column;gap:15px;}
+.cbar-row{display:flex;flex-direction:column;gap:6px;}
+.cbar-top{display:flex;align-items:center;gap:9px;}
+.cbar-ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.cbar-name{flex:1;min-width:0;font-size:13px;font-weight:500;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cbar-amt{font-size:13px;font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums;flex-shrink:0;}
+.cbar-track{height:10px;border-radius:99px;background:var(--s2);overflow:hidden;margin-left:35px;box-shadow:inset 0 1px 2px rgba(0,0,0,.08);}
+.cbar-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1);box-shadow:inset 0 1px 0 rgba(255,255,255,.35);}
+.cbar-pct{font-size:10.5px;color:var(--mu);font-weight:600;margin-left:35px;}
 .kpi-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:14px 16px;margin-bottom:10px;}
 .kpi-top{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
 .kpi-ic{font-size:19px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--s2);border-radius:10px;flex-shrink:0;}
@@ -666,8 +684,8 @@ function categoryBreakdown(d){
   const otherAmt=rest.reduce((a,x)=>a+x.spent,0);
   const ringItems=otherAmt>0?[...top5,{c:{color:'var(--mu)'},spent:otherAmt}]:top5;
   const legendRows=[
-    ...top5.map(({c,spent})=>({name:c.name,color:c.color,spent})),
-    ...(otherAmt>0?[{name:`Otros (${rest.length})`,color:'var(--mu)',spent:otherAmt}]:[])
+    ...top5.map(({c,spent})=>({name:c.name,color:c.color,icon:c.icon,spent})),
+    ...(otherAmt>0?[{name:`Otros (${rest.length})`,color:'var(--mu)',icon:'🗂️',spent:otherAmt}]:[])
   ];
   return{exp,catData,spentSorted,ringItems,legendRows};
 }
@@ -868,6 +886,27 @@ function donutSVG(items,total){
   </svg>`;
 }
 
+// ── GRÁFICO DE BARRAS: gastos por categoría (estilo glassmorphism) ──────────
+function catBarChart(rows){
+  const max=Math.max(...rows.map(r=>r.spent),1);
+  const totalRows=rows.reduce((a,r)=>a+r.spent,0);
+  return rows.map(({name,color,icon,spent})=>{
+    const p=pct(spent,totalRows);
+    const barW=Math.max(spent/max*100,4);
+    return`<div class="cbar-row">
+      <div class="cbar-top">
+        <div class="cbar-ic" style="background:${color}30;color:${color}">${icon||'💰'}</div>
+        <div class="cbar-name">${name}</div>
+        <div class="cbar-amt">${fmt(spent)}</div>
+      </div>
+      <div class="cbar-track">
+        <div class="cbar-fill" style="width:${barW}%;background:linear-gradient(90deg,color-mix(in srgb, ${color} 100%, white 30%),${color})"></div>
+      </div>
+      <div class="cbar-pct">${p}% del gasto total</div>
+    </div>`;
+  }).join('');
+}
+
 function renderHome(){
   const d=getData();
   let h=monthNav();
@@ -897,6 +936,19 @@ function renderHome(){
 
   // ── BARRA PRESUPUESTO FULL-WIDTH (como Fleur) ─────────────────────────────
   const totalBudget=Object.values(budget).reduce((a,v)=>a+(v||0),0);
+
+  // ── ALERTA: presupuesto planificado vs. saldo (ingreso) del mes ───────────
+  // Diferencia el presupuesto total definido del ingreso real: si el
+  // presupuesto supera al ingreso, el plan de gastos es insostenible aunque
+  // aún no se haya gastado todo. Esto es independiente de exp vs presupuesto.
+  if(totalBudget>0){
+    if(inc<=0){
+      h+=`<div class="budget-warn"><span class="bw-ic">⚠️</span><span>Presupuestaste <strong>${fmt(totalBudget)}</strong> este mes, pero aún no registras ingresos.</span></div>`;
+    }else if(totalBudget>inc){
+      h+=`<div class="budget-warn"><span class="bw-ic">⚠️</span><span>Tu presupuesto (<strong>${fmt(totalBudget)}</strong>) supera tu ingreso (<strong>${fmt(inc)}</strong>) en <strong>${fmt(totalBudget-inc)}</strong>. Estás presupuestando más de lo que ganas.</span></div>`;
+    }
+  }
+
   if(totalBudget>0){
     const p=Math.min(exp/totalBudget*100,100);
     const left=Math.max(totalBudget-exp,0);
@@ -911,22 +963,22 @@ function renderHome(){
     </div>`;
   }
 
-  // ── DONUT: gastos por categoría (tarjeta propia, informativa y visual) ────
-  const{catData,spentSorted,ringItems}=categoryBreakdown(d);
+  // ── BARRAS: gastos por categoría (tarjeta propia, informativa y visual) ───
+  const{catData,spentSorted,legendRows}=categoryBreakdown(d);
 
   if(spentSorted.length>0&&exp>0){
     h+=`<div class="home-sec-title" style="font-size:24px;margin:22px 0 10px">Gastos por categoría</div>`;
     h+=`<div class="card"><div class="cb">
-      <div class="donut-card-row">
-        <button class="donut-wrap" onclick="openSheet('fin-kpis')" aria-label="Ver salud financiera">
-          ${donutSVG(ringItems,exp)}
-          <div class="donut-center">
+      <button class="cbar-card-btn" onclick="openSheet('fin-kpis')" aria-label="Ver salud financiera">
+        <div class="cbar-head">
+          <div>
             <div class="donut-center-lbl">Total gastado</div>
-            <div class="donut-center-val">${fmt(exp)}</div>
-            <div class="donut-center-sub">100% · ${spentSorted.length} categoría${spentSorted.length!==1?'s':''}</div>
+            <div class="cbar-head-val">${fmt(exp)}</div>
           </div>
-        </button>
-      </div>
+          <div class="donut-center-sub">${spentSorted.length} categoría${spentSorted.length!==1?'s':''}</div>
+        </div>
+        <div class="cbar-list">${catBarChart(legendRows)}</div>
+      </button>
       <button onclick="openSheet('fin-kpis')" style="width:100%;margin-top:16px;padding:11px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);font-size:12.5px;font-weight:600;color:var(--ac);display:flex;align-items:center;justify-content:center;gap:6px">📊 Ver el desglose completo en Salud financiera</button>
     </div></div>`;
   }
