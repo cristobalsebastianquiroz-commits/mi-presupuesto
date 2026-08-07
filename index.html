@@ -193,6 +193,24 @@ html.dark #nav{
 .budget-warn{display:flex;align-items:flex-start;gap:9px;background:var(--rr);border:1px solid rgba(201,72,72,.22);border-radius:var(--rs);padding:12px 14px;margin:0 0 16px;font-size:12.5px;line-height:1.5;color:var(--rd);font-weight:500;-webkit-backdrop-filter:var(--glass-blur-sm);backdrop-filter:var(--glass-blur-sm);}
 .budget-warn strong{font-weight:700;}
 .budget-warn .bw-ic{font-size:15px;flex-shrink:0;line-height:1.5;}
+/* Saludo personalizado + insight contextual */
+.greet{font-size:13px;color:var(--mu);font-weight:500;margin:2px 0 0;padding:0 2px;}
+.greet b{color:var(--tx);font-weight:700;}
+/* Racha de meses con saldo positivo (refuerzo positivo, sin culpa) */
+.streak-pill{display:inline-flex;align-items:center;gap:6px;background:var(--gq);color:var(--go);border:1px solid rgba(201,138,42,.22);border-radius:99px;padding:6px 12px;font-size:11.5px;font-weight:700;margin:8px 0 4px;-webkit-backdrop-filter:var(--glass-blur-sm);backdrop-filter:var(--glass-blur-sm);}
+/* Saldo proyectado a fin de mes */
+.forecast-box{display:flex;align-items:center;gap:11px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;margin:0 0 16px;-webkit-backdrop-filter:var(--glass-blur-sm);backdrop-filter:var(--glass-blur-sm);}
+.forecast-ic{font-size:17px;flex-shrink:0;}
+.forecast-txt{font-size:12px;color:var(--mu);line-height:1.4;}
+.forecast-txt b{color:var(--tx);font-weight:700;}
+/* Mapa de calor de gasto diario */
+.heat-wrap{margin-top:4px;}
+.heat-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px;}
+.heat-dow{font-size:9px;color:var(--mu);text-align:center;font-weight:600;text-transform:uppercase;}
+.heat-cell{aspect-ratio:1;border-radius:6px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--mu);font-weight:600;}
+.heat-cell.empty{background:transparent;}
+.heat-legend{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:10px;color:var(--mu);}
+.heat-leg-cell{width:10px;height:10px;border-radius:3px;}
 /* Donut row */
 .donut-card-row{display:flex;align-items:center;justify-content:center;gap:22px;padding:6px 0 4px;}
 .donut-wrap{position:relative;width:232px;height:232px;flex-shrink:0;}
@@ -450,6 +468,21 @@ html.dark #login{
 
 /* ── SECTION TITLE ───────────────────────────────── */
 .sec-title{font-family:var(--fd);font-size:30px;color:var(--tx);margin-bottom:16px;}
+
+/* ── REPORTE MENSUAL IMPRIMIBLE ──────────────────────
+   #report-print solo existe dentro del sheet cuando se abre 'report'.
+   En pantalla se ve como cualquier tarjeta; al imprimir (o "Guardar como
+   PDF" desde el navegador), se oculta todo lo demás y solo queda el
+   reporte, en fondo blanco y sin efectos glass (que no imprimen bien). ── */
+.rpt-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dashed var(--bd);font-size:13px;}
+.rpt-row:last-child{border-bottom:none;}
+@media print{
+  body *{visibility:hidden;}
+  #report-print,#report-print *{visibility:visible;}
+  #report-print{position:absolute;left:0;top:0;width:100%;padding:24px;background:#fff;color:#111;}
+  #report-print .card{background:#fff;border-color:#ddd;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;}
+  #report-print .no-print{display:none !important;}
+}
 </style>
 </head>
 <body>
@@ -666,6 +699,67 @@ function totals(txs){
   return{inc,exp,bal:inc-exp};
 }
 
+// ── SALDO PROYECTADO A FIN DE MES ───────────────────
+// Estima el saldo con el que se cerraría el mes si el ritmo de gasto diario
+// actual se mantiene constante hasta el último día. Solo tiene sentido
+// mostrarla cuando el mes está en curso (no en meses cerrados/futuros) y
+// cuando ya hay al menos un par de días de datos para que el promedio sea útil.
+function monthForecast(d,mk,inc,exp){
+  if(mk!==nowMk())return null;
+  const now=new Date();
+  const dayOfMonth=now.getDate();
+  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  if(dayOfMonth<2)return null;
+  const dailyAvg=exp/dayOfMonth;
+  const daysLeft=daysInMonth-dayOfMonth;
+  const projectedExtra=dailyAvg*daysLeft;
+  const projectedExp=exp+projectedExtra;
+  const projectedBal=inc-projectedExp;
+  return{projectedExp,projectedBal,daysLeft};
+}
+
+// ── RACHA DE MESES CON SALDO POSITIVO ───────────────
+// Cuenta meses consecutivos (hacia atrás, sin incluir el mes en curso) en que
+// el balance (ingreso-gasto) fue positivo. Es informativa y de refuerzo
+// positivo únicamente: si la racha es 0 simplemente no se muestra nada, para
+// no generar culpa ni ansiedad por "romper" una racha.
+function positiveStreak(d){
+  let streak=0,mk=shiftMk(d.month,-1);
+  for(let i=0;i<24;i++){
+    const txs=mTxs(d,mk);
+    if(txs.length===0)break;
+    const{bal}=totals(txs);
+    if(bal>=0){streak++;mk=shiftMk(mk,-1);}
+    else break;
+  }
+  return streak;
+}
+
+// ── ANIMACIÓN DE CONTEO PARA CIFRAS CLAVE ───────────
+// Busca elementos con [data-count="<valor numérico>"] dentro del contenedor
+// dado y anima su texto desde 0 hasta el valor final. Si algo falla, el
+// elemento ya trae el valor formateado como contenido de respaldo, así que
+// nunca queda vacío.
+function animateCountUps(container){
+  const root=container||document;
+  const els=root.querySelectorAll('[data-count]');
+  els.forEach(el=>{
+    const raw=el.getAttribute('data-count');
+    const target=parseFloat(raw);
+    if(isNaN(target)){return;}
+    const dur=550;
+    const t0=performance.now();
+    function step(now){
+      const t=Math.min((now-t0)/dur,1);
+      const eased=1-Math.pow(1-t,3);
+      el.textContent=fmt(target*eased);
+      if(t<1)requestAnimationFrame(step);
+      else el.textContent=fmt(target);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
 // ── KPIs DE FINANZAS PERSONALES ─────────────────────
 // ── DESGLOSE DE GASTOS POR CATEGORÍA (compartido entre Home y Salud financiera) ──
 function categoryBreakdown(d){
@@ -776,6 +870,7 @@ function go(tab){
   c.scrollTop=0;
   const renders={home:renderHome,moves:renderMoves,goals:renderGoals,card:renderCard,more:renderMore};
   c.innerHTML=(renders[tab]||renderHome)();
+  animateCountUps(c);
   const pi=TAB_ORDER.indexOf(prev),ci=TAB_ORDER.indexOf(tab);
   c.classList.remove('con-r','con-l','con-u');
   void c.offsetWidth;
@@ -790,6 +885,7 @@ function openSheet(name,data){
   document.getElementById('ov').classList.add('on');
   document.getElementById('sh').classList.add('on');
   document.getElementById('sh').scrollTop=0;
+  animateCountUps(document.getElementById('shb'));
   if(name==='add'){
     setTimeout(()=>{const a=document.getElementById('f-a');if(a)a.focus();},320);
   }
@@ -809,14 +905,14 @@ function monthNav(){
   const d=getData();
   const isDark=document.documentElement.classList.contains('dark');
   return`<div class="mnav">
-    <button class="mnav-arr" onclick="changeMonth(prevMonth(getData().month))">
+    <button class="mnav-arr" aria-label="Mes anterior" onclick="changeMonth(prevMonth(getData().month))">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <div class="mnav-lbl">${mlabel(d.month).toUpperCase()}</div>
-    <button class="mnav-arr" onclick="changeMonth(nextMonth(getData().month))">
+    <button class="mnav-arr" aria-label="Mes siguiente" onclick="changeMonth(nextMonth(getData().month))">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
     </button>
-    <button class="mnav-dk" id="btn-dark" onclick="toggleDark()">${isDark?'☀️':'🌙'}</button>
+    <button class="mnav-dk" id="btn-dark" aria-label="Cambiar tema claro/oscuro" onclick="toggleDark()">${isDark?'☀️':'🌙'}</button>
   </div>`;
 }
 function prevMonth(m){const[y,mo]=m.split('-').map(Number);return mo===1?`${y-1}-12`:`${y}-${String(mo-1).padStart(2,'0')}`;}
@@ -907,6 +1003,41 @@ function catBarChart(rows){
   }).join('');
 }
 
+// ── MAPA DE CALOR: intensidad de gasto por día del mes ──────────────────────
+// Vive dentro de la hoja "Salud financiera": ayuda a ver de un vistazo en qué
+// días del mes se concentra el gasto, sin agregar un gráfico nuevo a Home.
+function spendHeatmap(d){
+  const mk=d.month;
+  const txs=mTxs(d,mk).filter(t=>t.type==='exp'&&t.date);
+  if(txs.length===0)return'';
+  const byDay={};
+  txs.forEach(t=>{ byDay[t.date]=(byDay[t.date]||0)+t.amount; });
+  const[y,m]=mk.split('-').map(Number);
+  const daysInMonth=new Date(y,m,0).getDate();
+  const firstDow=new Date(y,m-1,1).getDay();
+  const max=Math.max(...Object.values(byDay),1);
+  const dowLabels=['D','L','M','M','J','V','S'];
+  let cells='';
+  for(let i=0;i<firstDow;i++)cells+=`<div class="heat-cell empty"></div>`;
+  for(let day=1;day<=daysInMonth;day++){
+    const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const amt=byDay[dateStr]||0;
+    const intensity=amt/max;
+    const bg=amt===0?'var(--s2)':`color-mix(in srgb, var(--rd) ${Math.round(intensity*80+18)}%, var(--s2))`;
+    cells+=`<div class="heat-cell" style="background:${bg};color:${intensity>0.45?'#fff':'var(--mu)'}" title="${fmt(amt)}">${day}</div>`;
+  }
+  return`<div class="heat-wrap">
+    <div class="heat-grid">${dowLabels.map(l=>`<div class="heat-dow">${l}</div>`).join('')}${cells}</div>
+    <div class="heat-legend">
+      <span>Menos</span>
+      <div class="heat-leg-cell" style="background:var(--s2)"></div>
+      <div class="heat-leg-cell" style="background:color-mix(in srgb, var(--rd) 50%, var(--s2))"></div>
+      <div class="heat-leg-cell" style="background:var(--rd)"></div>
+      <span>Más gasto</span>
+    </div>
+  </div>`;
+}
+
 function renderHome(){
   const d=getData();
   let h=monthNav();
@@ -915,24 +1046,54 @@ function renderHome(){
   const budget=d.budgets[d.month]||{};
   const allCatsArr=allCats();
 
+  // ── SALUDO PERSONALIZADO + INSIGHT CONTEXTUAL ─────────────────────────────
+  // Usa el nombre de la cuenta si está disponible (sin depender de IA: solo
+  // hora del día + el propio saldo del mes, que ya se calcula más abajo).
+  const hourNow=new Date().getHours();
+  const greetWord=hourNow<12?'Buenos días':hourNow<20?'Buenas tardes':'Buenas noches';
+  const firstName=(window.currentUser?.displayName||'').split(' ')[0];
+  const greetInsight=exp===0&&inc===0?'Empecemos a registrar este mes.':
+    bal>=0?'Vas bien este mes.':'Este mes estás gastando más de lo que ingresa.';
+  h+=`<div class="greet">${greetWord}${firstName?`, <b>${firstName}</b>`:''} · ${greetInsight}</div>`;
+
+  // ── RACHA: meses consecutivos con saldo positivo (refuerzo, sin culpa) ────
+  const streak=positiveStreak(d);
+  if(streak>=2){
+    h+=`<div class="streak-pill">🔥 ${streak} meses seguidos con saldo positivo</div>`;
+  }
+
   // ── SECCIÓN RESUMEN (3 columnas como Fleur) ──────────────────────────────
   h+=`<div class="home-sec-title">Resumen</div>
   <div class="h3col">
     <div class="h3item">
       <div class="h3lbl">Saldo</div>
-      <div class="h3val" style="color:${bal>=0?'var(--gn)':'var(--rd)'}">${fmt(bal)}</div>
+      <div class="h3val" style="color:${bal>=0?'var(--gn)':'var(--rd)'}" data-count="${bal}">${fmt(bal)}</div>
     </div>
     <div class="h3sep"></div>
     <div class="h3item">
       <div class="h3lbl">Ingreso</div>
-      <div class="h3val" style="color:var(--gn)">${fmt(inc)}</div>
+      <div class="h3val" style="color:var(--gn)" data-count="${inc}">${fmt(inc)}</div>
     </div>
     <div class="h3sep"></div>
     <div class="h3item">
       <div class="h3lbl">Gastos</div>
-      <div class="h3val" style="color:var(--rd)">${fmt(exp)}</div>
+      <div class="h3val" style="color:var(--rd)" data-count="${exp}">${fmt(exp)}</div>
     </div>
   </div>`;
+
+  // ── COMPARATIVA CON EL MES ANTERIOR (una línea, no reemplaza "Comparar meses") ──
+  const prevTxs=mTxs(d,shiftMk(d.month,-1));
+  if(prevTxs.length>0){
+    const prevT=totals(prevTxs);
+    if(prevT.exp>0){
+      const diff=exp-prevT.exp;
+      const diffPct=Math.round(Math.abs(diff)/prevT.exp*100);
+      if(diffPct>=1){
+        const worse=diff>0;
+        h+=`<div class="greet" style="margin:-8px 0 14px">${worse?'▲':'▼'} <b style="color:${worse?'var(--rd)':'var(--gn)'}">${diffPct}%</b> ${worse?'más':'menos'} de gasto que ${mlabel(shiftMk(d.month,-1))}</div>`;
+      }
+    }
+  }
 
   // ── BARRA PRESUPUESTO FULL-WIDTH (como Fleur) ─────────────────────────────
   const totalBudget=Object.values(budget).reduce((a,v)=>a+(v||0),0);
@@ -960,6 +1121,21 @@ function renderHome(){
       <div class="hbar-label" style="color:${over?'var(--rd)':'var(--gn)'}">
         ${over?'Presupuesto superado':'<span style="font-weight:700;color:var(--gn)">'+fmt(left)+'</span> restante de '+fmt(totalBudget)}
       </div>
+      ${(!over&&left>0)?`<button class="no-print" onclick="quickSaveSurplus(${left})" style="margin-top:9px;font-size:11.5px;font-weight:600;color:var(--go);background:none;border:none;padding:2px;display:flex;align-items:center;gap:5px">🐷 Enviar ${fmt(left)} de sobrante a ahorro</button>`:''}
+    </div>`;
+  }
+
+  // ── SALDO PROYECTADO A FIN DE MES ─────────────────────────────────────────
+  // Solo aparece en el mes en curso y una vez que hay suficientes días de
+  // datos para que el promedio diario sea representativo.
+  const forecast=monthForecast(d,d.month,inc,exp);
+  if(forecast){
+    const willBeOver=forecast.projectedBal<0;
+    h+=`<div class="forecast-box">
+      <div class="forecast-ic">${willBeOver?'⚠️':'🔮'}</div>
+      <div class="forecast-txt">Si mantienes tu ritmo actual de gasto, terminarías el mes con
+        <b style="color:${willBeOver?'var(--rd)':'var(--gn)'}">${fmt(forecast.projectedBal)}</b>
+        de saldo (${forecast.daysLeft} día${forecast.daysLeft!==1?'s':''} restantes).</div>
     </div>`;
   }
 
@@ -973,7 +1149,7 @@ function renderHome(){
         <div class="cbar-head">
           <div>
             <div class="donut-center-lbl">Total gastado</div>
-            <div class="cbar-head-val">${fmt(exp)}</div>
+            <div class="cbar-head-val" data-count="${exp}">${fmt(exp)}</div>
           </div>
           <div class="donut-center-sub">${spentSorted.length} categoría${spentSorted.length!==1?'s':''}</div>
         </div>
@@ -1012,7 +1188,7 @@ function renderHome(){
   }
 
   if(catData.length===0&&incTxs.length===0){
-    h+=`<div class="empty"><div class="eico">📊</div><p>Aún no hay movimientos este mes.</p></div>
+    h+=`<div class="empty"><div class="eico">📊</div><p>Tu mes empieza acá. Registra tu primer movimiento y esta pantalla va a cobrar vida.</p></div>
     <button class="btn btnp" onclick="openSheet('add')">+ Registrar primer movimiento</button>`;
   }
 
@@ -1302,9 +1478,14 @@ function renderMore(){
       <div class="lin"><div class="lim">Comparar meses</div><div class="lis">Evolución de tus finanzas</div></div>
       <div class="lir" style="color:var(--mu);font-size:18px">›</div>
     </button>
-    <button class="li" onclick="openSheet('recur')" style="padding:0;">
+    <button class="li" onclick="openSheet('recur')" style="padding:0;border-bottom:1px solid var(--bd)">
       <div class="lii" style="background:var(--gd);color:var(--gn)">🔁</div>
       <div class="lin"><div class="lim">Recurrentes</div><div class="lis">${d.recur.length} activo${d.recur.length!==1?'s':''}</div></div>
+      <div class="lir" style="color:var(--mu);font-size:18px">›</div>
+    </button>
+    <button class="li" onclick="openSheet('report')" style="padding:0;">
+      <div class="lii" style="background:var(--ad);color:var(--ac)">🧾</div>
+      <div class="lin"><div class="lim">Reporte mensual</div><div class="lis">Exportar o imprimir como PDF</div></div>
       <div class="lir" style="color:var(--mu);font-size:18px">›</div>
     </button>
   </div></div>`;
@@ -1373,12 +1554,15 @@ function sheetContent(name, data){
     const dsStatus=k.discreRatio<=30?'g':k.discreRatio<=45?'y':'r';
     const dsLabel=k.discreRatio<=30?'Bajo control':k.discreRatio<=45?'Elevado':'Muy alto';
 
+    // Mapa de calor de gasto diario del mes activo
+    const heatmapHtml=spendHeatmap(d);
+
     return`<div class="stl">📊 Tu salud financiera</div>
       <div class="ibox">Calculado con el promedio de los últimos ${k.monthsUsed} mes${k.monthsUsed!==1?'es':''} con movimientos registrados. Te ayuda a decidir a corto, mediano y largo plazo.</div>
 
       <div class="nw-card">
         <div style="font-size:10.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Patrimonio neto</div>
-        <div class="fn" style="font-size:31px;margin:7px 0 3px;color:${k.netWorth>=0?'var(--tx)':'var(--rd)'}">${fmt(k.netWorth)}</div>
+        <div class="fn" style="font-size:31px;margin:7px 0 3px;color:${k.netWorth>=0?'var(--tx)':'var(--rd)'}" data-count="${k.netWorth}">${fmt(k.netWorth)}</div>
         <div style="font-size:12px;font-weight:600;color:${trendColor}">${trendTxt}</div>
         <div class="nw-split">
           <div><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px">Activos</div><div class="fn" style="font-size:15px;color:var(--gn);margin-top:3px">${fmt(k.totalAssets)}</div></div>
@@ -1404,6 +1588,9 @@ function sheetContent(name, data){
           }).join('')}
         </div>
       </div></div>`:''}
+
+      ${heatmapHtml?`<div class="date-sep" style="font-size:19px;padding-top:2px">Intensidad de gasto diario</div>
+      <div class="card" style="margin-bottom:14px"><div class="cb">${heatmapHtml}</div></div>`:''}
 
       <div class="date-sep" style="font-size:19px;padding-top:2px">Indicadores principales</div>
       ${kpiCard({icon:'💰',label:'Tasa de ahorro',value:k.savingsRate.toFixed(0),suf:'%',status:savStatus,statusLabel:savLabel,barPct:Math.min(k.savingsRate,40)/40*100,
@@ -1734,11 +1921,55 @@ function sheetContent(name, data){
   if(name==='recur'){
     let h=`<div class="stl">🔁 Recurrentes</div><div class="ibox">Se agregan automáticamente al inicio de cada mes.</div>`;
     if(d.recur.length===0){ h+=`<div class="empty"><div class="eico">🔁</div><p>Sin recurrentes.<br>Activa la opción al crear un movimiento.</p></div>`; return h; }
+    const recInc=d.recur.filter(r=>r.type==='inc').reduce((a,r)=>a+r.amount,0);
+    const recExp=d.recur.filter(r=>r.type==='exp').reduce((a,r)=>a+r.amount,0);
+    h+=`<div class="pills" style="margin-bottom:14px">
+      <div class="pill"><div class="plb">Ingreso fijo/mes</div><div class="pv g ff">${fmt(recInc)}</div></div>
+      <div class="pill"><div class="plb">Gasto fijo/mes</div><div class="pv r ff">${fmt(recExp)}</div></div>
+    </div>`;
     d.recur.forEach(r=>{
       const cat=getCat(r.cat);
       h+=`<div class="row"><span>${cat.icon} ${r.desc||cat.name} · <span style="color:var(--mu)">${fmt(r.amount)}/mes</span></span><button onclick="delRecur('${r.id}')" style="color:var(--rd);font-size:20px;line-height:1;padding:4px">×</button></div>`;
     });
     return h;
+  }
+
+  // ── REPORTE MENSUAL IMPRIMIBLE ─────────────────────
+  // Usa exactamente los mismos cálculos que Home (totals, categoryBreakdown)
+  // para no tener una segunda fuente de verdad. El botón "Imprimir / PDF"
+  // abre el diálogo nativo del navegador; en iOS Safari, Compartir → Imprimir
+  // → pellizcar para previsualizar permite guardarlo como PDF sin librerías.
+  if(name==='report'){
+    const txs=mTxs(d,d.month);
+    const{inc,exp,bal}=totals(txs);
+    const{catData,legendRows}=categoryBreakdown(d);
+    const budget=d.budgets[d.month]||{};
+    const totalBudget=Object.values(budget).reduce((a,v)=>a+(v||0),0);
+    const genDate=new Date().toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'});
+    return`<div class="stl">🧾 Reporte mensual</div>
+      <div class="ibox no-print">Genera un resumen listo para imprimir o guardar como PDF desde el navegador.</div>
+      <div id="report-print">
+        <div class="card"><div class="cb">
+          <div class="ct">Bolsillo · ${mlabel(d.month)}</div>
+          <div class="rpt-row"><span>Ingreso</span><span style="color:var(--gn);font-weight:700">${fmt(inc)}</span></div>
+          <div class="rpt-row"><span>Gastos</span><span style="color:var(--rd);font-weight:700">${fmt(exp)}</span></div>
+          <div class="rpt-row"><span>Saldo</span><span style="color:${bal>=0?'var(--gn)':'var(--rd)'};font-weight:700">${fmt(bal)}</span></div>
+          ${totalBudget>0?`<div class="rpt-row"><span>Presupuesto total</span><span style="font-weight:700">${fmt(totalBudget)}</span></div>`:''}
+        </div></div>
+        ${legendRows.length>0?`<div class="card" style="margin-top:12px"><div class="cb">
+          <div class="ct">Gastos por categoría</div>
+          ${legendRows.map(({name,spent})=>{
+            const p=pct(spent,exp);
+            return`<div class="rpt-row"><span>${name}</span><span>${fmt(spent)} · ${p}%</span></div>`;
+          }).join('')}
+        </div></div>`:''}
+        ${catData.length>0?`<div class="card" style="margin-top:12px"><div class="cb">
+          <div class="ct">Detalle de presupuesto</div>
+          ${catData.map(({c,spent,b})=>`<div class="rpt-row"><span>${c.name}</span><span>${fmt(spent)}${b>0?' de '+fmt(b):''}</span></div>`).join('')}
+        </div></div>`:''}
+        <div style="font-size:10px;color:var(--mu);text-align:center;margin-top:14px">Generado el ${genDate} con Bolsillo</div>
+      </div>
+      <button class="btn btnp no-print" style="margin-top:16px" onclick="window.print()">🖨️ Imprimir / Guardar como PDF</button>`;
   }
 
   // ── TARJETA: WIZARD ───────────────────────────────
@@ -2106,6 +2337,24 @@ function delAsset(id){
 }
 
 // ── GUARDAR MOVIMIENTO ─────────────────────────────
+// Envío rápido de sobrante de presupuesto a la categoría Ahorro (versión
+// ligera de "envelope budgeting"): registra directamente una transacción sin
+// pasar por el formulario completo, reusando la misma forma de tx que saveTx.
+function quickSaveSurplus(amount){
+  amount=Math.round(amount);
+  if(!amount||amount<=0)return;
+  if(!confirm(`¿Registrar ${fmt(amount)} como ahorro de este mes?`))return;
+  const d=getData();
+  const tx={
+    id:uid(),type:'exp',amount,cat:'savings',pago:'cash',
+    desc:'Sobrante de presupuesto',note:'',
+    date:today(),dateLabel:mkLabel(today()),month:d.month,
+    metaId:null,isRecur:false,
+  };
+  d.txs.push(tx);
+  save(d);go(TAB);
+}
+
 function saveTx(){
   const amt=moneyVal('f-a');
   if(!amt||amt<=0){alert('Ingresa un monto válido');return;}
