@@ -198,11 +198,6 @@ html.dark #nav{
 .greet b{color:var(--tx);font-weight:700;}
 /* Racha de meses con saldo positivo (refuerzo positivo, sin culpa) */
 .streak-pill{display:inline-flex;align-items:center;gap:6px;background:var(--gq);color:var(--go);border:1px solid rgba(201,138,42,.22);border-radius:99px;padding:6px 12px;font-size:11.5px;font-weight:700;margin:8px 0 4px;-webkit-backdrop-filter:var(--glass-blur-sm);backdrop-filter:var(--glass-blur-sm);}
-/* Saldo proyectado a fin de mes */
-.forecast-box{display:flex;align-items:center;gap:11px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;margin:0 0 16px;-webkit-backdrop-filter:var(--glass-blur-sm);backdrop-filter:var(--glass-blur-sm);}
-.forecast-ic{font-size:17px;flex-shrink:0;}
-.forecast-txt{font-size:12px;color:var(--mu);line-height:1.4;}
-.forecast-txt b{color:var(--tx);font-weight:700;}
 /* Mapa de calor de gasto diario */
 .heat-wrap{margin-top:4px;}
 .heat-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px;}
@@ -693,43 +688,35 @@ const prevMk=mk=>{const[y,m]=mk.split('-').map(Number);const d=new Date(y,m-2,1)
 const allCats=()=>[...BASE_CATS,...getData().cats];
 const getCat=id=>allCats().find(c=>c.id===id)||BASE_CATS[0];
 const mTxs=(d,mk)=>d.txs.filter(t=>t.month===mk);
+// ── TOTALES: cuenta bancaria real vs. gasto total (incluyendo TC) ──────────
+// El pago con tarjeta de crédito NO sale de la cuenta bancaria en el momento
+// de la compra (es deuda futura, se paga en el próximo vencimiento) — solo
+// el efectivo y la tarjeta de débito mueven el dinero de la cuenta hoy.
+// Por eso separamos dos números que antes se mezclaban en uno solo:
+//  · bankExp / bankBal → lo que realmente entra y sale de la cuenta (saldo real)
+//  · exp / creditExp   → el gasto total real, incluyendo lo comprometido en TC
 function totals(txs){
   const inc=txs.filter(t=>t.type==='inc').reduce((a,t)=>a+t.amount,0);
   const exp=txs.filter(t=>t.type==='exp').reduce((a,t)=>a+t.amount,0);
-  return{inc,exp,bal:inc-exp};
-}
-
-// ── SALDO PROYECTADO A FIN DE MES ───────────────────
-// Estima el saldo con el que se cerraría el mes si el ritmo de gasto diario
-// actual se mantiene constante hasta el último día. Solo tiene sentido
-// mostrarla cuando el mes está en curso (no en meses cerrados/futuros) y
-// cuando ya hay al menos un par de días de datos para que el promedio sea útil.
-function monthForecast(d,mk,inc,exp){
-  if(mk!==nowMk())return null;
-  const now=new Date();
-  const dayOfMonth=now.getDate();
-  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-  if(dayOfMonth<2)return null;
-  const dailyAvg=exp/dayOfMonth;
-  const daysLeft=daysInMonth-dayOfMonth;
-  const projectedExtra=dailyAvg*daysLeft;
-  const projectedExp=exp+projectedExtra;
-  const projectedBal=inc-projectedExp;
-  return{projectedExp,projectedBal,daysLeft};
+  const bankExp=txs.filter(t=>t.type==='exp'&&t.pago!=='credit').reduce((a,t)=>a+t.amount,0);
+  const creditExp=exp-bankExp;
+  const bankBal=inc-bankExp;
+  return{inc,exp,bal:inc-exp,bankExp,creditExp,bankBal};
 }
 
 // ── RACHA DE MESES CON SALDO POSITIVO ───────────────
 // Cuenta meses consecutivos (hacia atrás, sin incluir el mes en curso) en que
-// el balance (ingreso-gasto) fue positivo. Es informativa y de refuerzo
-// positivo únicamente: si la racha es 0 simplemente no se muestra nada, para
-// no generar culpa ni ansiedad por "romper" una racha.
+// el saldo REAL de cuenta (ingreso - gastos en efectivo/débito, sin TC) fue
+// positivo. Es informativa y de refuerzo positivo únicamente: si la racha es
+// 0 simplemente no se muestra nada, para no generar culpa ni ansiedad por
+// "romper" una racha.
 function positiveStreak(d){
   let streak=0,mk=shiftMk(d.month,-1);
   for(let i=0;i<24;i++){
     const txs=mTxs(d,mk);
     if(txs.length===0)break;
-    const{bal}=totals(txs);
-    if(bal>=0){streak++;mk=shiftMk(mk,-1);}
+    const{bankBal}=totals(txs);
+    if(bankBal>=0){streak++;mk=shiftMk(mk,-1);}
     else break;
   }
   return streak;
@@ -1042,19 +1029,9 @@ function renderHome(){
   const d=getData();
   let h=monthNav();
   const txs=mTxs(d,d.month);
-  const{inc,exp,bal}=totals(txs);
+  const{inc,exp,bankExp,creditExp,bankBal}=totals(txs);
   const budget=d.budgets[d.month]||{};
   const allCatsArr=allCats();
-
-  // ── SALUDO PERSONALIZADO + INSIGHT CONTEXTUAL ─────────────────────────────
-  // Usa el nombre de la cuenta si está disponible (sin depender de IA: solo
-  // hora del día + el propio saldo del mes, que ya se calcula más abajo).
-  const hourNow=new Date().getHours();
-  const greetWord=hourNow<12?'Buenos días':hourNow<20?'Buenas tardes':'Buenas noches';
-  const firstName=(window.currentUser?.displayName||'').split(' ')[0];
-  const greetInsight=exp===0&&inc===0?'Empecemos a registrar este mes.':
-    bal>=0?'Vas bien este mes.':'Este mes estás gastando más de lo que ingresa.';
-  h+=`<div class="greet">${greetWord}${firstName?`, <b>${firstName}</b>`:''} · ${greetInsight}</div>`;
 
   // ── RACHA: meses consecutivos con saldo positivo (refuerzo, sin culpa) ────
   const streak=positiveStreak(d);
@@ -1063,11 +1040,14 @@ function renderHome(){
   }
 
   // ── SECCIÓN RESUMEN (3 columnas como Fleur) ──────────────────────────────
+  // "Saldo" = plata real en tu cuenta (ingreso - efectivo/débito). La TC no
+  // sale de la cuenta hoy, así que no descuenta el saldo — se muestra aparte
+  // como "Gasto total", que sí incluye lo comprometido en tarjeta de crédito.
   h+=`<div class="home-sec-title">Resumen</div>
   <div class="h3col">
     <div class="h3item">
       <div class="h3lbl">Saldo</div>
-      <div class="h3val" style="color:${bal>=0?'var(--gn)':'var(--rd)'}" data-count="${bal}">${fmt(bal)}</div>
+      <div class="h3val" style="color:${bankBal>=0?'var(--gn)':'var(--rd)'}" data-count="${bankBal}">${fmt(bankBal)}</div>
     </div>
     <div class="h3sep"></div>
     <div class="h3item">
@@ -1076,10 +1056,13 @@ function renderHome(){
     </div>
     <div class="h3sep"></div>
     <div class="h3item">
-      <div class="h3lbl">Gastos</div>
+      <div class="h3lbl">Gasto total</div>
       <div class="h3val" style="color:var(--rd)" data-count="${exp}">${fmt(exp)}</div>
     </div>
   </div>`;
+  if(creditExp>0){
+    h+=`<div class="greet" style="margin:-8px 0 14px">De los ${fmt(exp)} en gastos, <b>${fmt(creditExp)}</b> son con tarjeta de crédito (no descuentan tu saldo de cuenta todavía).</div>`;
+  }
 
   // ── COMPARATIVA CON EL MES ANTERIOR (una línea, no reemplaza "Comparar meses") ──
   const prevTxs=mTxs(d,shiftMk(d.month,-1));
@@ -1122,20 +1105,6 @@ function renderHome(){
         ${over?'Presupuesto superado':'<span style="font-weight:700;color:var(--gn)">'+fmt(left)+'</span> restante de '+fmt(totalBudget)}
       </div>
       ${(!over&&left>0)?`<button class="no-print" onclick="quickSaveSurplus(${left})" style="margin-top:9px;font-size:11.5px;font-weight:600;color:var(--go);background:none;border:none;padding:2px;display:flex;align-items:center;gap:5px">🐷 Enviar ${fmt(left)} de sobrante a ahorro</button>`:''}
-    </div>`;
-  }
-
-  // ── SALDO PROYECTADO A FIN DE MES ─────────────────────────────────────────
-  // Solo aparece en el mes en curso y una vez que hay suficientes días de
-  // datos para que el promedio diario sea representativo.
-  const forecast=monthForecast(d,d.month,inc,exp);
-  if(forecast){
-    const willBeOver=forecast.projectedBal<0;
-    h+=`<div class="forecast-box">
-      <div class="forecast-ic">${willBeOver?'⚠️':'🔮'}</div>
-      <div class="forecast-txt">Si mantienes tu ritmo actual de gasto, terminarías el mes con
-        <b style="color:${willBeOver?'var(--rd)':'var(--gn)'}">${fmt(forecast.projectedBal)}</b>
-        de saldo (${forecast.daysLeft} día${forecast.daysLeft!==1?'s':''} restantes).</div>
     </div>`;
   }
 
@@ -1941,7 +1910,7 @@ function sheetContent(name, data){
   // → pellizcar para previsualizar permite guardarlo como PDF sin librerías.
   if(name==='report'){
     const txs=mTxs(d,d.month);
-    const{inc,exp,bal}=totals(txs);
+    const{inc,exp,bankExp,creditExp,bankBal}=totals(txs);
     const{catData,legendRows}=categoryBreakdown(d);
     const budget=d.budgets[d.month]||{};
     const totalBudget=Object.values(budget).reduce((a,v)=>a+(v||0),0);
@@ -1952,8 +1921,9 @@ function sheetContent(name, data){
         <div class="card"><div class="cb">
           <div class="ct">Bolsillo · ${mlabel(d.month)}</div>
           <div class="rpt-row"><span>Ingreso</span><span style="color:var(--gn);font-weight:700">${fmt(inc)}</span></div>
-          <div class="rpt-row"><span>Gastos</span><span style="color:var(--rd);font-weight:700">${fmt(exp)}</span></div>
-          <div class="rpt-row"><span>Saldo</span><span style="color:${bal>=0?'var(--gn)':'var(--rd)'};font-weight:700">${fmt(bal)}</span></div>
+          <div class="rpt-row"><span>Gasto total (incl. TC)</span><span style="color:var(--rd);font-weight:700">${fmt(exp)}</span></div>
+          ${creditExp>0?`<div class="rpt-row"><span style="color:var(--mu)">　de los cuales, tarjeta de crédito</span><span style="color:var(--mu)">${fmt(creditExp)}</span></div>`:''}
+          <div class="rpt-row"><span>Saldo de cuenta</span><span style="color:${bankBal>=0?'var(--gn)':'var(--rd)'};font-weight:700">${fmt(bankBal)}</span></div>
           ${totalBudget>0?`<div class="rpt-row"><span>Presupuesto total</span><span style="font-weight:700">${fmt(totalBudget)}</span></div>`:''}
         </div></div>
         ${legendRows.length>0?`<div class="card" style="margin-top:12px"><div class="cb">
