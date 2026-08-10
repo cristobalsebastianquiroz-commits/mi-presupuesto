@@ -1315,7 +1315,7 @@ function renderCard(){
     </div>`;
   if(purchases.length===0) h+=`<div style="text-align:center;padding:16px 0;color:var(--mu);font-size:13px">Sin compras en cuotas.</div>`;
   else {
-    const nk=nowMk();
+    const nk=billingCycle(card);
     purchases.forEach(p=>{
       const[py,pm]=p.from.split('-').map(Number);
       const[ny,nm]=nk.split('-').map(Number);
@@ -1353,7 +1353,7 @@ function renderCard(){
 }
 
 function calcMonthly(card){
-  const nk=nowMk();
+  const nk=billingCycle(card);
   let purch=0,tax=0;
   (card.purchases||[]).filter(p=>p.active).forEach(p=>{
     const[py,pm]=p.from.split('-').map(Number);
@@ -1377,21 +1377,20 @@ function calcMonthly(card){
 }
 
 function cardProj(card){
-  const now=new Date();
+  const base=billingCycle(card);
   const months=[1,2,3].map(offset=>{
-    const dd=new Date(now.getFullYear(),now.getMonth()+offset,1);
-    const key=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}`;
+    const key=shiftMk(base,offset);
+    const[y,m]=key.split('-').map(Number);
     let total=Math.round((card.mant||0)*UF)+(card.extras||[]).filter(e=>e.active).reduce((a,e)=>a+e.amount,0);
     (card.purchases||[]).filter(p=>p.active).forEach(p=>{
       const[py,pm]=p.from.split('-').map(Number);
-      const[ny,nm]=key.split('-').map(Number);
-      const el=(ny-py)*12+(nm-pm); const cur=el+1;
+      const el=(y-py)*12+(m-pm); const cur=el+1;
       if(cur>=1&&cur<=p.installments){
         total+=p.instAmt;
         if(p.stamps) total+=Math.round(p.stamps/p.installments);
       }
     });
-    return{label:MS[dd.getMonth()]+' '+String(dd.getFullYear()).slice(2),total};
+    return{label:MS[m-1]+' '+String(y).slice(2),total};
   });
   const mx=Math.max(...months.map(m=>m.total),1);
   let h=`<div class="card"><div class="cb"><div class="ct">Proyección próximos meses</div>`;
@@ -2103,7 +2102,7 @@ function sheetContent(name, data){
     const card=d.cards.find(c=>c.id===cardId);
     const p=(card?.purchases||[]).find(x=>x.id===purchId);
     if(!p||!card) return'';
-    const nk=nowMk();
+    const nk=billingCycle(card);
     const[py,pm]=p.from.split('-').map(Number);
     const[ny,nm]=nk.split('-').map(Number);
     const el=(ny-py)*12+(nm-pm); const cur=el+1; const rem=Math.max(p.installments-el,0);
