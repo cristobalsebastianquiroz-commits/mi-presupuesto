@@ -198,14 +198,6 @@ html.dark #nav{
 .greet b{color:var(--tx);font-weight:700;}
 /* Racha de meses con saldo positivo (refuerzo positivo, sin culpa) */
 .streak-pill{display:inline-flex;align-items:center;gap:6px;background:var(--gq);color:var(--go);border:1px solid rgba(201,138,42,.22);border-radius:99px;padding:6px 12px;font-size:11.5px;font-weight:700;margin:8px 0 4px;-webkit-backdrop-filter:var(--glass-blur-sm);backdrop-filter:var(--glass-blur-sm);}
-/* Mapa de calor de gasto diario */
-.heat-wrap{margin-top:4px;}
-.heat-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px;}
-.heat-dow{font-size:9px;color:var(--mu);text-align:center;font-weight:600;text-transform:uppercase;}
-.heat-cell{aspect-ratio:1;border-radius:6px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--mu);font-weight:600;}
-.heat-cell.empty{background:transparent;}
-.heat-legend{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:10px;color:var(--mu);}
-.heat-leg-cell{width:10px;height:10px;border-radius:3px;}
 /* Donut row */
 .donut-card-row{display:flex;align-items:center;justify-content:center;gap:22px;padding:6px 0 4px;}
 .donut-wrap{position:relative;width:232px;height:232px;flex-shrink:0;}
@@ -659,6 +651,21 @@ function getData(){
   if(!d.recur)  d.recur=[];
   if(!d.applied)d.applied={};
   if(!d.month){const n=new Date();d.month=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+  // ── MIGRACIÓN METAS: de "saved" (contador manual, que se desincronizaba al
+  // editar/eliminar movimientos) a "baseSaved" + suma dinámica de aportes
+  // (ver metaSaved()). Corre una sola vez por meta; resta lo que ya estaba
+  // contado desde movimientos para no duplicar el monto ya ahorrado.
+  let metasMigrated=false;
+  (d.metas||[]).forEach(m=>{
+    if(!m._migrated){
+      const linkedSum=d.txs.filter(t=>t.metaId===m.id).reduce((a,t)=>a+t.amount,0);
+      m.baseSaved=(m.saved||0)-linkedSum;
+      delete m.saved;
+      m._migrated=true;
+      metasMigrated=true;
+    }
+  });
+  if(metasMigrated) save(d);
   return d;
 }
 function save(d){d.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(d));if(window._sync)window._sync();}
@@ -675,6 +682,12 @@ const billingCycle=(card)=>{
   if(n.getDate()>cut){m+=1;if(m>11){m=0;y+=1;}}
   return`${y}-${String(m+1).padStart(2,'0')}`;
 };
+// ── IMPUESTO DE TIMBRES Y ESTAMPILLAS (DL 3475) ─────
+// Se cobra completo UNA sola vez (junto con la primera cuota), no mes a mes.
+// Tasa verificada contra estados de cuenta reales de Banco de Chile:
+// 0,066% × (N° de cuotas + 1) sobre el monto total de la compra.
+// (antes se usaba una tasa fija de 0,08%×cuotas que no calzaba con el banco)
+const stampsTax=(amt,inst)=>inst>1?Math.round(amt*0.00066*(inst+1)):0;
 const shiftMk=(mk,delta)=>{
   let[y,m]=mk.split('-').map(Number);
   m+=delta;
@@ -687,6 +700,13 @@ const mlabel=mk=>{const[y,m]=mk.split('-');return MONTHS[parseInt(m)-1]+' '+y};
 const prevMk=mk=>{const[y,m]=mk.split('-').map(Number);const d=new Date(y,m-2,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`};
 const allCats=()=>[...BASE_CATS,...getData().cats];
 const getCat=id=>allCats().find(c=>c.id===id)||BASE_CATS[0];
+// ── AHORRO REAL DE UNA META ──────────────────────────
+// Se calcula siempre a partir del registro de movimientos (nunca se guarda
+// como contador aparte), así que crear, editar o eliminar un movimiento con
+// metaId siempre queda reflejado automáticamente, sin desincronizarse.
+const metaSaved=(d,m)=>(m.baseSaved||0)+d.txs.filter(t=>t.metaId===m.id).reduce((a,t)=>a+t.amount,0);
+// Meta activa enlazada a una categoría (para abono automático al gastar en ella)
+const linkedMetaFor=(d,catId)=>d.metas.find(m=>!m.done&&m.linkedCat===catId)||null;
 const mTxs=(d,mk)=>d.txs.filter(t=>t.month===mk);
 // ── TOTALES: cuenta bancaria real vs. gasto total (incluyendo TC) ──────────
 // El pago con tarjeta de crédito NO sale de la cuenta bancaria en el momento
@@ -798,7 +818,7 @@ function finKPIs(){
   const totalDebt=(d.cards||[]).reduce((a,c)=>a+calcMonthly(c).bal,0);
 
   // Patrimonio: lo ahorrado en metas + bienes ingresados manualmente, menos deuda
-  const savedInGoals=(d.metas||[]).reduce((a,m)=>a+(m.saved||0),0);
+  const savedInGoals=(d.metas||[]).reduce((a,m)=>a+metaSaved(d,m),0);
   const assetsVal=(d.assets||[]).filter(x=>x.active!==false).reduce((a,x)=>a+(x.value||0),0);
   const totalAssets=savedInGoals+assetsVal;
   const netWorth=totalAssets-totalDebt;
@@ -988,41 +1008,6 @@ function catBarChart(rows){
       <div class="cbar-pct">${p}% del gasto total</div>
     </div>`;
   }).join('');
-}
-
-// ── MAPA DE CALOR: intensidad de gasto por día del mes ──────────────────────
-// Vive dentro de la hoja "Salud financiera": ayuda a ver de un vistazo en qué
-// días del mes se concentra el gasto, sin agregar un gráfico nuevo a Home.
-function spendHeatmap(d){
-  const mk=d.month;
-  const txs=mTxs(d,mk).filter(t=>t.type==='exp'&&t.date);
-  if(txs.length===0)return'';
-  const byDay={};
-  txs.forEach(t=>{ byDay[t.date]=(byDay[t.date]||0)+t.amount; });
-  const[y,m]=mk.split('-').map(Number);
-  const daysInMonth=new Date(y,m,0).getDate();
-  const firstDow=new Date(y,m-1,1).getDay();
-  const max=Math.max(...Object.values(byDay),1);
-  const dowLabels=['D','L','M','M','J','V','S'];
-  let cells='';
-  for(let i=0;i<firstDow;i++)cells+=`<div class="heat-cell empty"></div>`;
-  for(let day=1;day<=daysInMonth;day++){
-    const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const amt=byDay[dateStr]||0;
-    const intensity=amt/max;
-    const bg=amt===0?'var(--s2)':`color-mix(in srgb, var(--rd) ${Math.round(intensity*80+18)}%, var(--s2))`;
-    cells+=`<div class="heat-cell" style="background:${bg};color:${intensity>0.45?'#fff':'var(--mu)'}" title="${fmt(amt)}">${day}</div>`;
-  }
-  return`<div class="heat-wrap">
-    <div class="heat-grid">${dowLabels.map(l=>`<div class="heat-dow">${l}</div>`).join('')}${cells}</div>
-    <div class="heat-legend">
-      <span>Menos</span>
-      <div class="heat-leg-cell" style="background:var(--s2)"></div>
-      <div class="heat-leg-cell" style="background:color-mix(in srgb, var(--rd) 50%, var(--s2))"></div>
-      <div class="heat-leg-cell" style="background:var(--rd)"></div>
-      <span>Más gasto</span>
-    </div>
-  </div>`;
 }
 
 function renderHome(){
@@ -1237,8 +1222,11 @@ function renderMovesList(){
 function renderGoals(){
   const d=getData();
   let h=monthNav();
-  const savingsTx=mTxs(d,d.month).filter(t=>t.cat==='savings');
-  const totSav=savingsTx.reduce((a,t)=>a+t.amount,0);
+  // Cualquier movimiento con metaId cuenta como aporte, sea porque se eligió
+  // manualmente en la categoría Ahorro, o porque la categoría tiene una meta
+  // enlazada automáticamente.
+  const metaTx=mTxs(d,d.month).filter(t=>t.metaId);
+  const totSav=metaTx.reduce((a,t)=>a+t.amount,0);
   h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
     <span class="ff" style="font-size:24px;font-style:italic">Metas de ahorro</span>
     <button onclick="openSheet('add-goal')" style="background:var(--ad);border:1px solid rgba(122,158,126,.25);color:var(--ac);border-radius:var(--rs);padding:7px 14px;font-size:13px;font-weight:500">+ Nueva</button>
@@ -1246,7 +1234,7 @@ function renderGoals(){
   if(totSav>0){
     h+=`<div class="card"><div class="cb"><div class="ct">Ahorrado este mes</div>
       <div class="fn" style="font-size:24px;color:var(--go)">${fmt(totSav)}</div>
-      <div style="font-size:12px;color:var(--mu);margin-top:4px">${savingsTx.length} depósito${savingsTx.length!==1?'s':''}</div>
+      <div style="font-size:12px;color:var(--mu);margin-top:4px">${metaTx.length} depósito${metaTx.length!==1?'s':''}</div>
     </div></div>`;
   }
   if(d.metas.length===0) return h+`<div class="empty"><div class="eico">🎯</div><p>Crea tu primera meta<br>para empezar a ahorrar.</p></div>`;
@@ -1258,15 +1246,17 @@ function renderGoals(){
 }
 
 function goalCard(m,d){
-  const saved=m.saved||0;
+  const saved=metaSaved(d,m);
   const p=pct(saved,m.target);
   const left=Math.max(m.target-saved,0);
   const col=p>=100?'g':p>=60?'y':'a';
-  const mx=mTxs(d,d.month).filter(t=>t.cat==='savings'&&t.metaId===m.id).reduce((a,t)=>a+t.amount,0);
+  const mx=mTxs(d,d.month).filter(t=>t.metaId===m.id).reduce((a,t)=>a+t.amount,0);
+  const linkedCat=m.linkedCat?getCat(m.linkedCat):null;
   return`<button class="mc" onclick="openSheet('edit-goal','${m.id}')">
     <div class="mt"><div><div class="mn">${m.emoji||'🎯'} ${m.name}</div><div style="font-size:12px;color:var(--mu);margin-top:2px">${fmt(saved)} de ${fmt(m.target)}</div></div><div class="mp">${p}%</div></div>
     <div class="pg"><div class="pf ${col}" style="width:${p}%"></div></div>
     <div class="md"><span>${left>0?`Faltan ${fmt(left)}`:'🎉 ¡Completada!'}</span>${mx>0?`<span style="color:var(--go)">+${fmt(mx)} este mes</span>`:''}</div>
+    ${linkedCat?`<div style="font-size:11px;color:var(--ac);margin-top:7px">🔗 ${linkedCat.icon} ${linkedCat.name} abona aquí automáticamente</div>`:''}
   </button>`;
 }
 
@@ -1361,7 +1351,9 @@ function calcMonthly(card){
     const el=(ny-py)*12+(nm-pm); const cur=el+1;
     if(cur>=1&&cur<=p.installments){
       purch+=p.instAmt;
-      if(p.stamps) tax+=Math.round(p.stamps/p.installments);
+      // El impuesto DL3475 se cobra completo UNA sola vez, junto con la
+      // primera cuota — no se prorratea mes a mes (así lo factura el banco).
+      if(p.stamps&&cur===1) tax+=p.stamps;
     }
   });
   const mant=Math.round((card.mant||0)*UF);
@@ -1387,7 +1379,9 @@ function cardProj(card){
       const el=(y-py)*12+(m-pm); const cur=el+1;
       if(cur>=1&&cur<=p.installments){
         total+=p.instAmt;
-        if(p.stamps) total+=Math.round(p.stamps/p.installments);
+        // Mismo criterio que calcMonthly: el DL3475 se cobra completo
+        // solo en el mes de la primera cuota, no prorrateado.
+        if(p.stamps&&cur===1) total+=p.stamps;
       }
     });
     return{label:MS[m-1]+' '+String(y).slice(2),total};
@@ -1413,11 +1407,10 @@ function updCalc(cardId){
   const d=getData(); const card=d.cards.find(c=>c.id===cardId);
   if(!card) return;
   const rate=(card.tasa||1.5)/100;
-  const STAMPS=0.0008;
   let monthly,interest=0;
   if(inst===1||!withInt){monthly=amt/inst;}
   else{monthly=amt*(rate*Math.pow(1+rate,inst))/(Math.pow(1+rate,inst)-1);interest=monthly*inst-amt;}
-  const stamps=inst>1?Math.round(amt*STAMPS*inst):0;
+  const stamps=stampsTax(amt,inst);
   r.innerHTML=`<div class="calcbox">
     <div class="cr"><span>Cuota mensual</span><span class="fn" style="color:var(--ac)">${fmt(Math.round(monthly))}</span></div>
     <div class="cr"><span>Precio original</span><span>${fmt(amt)}</span></div>
@@ -1522,9 +1515,6 @@ function sheetContent(name, data){
     const dsStatus=k.discreRatio<=30?'g':k.discreRatio<=45?'y':'r';
     const dsLabel=k.discreRatio<=30?'Bajo control':k.discreRatio<=45?'Elevado':'Muy alto';
 
-    // Mapa de calor de gasto diario del mes activo
-    const heatmapHtml=spendHeatmap(d);
-
     return`<div class="stl">📊 Tu salud financiera</div>
       <div class="ibox">Calculado con el promedio de los últimos ${k.monthsUsed} mes${k.monthsUsed!==1?'es':''} con movimientos registrados. Te ayuda a decidir a corto, mediano y largo plazo.</div>
 
@@ -1556,9 +1546,6 @@ function sheetContent(name, data){
           }).join('')}
         </div>
       </div></div>`:''}
-
-      ${heatmapHtml?`<div class="date-sep" style="font-size:19px;padding-top:2px">Intensidad de gasto diario</div>
-      <div class="card" style="margin-bottom:14px"><div class="cb">${heatmapHtml}</div></div>`:''}
 
       <div class="date-sep" style="font-size:19px;padding-top:2px">Indicadores principales</div>
       ${kpiCard({icon:'💰',label:'Tasa de ahorro',value:k.savingsRate.toFixed(0),suf:'%',status:savStatus,statusLabel:savLabel,barPct:Math.min(k.savingsRate,40)/40*100,
@@ -1635,6 +1622,7 @@ function sheetContent(name, data){
           </button>`).join('')}
         </div>
         <input type="hidden" id="f-c" value="${expCats[0]?.id||''}">
+        <div id="f-link-hint" style="display:none;font-size:12px;color:var(--ac);background:var(--ad);border-radius:var(--rs);padding:9px 12px;margin-top:10px"></div>
       </div>
       <div id="f-pago-wrap">
         <label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--mu);font-weight:500;margin-bottom:7px">Medio de pago</label>
@@ -1651,7 +1639,7 @@ function sheetContent(name, data){
           metas.map(m=>`<button id="ms-${m.id}" onclick="selMeta('${m.id}',this)" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rs);border:1.5px solid var(--bd);background:var(--s2);margin-bottom:8px;text-align:left;font-family:var(--fb);">
             <div id="mc-${m.id}" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0"></div>
             <div style="flex:1"><div style="font-size:13px;font-weight:500">${m.emoji||'🎯'} ${m.name}</div>
-            <div style="font-size:11px;color:var(--mu)">${pct(m.saved||0,m.target)}% · faltan ${fmt(Math.max(m.target-(m.saved||0),0))}</div></div>
+            <div style="font-size:11px;color:var(--mu)">${pct(metaSaved(d,m),m.target)}% · faltan ${fmt(Math.max(m.target-metaSaved(d,m),0))}</div></div>
           </button>`).join('')}
       </div>
       <details class="more-opts">
@@ -1717,6 +1705,8 @@ function sheetContent(name, data){
   // ── METAS ────────────────────────────────────────
   if(name==='add-goal'){
     const emojis=['🎯','🏖️','🚗','🏠','✈️','💻','🎓','💊','🐾','📚','💎','🎮','🏋️','👶','🌿'];
+    const linkableCats=cats.filter(c=>c.id!=='income'&&c.id!=='savings');
+    const takenBy=catId=>d.metas.find(x=>x.linkedCat===catId);
     return`<div class="stl">Nueva meta</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
         ${emojis.map(e=>`<button data-em="${e}" onclick="selEm(this,'${e}')" style="font-size:22px;padding:6px;border-radius:8px;border:2px solid transparent;">${e}</button>`).join('')}
@@ -1724,6 +1714,11 @@ function sheetContent(name, data){
       <div class="fld"><label>Nombre</label><input type="text" id="g-n" placeholder="Ej: Viaje, Fondo emergencia..."></div>
       <div class="fld"><label>Objetivo ($)</label><input type="text" id="g-t" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
       <div class="fld"><label>Ya tengo ahorrado ($)</label><input type="text" id="g-s" value="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      <div class="fld"><label>Enlazar a categoría (opcional)</label><select id="g-lc">
+        <option value="">Sin enlazar · elijo la meta manualmente</option>
+        ${linkableCats.map(c=>{const taken=takenBy(c.id);return`<option value="${c.id}" ${taken?'disabled':''}>${c.icon} ${c.name}${taken?' (ya enlazada a "'+taken.name+'")':''}</option>`;}).join('')}
+      </select>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:6px">Cada gasto que registres en esa categoría se sumará solo a esta meta, automáticamente.</div></div>
       <button class="btn btnp" onclick="saveGoal()">Crear meta</button>`;
   }
 
@@ -1731,18 +1726,26 @@ function sheetContent(name, data){
     EID=data;
     const m=d.metas.find(x=>x.id===data);
     if(!m) return'';
-    const p=pct(m.saved||0,m.target);
-    const contrib=d.txs.filter(t=>t.cat==='savings'&&t.metaId===data).reduce((a,t)=>a+t.amount,0);
+    const saved=metaSaved(d,m);
+    const p=pct(saved,m.target);
+    const contrib=d.txs.filter(t=>t.metaId===data).reduce((a,t)=>a+t.amount,0);
+    const linkableCats=cats.filter(c=>c.id!=='income'&&c.id!=='savings');
+    const takenBy=catId=>d.metas.find(x=>x.id!==m.id&&x.linkedCat===catId);
     return`<div class="stl">${m.emoji||'🎯'} ${m.name}</div>
       <div style="text-align:center;padding:8px 0 16px">
         <div class="fn" style="font-size:36px;color:var(--ac)">${p}%</div>
-        <div style="font-size:14px;color:var(--mu);margin-top:4px">${fmt(m.saved||0)} de ${fmt(m.target)}</div>
+        <div style="font-size:14px;color:var(--mu);margin-top:4px">${fmt(saved)} de ${fmt(m.target)}</div>
         <div class="pg" style="margin:10px 0"><div class="pf a" style="width:${p}%"></div></div>
         ${contrib>0?`<div style="font-size:12px;color:var(--mu)">💰 ${fmt(contrib)} aportados desde movimientos</div>`:''}
       </div>
       <div class="fld"><label>Nombre</label><input type="text" id="g-n" value="${m.name}"></div>
       <div class="fld"><label>Objetivo ($)</label><input type="text" id="g-t" value="${(m.target||0).toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this)"></div>
-      <div class="fld"><label>Ahorrado hasta ahora ($)</label><input type="text" id="g-s" value="${(m.saved||0).toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      <div class="fld"><label>Base manual (antes de trackear movimientos)</label><input type="text" id="g-s" value="${(m.baseSaved||0).toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      <div class="fld"><label>Enlazar a categoría (opcional)</label><select id="g-lc">
+        <option value="" ${!m.linkedCat?'selected':''}>Sin enlazar · elijo la meta manualmente</option>
+        ${linkableCats.map(c=>{const taken=takenBy(c.id);return`<option value="${c.id}" ${taken?'disabled':''} ${m.linkedCat===c.id?'selected':''}>${c.icon} ${c.name}${taken?' (ya enlazada a "'+taken.name+'")':''}</option>`;}).join('')}
+      </select>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:6px">Cada gasto que registres en esa categoría se sumará solo a esta meta, automáticamente.</div></div>
       <button class="btn btnp" onclick="updateGoal()">Guardar</button>
       <button class="btn btng" onclick="markGoalDone('${data}')">${m.done?'↩️ Reabrir meta':'🎉 Marcar completada'}</button>
       <button class="btn btnd" onclick="deleteGoal('${data}')">Eliminar meta</button>`;
@@ -2173,6 +2176,12 @@ function selCatChip(el){
   document.getElementById('f-c').value=catId;
   const mp=document.getElementById('f-meta-panel');
   if(mp)mp.style.display=catId==='savings'?'block':'none';
+  const hint=document.getElementById('f-link-hint');
+  if(hint){
+    const meta=linkedMetaFor(getData(),catId);
+    if(meta){ hint.style.display='block'; hint.textContent=`🔗 Este gasto se abonará automáticamente a tu meta "${meta.name}"`; }
+    else{ hint.style.display='none'; }
+  }
 }
 
 function setPago(p){
@@ -2232,11 +2241,11 @@ function updCrInfo(){
   const cardId=document.getElementById('cr-cs')?.value;
   const card=d.cards.find(c=>c.id===cardId)||d.cards[0];
   if(!card)return;
-  const rate=(card.tasa||1.5)/100; const S=0.0008;
+  const rate=(card.tasa||1.5)/100;
   let monthly,interest=0;
   if(type==='cash'||type==='no'){monthly=amt/inst;}
   else{monthly=amt*(rate*Math.pow(1+rate,inst))/(Math.pow(1+rate,inst)-1);interest=monthly*inst-amt;}
-  const stamps=inst>1?Math.round(amt*S*inst):0;
+  const stamps=stampsTax(amt,inst);
   const mant=Math.round((card.mant||0)*UF);
   ie.innerHTML=`<div style="background:var(--s2);border-radius:var(--rs);padding:12px;border:1px solid var(--bd)">
     <div style="font-size:11px;font-weight:600;color:var(--pu);margin-bottom:8px">${card.banco} · ${card.alias||card.tipo}</div>
@@ -2336,18 +2345,25 @@ function saveTx(){
   const dateVal=document.getElementById('f-dt')?.value||today();
   const catId=TXT==='inc'?'income':(document.getElementById('f-c')?.value||BASE_CATS[0].id);
   const isRec=document.getElementById('sw-r')?.dataset.on==='1';
+  // La categoría "Ahorro" usa el selector manual (SEL_META, puede abonar a
+  // cualquier meta). Cualquier otra categoría con una meta enlazada abona
+  // automáticamente a esa meta, sin que el usuario tenga que elegir nada.
+  const autoMeta=TXT==='exp'&&catId!=='savings'?linkedMetaFor(d,catId):null;
+  const metaId=(catId==='savings'&&SEL_META)?SEL_META:(autoMeta?autoMeta.id:null);
   const tx={
     id:uid(),type:TXT,amount:amt,cat:catId,pago:TXT==='inc'?null:PAGO,
     desc:document.getElementById('f-d')?.value.trim()||'',
     note:document.getElementById('f-n')?.value.trim()||'',
     date:dateVal,dateLabel:mkLabel(dateVal),month:d.month,
-    metaId:(catId==='savings'&&SEL_META)?SEL_META:null,isRecur:false,
+    metaId,isRecur:false,
   };
   d.txs.push(tx);
-  // Abonar a meta
-  if(catId==='savings'&&SEL_META){
-    const meta=d.metas.find(m=>m.id===SEL_META);
-    if(meta){meta.saved=(meta.saved||0)+amt;if(meta.saved>=meta.target)meta.done=true;}
+  // El total ahorrado de la meta se calcula siempre a partir de d.txs
+  // (ver metaSaved()); acá solo hace falta revisar si con este aporte se
+  // alcanzó el objetivo, para marcarla como completada.
+  if(metaId){
+    const meta=d.metas.find(m=>m.id===metaId);
+    if(meta&&metaSaved(d,meta)>=meta.target) meta.done=true;
   }
   // Recurrente
   if(isRec) d.recur.push({id:uid(),type:TXT,amount:amt,cat:catId,pago:tx.pago,desc:tx.desc,note:tx.note,startMonth:d.month});
@@ -2358,11 +2374,11 @@ function saveTx(){
     if(card){
       const crType=document.getElementById('cr-ct')?.value||'cash';
       const inst=crType==='cash'?1:(parseInt(document.getElementById('cr-ci')?.value)||1);
-      const rate=(card.tasa||1.5)/100; const S=0.0008;
+      const rate=(card.tasa||1.5)/100;
       let monthly;
       if(crType==='cash'||crType==='no'){monthly=Math.round(amt/inst);}
       else{monthly=Math.round(amt*(rate*Math.pow(1+rate,inst))/(Math.pow(1+rate,inst)-1));}
-      const stamps=inst>1?Math.round(amt*S*inst):0;
+      const stamps=stampsTax(amt,inst);
       if(!card.purchases)card.purchases=[];
       card.purchases.push({id:uid(),desc:tx.desc||'Compra',amount:amt,type:crType,installments:inst,instAmt:monthly,stamps,from:billingCycle(card),emoji:'🛍️',active:true,fromTx:true});
     }
@@ -2383,6 +2399,18 @@ function updateTx(){
   t.pago=document.getElementById('e-p')?.value||t.pago;
   const dv=document.getElementById('e-dt')?.value;
   if(dv){t.date=dv;t.dateLabel=mkLabel(dv);}
+  // Si la categoría cambió a algo distinto de "Ahorro", re-evaluar el enlace
+  // a meta según la categoría nueva (para no dejar un aporte "fantasma" en
+  // una meta si el movimiento ya no le corresponde). Si sigue en "Ahorro" se
+  // respeta la meta que ya tenía asignada manualmente.
+  if(t.cat!=='savings'){
+    const auto=linkedMetaFor(d,t.cat);
+    t.metaId=auto?auto.id:null;
+  }
+  if(t.metaId){
+    const meta=d.metas.find(m=>m.id===t.metaId);
+    if(meta&&metaSaved(d,meta)>=meta.target) meta.done=true;
+  }
   save(d);closeSheet();go(TAB);
 }
 
@@ -2400,14 +2428,17 @@ function saveGoal(){
   const target=moneyVal('g-t');
   if(!target){alert('Ingresa un objetivo');return;}
   const d=getData();
-  d.metas.push({id:uid(),name,target,saved:moneyVal('g-s'),emoji:getSelEm('🎯'),done:false});
+  const linkedCat=document.getElementById('g-lc')?.value||null;
+  d.metas.push({id:uid(),name,target,baseSaved:moneyVal('g-s'),linkedCat:linkedCat||null,emoji:getSelEm('🎯'),done:false,_migrated:true});
   save(d);closeSheet();go('goals');
 }
 function updateGoal(){
   const d=getData(); const m=d.metas.find(x=>x.id===EID); if(!m)return;
   m.name=document.getElementById('g-n')?.value.trim()||m.name;
   m.target=moneyVal('g-t')||m.target;
-  m.saved=moneyVal('g-s');
+  m.baseSaved=moneyVal('g-s');
+  m.linkedCat=document.getElementById('g-lc')?.value||null;
+  if(metaSaved(d,m)>=m.target) m.done=true;
   save(d);closeSheet();go('goals');
 }
 function markGoalDone(id){
@@ -2613,11 +2644,11 @@ function savePurch(cardId){
   const inst=type==='cash'?1:parseInt(document.getElementById('pu-i')?.value||2);
   const from=document.getElementById('pu-f')?.value;
   const d=getData(); const card=d.cards.find(c=>c.id===cardId); if(!card)return;
-  const rate=(card.tasa||1.5)/100; const S=0.0008;
+  const rate=(card.tasa||1.5)/100;
   let monthly;
   if(type==='cash'||type==='no'){monthly=Math.round(amt/inst);}
   else{monthly=Math.round(amt*(rate*Math.pow(1+rate,inst))/(Math.pow(1+rate,inst)-1));}
-  const stamps=inst>1?Math.round(amt*S*inst):0;
+  const stamps=stampsTax(amt,inst);
   if(!card.purchases)card.purchases=[];
   card.purchases.push({id:uid(),desc,amount:amt,type,installments:inst,instAmt:monthly,stamps,from,emoji:getSelPEm(),active:true});
   save(d);closeSheet();go('card');
@@ -2636,7 +2667,7 @@ function saveHist(cardId){
   let monthly;
   if(type==='no'){monthly=Math.round(amt/inst);}
   else{monthly=Math.round(amt*(rate*Math.pow(1+rate,inst))/(Math.pow(1+rate,inst)-1));}
-  const stamps=inst>1?Math.round(amt*0.0008*inst):0;
+  const stamps=stampsTax(amt,inst);
   if(!card.purchases)card.purchases=[];
   card.purchases.push({id:uid(),desc,amount:amt,type,installments:inst,instAmt:monthly,stamps,from,emoji:'📄',active:true,historic:true});
   save(d);closeSheet();go('card');
@@ -2671,11 +2702,11 @@ function prevPurch(cardId){
   const el=document.getElementById('pu-pv');
   if(!el||amt<=0)return;
   const d=getData(); const card=d.cards.find(c=>c.id===cardId); if(!card)return;
-  const rate=(card.tasa||1.5)/100; const S=0.0008;
+  const rate=(card.tasa||1.5)/100;
   let monthly,interest=0;
   if(type==='cash'||type==='no'){monthly=amt/inst;}
   else{monthly=amt*(rate*Math.pow(1+rate,inst))/(Math.pow(1+rate,inst)-1);interest=monthly*inst-amt;}
-  const stamps=inst>1?Math.round(amt*S*inst):0;
+  const stamps=stampsTax(amt,inst);
   el.innerHTML=`<div class="calcbox">
     <div class="cr"><span>Cuota mensual</span><span class="fn" style="color:var(--ac)">${fmt(Math.round(monthly))}</span></div>
     ${stamps>0?`<div class="cr"><span>Timbres</span><span>${fmt(stamps)}</span></div>`:''}
