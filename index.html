@@ -634,7 +634,7 @@ const CC_GRADS = {
 const ccGrad = t => CC_GRADS[t] || '135deg,#1a1a2e,#2d1b4e';
 
 // ── ESTADO ─────────────────────────────────────────
-let TAB='home', PAGO='cash', TXT='exp', SEL_META=null, CC_IDX=0, SEARCH='', EID=null, UF=38500;
+let TAB='home', PAGO='cash', TXT='exp', SEL_META=null, CC_IDX=0, SEARCH='', EID=null, UF=38500, USD=950;
 
 // ── DATOS ──────────────────────────────────────────
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return{}}}
@@ -644,6 +644,7 @@ function getData(){
   if(!d.cats)   d.cats=[];
   if(!d.metas)  d.metas=[];
   if(!d.cobros) d.cobros=[];
+  if(!d.deudas) d.deudas=[];
   if(!d.cards)  d.cards=[];
   if(!d.assets) d.assets=[];
   if(!d.netWorthHist) d.netWorthHist={};
@@ -666,6 +667,11 @@ function getData(){
     }
   });
   if(metasMigrated) save(d);
+  // Los bienes en dólares siempre se recalculan a pesos con el tipo de
+  // cambio vigente (no se congela el valor del día en que se agregaron).
+  (d.assets||[]).forEach(a=>{
+    if(a.currency==='USD'&&a.amountUSD) a.value=Math.round(a.amountUSD*USD);
+  });
   return d;
 }
 function save(d){d.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(d));if(window._sync)window._sync();}
@@ -1427,12 +1433,25 @@ function renderMore(){
   let h=monthNav();
   const pend=d.cobros.filter(c=>!c.done);
   const pendAmt=pend.reduce((a,c)=>a+(c.amount-(c.paid||0)),0);
+  const pendD=d.deudas.filter(c=>!c.done);
+  const pendDAmt=pendD.reduce((a,c)=>a+(c.amount-(c.paid||0)),0);
+  const assetsN=(d.assets||[]).filter(a=>a.active!==false);
   h+=`<div class="home-sec-title" style="font-size:30px;margin:8px 0 16px">Más</div>`;
   h+=`<div class="card"><div class="cb">
     <button class="li" onclick="openSheet('cobros')" style="padding:0;border-bottom:1px solid var(--bd)">
       <div class="lii" style="background:var(--gq);color:var(--go)">💸</div>
       <div class="lin"><div class="lim">Me deben</div><div class="lis">${pend.length} pendiente${pend.length!==1?'s':''}</div></div>
       <div class="lir"><div class="lia" style="color:var(--go)">${fmt(pendAmt)}</div></div>
+    </button>
+    <button class="li" onclick="openSheet('deudas')" style="padding:0;border-bottom:1px solid var(--bd)">
+      <div class="lii" style="background:var(--rr);color:var(--rd)">🧾</div>
+      <div class="lin"><div class="lim">Debo</div><div class="lis">${pendD.length} pendiente${pendD.length!==1?'s':''}</div></div>
+      <div class="lir"><div class="lia" style="color:var(--rd)">${fmt(pendDAmt)}</div></div>
+    </button>
+    <button class="li" onclick="openSheet('manage-assets')" style="padding:0;border-bottom:1px solid var(--bd)">
+      <div class="lii" style="background:var(--gd);color:var(--gn)">🏦</div>
+      <div class="lin"><div class="lim">Mis bienes</div><div class="lis">${assetsN.length} registrado${assetsN.length!==1?'s':''}</div></div>
+      <div class="lir" style="color:var(--mu);font-size:18px">›</div>
     </button>
     <button class="li" onclick="openSheet('compare')" style="padding:0;border-bottom:1px solid var(--bd)">
       <div class="lii" style="background:var(--pd);color:var(--pu)">📊</div>
@@ -1570,17 +1589,26 @@ function sheetContent(name, data){
   // ── GESTIONAR MIS BIENES (para patrimonio neto) ───
   if(name==='manage-assets'){
     const assets=d.assets||[];
+    const activeAssets=assets.filter(a=>a.active!==false);
+    const total=activeAssets.reduce((a,x)=>a+(x.value||0),0);
     let h=`<div class="stl">🏦 Mis bienes</div>
       <div class="ibox">Ingresa lo que tienes fuera de tus metas de ahorro: propiedades, vehículos, inversiones u otros ahorros. Se suman a tu patrimonio neto.</div>`;
     if(assets.length===0) h+=`<div style="text-align:center;padding:20px 0;color:var(--mu);font-size:13px">Aún no agregas bienes. Tu patrimonio hoy se calcula solo con lo ahorrado en metas.</div>`;
-    else assets.forEach(a=>{
-      h+=`<div class="li">
-        <div class="lii" style="background:var(--s2)">${a.icon||'💰'}</div>
-        <div class="lin"><div class="lim">${a.name}</div></div>
-        <div class="lir"><div class="lia r">${fmt(a.value)}</div></div>
-        <button onclick="delAsset('${a.id}')" style="padding:6px 4px 6px 10px;color:var(--rd);font-size:15px;flex-shrink:0">✕</button>
-      </div>`;
-    });
+    else{
+      h+=`<div class="card" style="margin-bottom:14px"><div class="cb">
+        <div class="ct">Total en bienes</div>
+        <div class="fn" style="font-size:26px;color:var(--gn)">${fmt(total)}</div>
+        <div style="font-size:11px;color:var(--mu);margin-top:2px">${activeAssets.length} bien${activeAssets.length!==1?'es':''} registrado${activeAssets.length!==1?'s':''}</div>
+      </div></div>`;
+      assets.forEach(a=>{
+        const isUsd=a.currency==='USD';
+        h+=`<button class="li" onclick="openSheet('edit-asset','${a.id}')" style="padding:0;width:100%;text-align:left">
+          <div class="lii" style="background:var(--s2)">${a.icon||'💰'}</div>
+          <div class="lin"><div class="lim">${a.name}</div>${isUsd?`<div class="lis">US$${(a.amountUSD||0).toLocaleString('en-US')} · dólar a ${fmt(USD)}</div>`:''}</div>
+          <div class="lir"><div class="lia r">${fmt(a.value)}</div></div>
+        </button>`;
+      });
+    }
     h+=`<button class="btn btnp" style="margin-top:16px" onclick="openSheet('add-asset')">+ Agregar bien</button>`;
     return h;
   }
@@ -1591,8 +1619,39 @@ function sheetContent(name, data){
         ${EMOJIS.map(e=>`<button data-ae="${e}" onclick="selAEm(this,'${e}')" style="font-size:20px;padding:5px;border-radius:8px;border:2px solid transparent;">${e}</button>`).join('')}
       </div>
       <div class="fld"><label>Descripción</label><input type="text" id="as-n" placeholder="Ej: Ahorro en cuenta, Auto, Depto..."></div>
-      <div class="fld"><label>Valor estimado ($)</label><input type="text" id="as-v" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      <div class="fld"><label>Moneda</label>
+        <div class="pr">
+          <button class="pb sc" id="as-cur-clp" onclick="setAssetCur('clp')"><em>💲</em>Pesos</button>
+          <button class="pb" id="as-cur-usd" onclick="setAssetCur('usd')"><em>💵</em>Dólares</button>
+        </div>
+        <input type="hidden" id="as-cur" value="clp">
+      </div>
+      <div class="fld"><label id="as-v-lbl">Valor estimado ($)</label><input type="text" id="as-v" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this);updAssetPreview()"></div>
+      <div id="as-usd-prev" style="display:none;font-size:11.5px;color:var(--mu);margin:-10px 0 14px 2px"></div>
       <button class="btn btnp" onclick="saveAsset()">Agregar</button>`;
+  }
+  if(name==='edit-asset'){
+    EID=data;
+    const a=(d.assets||[]).find(x=>x.id===data);
+    if(!a) return'';
+    const EMOJIS=['💰','🏠','🚗','📈','🏦','💵','🪙','💎'];
+    const isUsd=a.currency==='USD';
+    return`<div class="stl">Editar bien</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        ${EMOJIS.map(e=>`<button data-ae="${e}" onclick="selAEm(this,'${e}')" style="font-size:20px;padding:5px;border-radius:8px;border:2px solid ${a.icon===e?'var(--ac)':'transparent'};background:${a.icon===e?'var(--ad)':''}">${e}</button>`).join('')}
+      </div>
+      <div class="fld"><label>Descripción</label><input type="text" id="as-n" value="${a.name}"></div>
+      <div class="fld"><label>Moneda</label>
+        <div class="pr">
+          <button class="pb ${isUsd?'':'sc'}" id="as-cur-clp" onclick="setAssetCur('clp')"><em>💲</em>Pesos</button>
+          <button class="pb ${isUsd?'sc':''}" id="as-cur-usd" onclick="setAssetCur('usd')"><em>💵</em>Dólares</button>
+        </div>
+        <input type="hidden" id="as-cur" value="${isUsd?'usd':'clp'}">
+      </div>
+      <div class="fld"><label id="as-v-lbl">Valor estimado (${isUsd?'US$':'$'})</label><input type="text" id="as-v" value="${(isUsd?(a.amountUSD||0):(a.value||0)).toLocaleString('es-CL')}" inputmode="numeric" oninput="onMoneyInput(this);updAssetPreview()"></div>
+      <div id="as-usd-prev" style="display:${isUsd?'block':'none'};font-size:11.5px;color:var(--mu);margin:-10px 0 14px 2px">${isUsd?`≈ ${fmt(a.value)} CLP · dólar a ${fmt(USD)}`:''}</div>
+      <button class="btn btnp" onclick="updateAsset('${data}')">Guardar</button>
+      <button class="btn btnd" onclick="delAsset('${data}')">Eliminar</button>`;
   }
 
   // ── AGREGAR MOVIMIENTO ──────────────────────────
@@ -1786,6 +1845,43 @@ function sheetContent(name, data){
       <button class="btn btnp" onclick="saveAbono('${data}')">✓ Registrar abono</button>
       <button class="btn btng" onclick="markCobrado('${data}')">${c.done?'↩️ Reabrir':'🎉 Marcar como cobrado'}</button>
       <button class="btn btnd" onclick="deleteCobro('${data}')">Eliminar</button>`;
+  }
+
+  // ── DEBO (espejo de "Me deben", para deudas con terceros) ─────────────
+  if(name==='deudas'){
+    const pend=d.deudas.filter(c=>!c.done);
+    const done2=d.deudas.filter(c=>c.done);
+    let h=`<div class="stl">🧾 Debo</div>
+      <button onclick="openSheet('add-deuda')" class="btn btnp" style="margin-bottom:16px">+ Agregar deuda</button>`;
+    if(d.deudas.length===0){ h+=`<div class="empty"><div class="eico">🤝</div><p>Sin deudas registradas.</p></div><button class="btn btnp" onclick="openSheet('add-deuda')">+ Registrar deuda</button>`; return h; }
+    pend.forEach(c=>h+=deudaCard(c));
+    if(done2.length>0){ h+=`<div class="date-sep">✓ Pagadas</div>`; done2.forEach(c=>h+=deudaCard(c)); }
+    return h;
+  }
+  if(name==='add-deuda'){
+    return`<div class="stl">Agregar deuda</div>
+      <div class="fld"><label>Nombre / a quién le debo</label><input type="text" id="de-n" placeholder="Ej: Pedro, banco..."></div>
+      <div class="fld"><label>Monto ($)</label><input type="text" id="de-a" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      <div class="fld"><label>Motivo</label><input type="text" id="de-d" placeholder="Ej: Préstamo, arriendo..."></div>
+      <div class="fld"><label>Fecha</label><input type="date" id="de-dt" value="${today()}"></div>
+      <button class="btn btnp" onclick="saveDeuda()">Guardar</button>`;
+  }
+  if(name==='edit-deuda'){
+    EID=data;
+    const c=d.deudas.find(x=>x.id===data);
+    if(!c) return'';
+    const paid=c.paid||0; const left=Math.max(c.amount-paid,0);
+    return`<div class="stl">${c.name}</div>
+      <div style="text-align:center;padding:8px 0 16px">
+        <div class="fn" style="font-size:34px;color:var(--rd)">${fmt(left||c.amount)}</div>
+        <div style="font-size:13px;color:var(--mu);margin-top:4px">de ${fmt(c.amount)}${paid>0?` · ${fmt(paid)} ya pagado`:''}</div>
+        <div style="font-size:12px;color:var(--mu);margin-top:2px">${c.desc||''} · ${c.date||''}</div>
+      </div>
+      ${(c.abonos||[]).length>0?`<div class="card"><div class="cb"><div class="ct">Abonos</div>${(c.abonos||[]).map(a=>`<div class="row"><span style="font-size:13px">${a.date}</span><span class="fn" style="color:var(--rd)">${fmt(a.amount)}</span></div>`).join('')}</div></div>`:''}
+      <div class="fld"><label>Registrar abono ($)</label><input type="text" id="de-ab" placeholder="0" inputmode="numeric" oninput="onMoneyInput(this)"></div>
+      <button class="btn btnp" onclick="saveAbonoDeuda('${data}')">✓ Registrar abono</button>
+      <button class="btn btng" onclick="markPagada('${data}')">${c.done?'↩️ Reabrir':'🎉 Marcar como pagada'}</button>
+      <button class="btn btnd" onclick="deleteDeuda('${data}')">Eliminar</button>`;
   }
 
   // ── COMPARAR ──────────────────────────────────────
@@ -2305,12 +2401,48 @@ function getSelAEm(){
   const s=document.querySelector('[data-ae][style*="var(--ac)"]');
   return s?s.dataset.ae:'💰';
 }
+// ── MONEDA DE UN BIEN (pesos o dólares) ─────────────
+function setAssetCur(cur){
+  const h=document.getElementById('as-cur'); if(h)h.value=cur;
+  const clpBtn=document.getElementById('as-cur-clp'), usdBtn=document.getElementById('as-cur-usd');
+  if(clpBtn)clpBtn.className='pb'+(cur==='clp'?' sc':'');
+  if(usdBtn)usdBtn.className='pb'+(cur==='usd'?' sc':'');
+  const lbl=document.getElementById('as-v-lbl');
+  if(lbl)lbl.textContent=cur==='usd'?'Valor estimado (US$)':'Valor estimado ($)';
+  updAssetPreview();
+}
+function updAssetPreview(){
+  const cur=document.getElementById('as-cur')?.value||'clp';
+  const prev=document.getElementById('as-usd-prev');
+  if(!prev)return;
+  if(cur==='usd'){
+    const v=moneyVal('as-v');
+    prev.style.display='block';
+    prev.textContent=v>0?`≈ ${fmt(Math.round(v*USD))} CLP · dólar a ${fmt(USD)}`:`Dólar a ${fmt(USD)}`;
+  }else{
+    prev.style.display='none';
+  }
+}
 function saveAsset(){
   const name=document.getElementById('as-n')?.value.trim(); if(!name){alert('Ingresa una descripción');return;}
-  const value=moneyVal('as-v'); if(!value){alert('Ingresa un valor');return;}
+  const cur=document.getElementById('as-cur')?.value||'clp';
+  const raw=moneyVal('as-v'); if(!raw){alert('Ingresa un valor');return;}
   const d=getData();
   if(!d.assets)d.assets=[];
-  d.assets.push({id:uid(),name,value,icon:getSelAEm(),active:true});
+  const asset={id:uid(),name,icon:getSelAEm(),active:true};
+  if(cur==='usd'){ asset.currency='USD'; asset.amountUSD=raw; asset.value=Math.round(raw*USD); }
+  else{ asset.currency='CLP'; asset.value=raw; }
+  d.assets.push(asset);
+  save(d);closeSheet();openSheet('manage-assets');
+}
+function updateAsset(id){
+  const name=document.getElementById('as-n')?.value.trim(); if(!name){alert('Ingresa una descripción');return;}
+  const cur=document.getElementById('as-cur')?.value||'clp';
+  const raw=moneyVal('as-v'); if(!raw){alert('Ingresa un valor');return;}
+  const d=getData(); const a=(d.assets||[]).find(x=>x.id===id); if(!a)return;
+  a.name=name; a.icon=getSelAEm();
+  if(cur==='usd'){ a.currency='USD'; a.amountUSD=raw; a.value=Math.round(raw*USD); }
+  else{ a.currency='CLP'; a.value=raw; delete a.amountUSD; }
   save(d);closeSheet();openSheet('manage-assets');
 }
 function delAsset(id){
@@ -2494,6 +2626,50 @@ function deleteCobro(id){
   if(!confirm('¿Eliminar?'))return;
   const d=getData(); d.cobros=d.cobros.filter(c=>c.id!==id);
   save(d);closeSheet();openSheet('cobros');
+}
+
+// ── DEBO (espejo de Cobros, para deudas con terceros) ────────────────
+function deudaCard(c){
+  const paid=c.paid||0; const left=Math.max(c.amount-paid,0);
+  return`<button class="cocard${c.done?' done':''}" onclick="openSheet('edit-deuda','${c.id}')">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="coav" style="background:var(--rr);color:var(--rd)">${(c.name[0]||'?').toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:15px;font-weight:500">${c.name}</div>
+        <div style="font-size:12px;color:var(--mu);margin-top:2px">${c.desc||''} · ${c.date||''}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="fn" style="font-size:18px;color:${c.done?'var(--gn)':'var(--rd)'}">${fmt(left||c.amount)}</div>
+        <div style="font-size:10px;margin-top:2px;font-weight:600;color:${c.done?'var(--gn)':paid>0?'var(--ac)':'var(--rd)'}">${c.done?'✓ PAGADA':paid>0?'PARCIAL':'PENDIENTE'}</div>
+      </div>
+    </div>
+  </button>`;
+}
+function saveDeuda(){
+  const name=document.getElementById('de-n')?.value.trim(); if(!name){alert('Ingresa un nombre');return;}
+  const amt=moneyVal('de-a'); if(!amt){alert('Ingresa un monto');return;}
+  const d=getData();
+  d.deudas.push({id:uid(),name,amount:amt,desc:document.getElementById('de-d')?.value.trim()||'',date:document.getElementById('de-dt')?.value||today(),paid:0,abonos:[],done:false});
+  save(d);closeSheet();openSheet('deudas');
+}
+function saveAbonoDeuda(id){
+  const amt=moneyVal('de-ab'); if(!amt){alert('Ingresa un monto');return;}
+  const d=getData(); const c=d.deudas.find(x=>x.id===id); if(!c)return;
+  c.paid=(c.paid||0)+amt;
+  if(!c.abonos)c.abonos=[];
+  c.abonos.push({amount:amt,date:new Date().toLocaleDateString('es-CL')});
+  if(c.paid>=c.amount)c.done=true;
+  save(d);closeSheet();openSheet('deudas');
+}
+function markPagada(id){
+  const d=getData(); const c=d.deudas.find(x=>x.id===id);
+  if(c){c.done=!c.done;if(c.done)c.paid=c.amount;}
+  save(d);closeSheet();openSheet('deudas');
+}
+function deleteDeuda(id){
+  if(!confirm('¿Eliminar?'))return;
+  const d=getData(); d.deudas=d.deudas.filter(c=>c.id!==id);
+  save(d);closeSheet();openSheet('deudas');
 }
 
 // ── MES ────────────────────────────────────────────
@@ -2748,6 +2924,18 @@ async function fetchUF(){
   }catch(e){}
 }
 
+// ── DÓLAR (para bienes registrados en USD) ──────────
+async function fetchUSD(){
+  try{
+    const n=new Date();
+    const url=`https://mindicador.cl/api/dolar/${String(n.getDate()).padStart(2,'0')}-${String(n.getMonth()+1).padStart(2,'0')}-${n.getFullYear()}`;
+    const res=await fetch(url); if(!res.ok)return;
+    const json=await res.json();
+    const val=json?.serie?.[0]?.valor;
+    if(val&&val>0){USD=Math.round(val);localStorage.setItem('usd_v',USD);}
+  }catch(e){}
+}
+
 // ── AUTO MES ───────────────────────────────────────
 function checkAutoMonth(){
   const d=getData(); const real=nowMk();
@@ -2782,6 +2970,9 @@ function copyPrevBudget(){
 // Init UF desde localStorage
 const _uf=parseFloat(localStorage.getItem('uf_v')||0);
 if(_uf>0)UF=_uf;
+// Init dólar desde localStorage
+const _usd=parseFloat(localStorage.getItem('usd_v')||0);
+if(_usd>0)USD=_usd;
 
 </script>
 
@@ -2900,6 +3091,7 @@ if(cached){
   ready=true;
   setTimeout(checkAutoMonth,1500);
   setTimeout(fetchUF,2000);
+  setTimeout(fetchUSD,2200);
 }
 
 onAuthStateChanged(auth,async user=>{
@@ -2914,6 +3106,7 @@ onAuthStateChanged(auth,async user=>{
       ready=true;
       setTimeout(checkAutoMonth,1500);
       setTimeout(fetchUF,2000);
+      setTimeout(fetchUSD,2200);
     } else {
       setTimeout(loadCloud,3000);
     }
