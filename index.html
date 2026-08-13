@@ -15,7 +15,7 @@
 
 <style>
 /* ── FLEUR STYLE — Bolsillo ──────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Allura&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Allura&family=UnifrakturMaguntia&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 :root{
   --bg:#F4EDE0;--sf:rgba(255,253,248,.60);--s2:rgba(237,229,214,.55);--bd:rgba(255,255,255,.60);
@@ -371,8 +371,9 @@ button.flat-item:active{opacity:.65;}
 /* ── CREDIT CARD ─────────────────────────────────── */
 .cc{border-radius:24px;padding:24px;color:#fff;position:relative;overflow:hidden;box-shadow:var(--sm);border:1px solid rgba(255,255,255,.18);min-height:178px;display:flex;flex-direction:column;justify-content:space-between;margin-bottom:16px;}
 .cc::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.06);right:-55px;top:-55px;pointer-events:none;}
-.ccb{font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.6;}
-.cct{font-size:13px;font-weight:500;margin-top:2px;opacity:.88;}
+.cc-water{position:absolute;right:2px;top:-16px;font-family:'UnifrakturMaguntia',cursive;font-size:64px;line-height:.74;color:rgba(255,255,255,.09);pointer-events:none;user-select:none;text-align:right;z-index:0;}
+.cc-word{font-family:'UnifrakturMaguntia',cursive;font-size:23px;line-height:1;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.2);}
+.cct{font-size:13px;font-weight:500;margin-top:4px;opacity:.88;}
 .ccal{font-size:10px;opacity:.55;text-transform:uppercase;letter-spacing:.8px;}
 .cca{font-size:30px;font-weight:700;font-family:var(--fb);letter-spacing:-1px;}
 .ccm{display:flex;gap:18px;margin-top:8px;}
@@ -380,6 +381,12 @@ button.flat-item:active{opacity:.65;}
 .ccmi strong{display:block;font-size:12px;opacity:.9;margin-top:1px;}
 .ccbar{height:3px;background:rgba(255,255,255,.18);border-radius:99px;margin-top:10px;overflow:hidden;}
 .ccbf{height:100%;background:linear-gradient(90deg,rgba(255,255,255,.5),rgba(255,255,255,.85));border-radius:99px;}
+.cc-mask{font-family:var(--fb);font-size:14px;font-weight:500;letter-spacing:2px;color:rgba(255,255,255,.9);text-shadow:0 1px 2px rgba(0,0,0,.15);}
+.cc-network{font-family:var(--fb);font-weight:800;font-style:italic;font-size:20px;letter-spacing:.5px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.25);}
+.cc-mc{display:flex;flex-shrink:0;}
+.cc-mc span{width:22px;height:22px;border-radius:50%;}
+.cc-mc span:first-child{background:#EB001B;}
+.cc-mc span:last-child{background:#F79E1B;margin-left:-9px;mix-blend-mode:screen;}
 .ccdot{width:6px;height:6px;border-radius:50%;background:var(--bd);transition:all .25s;}
 .ccdot.on{width:18px;border-radius:99px;background:var(--ac);}
 .ccax{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
@@ -614,7 +621,7 @@ const TARIFAS = {
 const CC_GRADS = {
   'Visa FAN':           '135deg,#1a3a2a,#2d6040',
   'Universal':          '135deg,#1e1a2a,#3d2e5e',
-  'Visa Dorada':        '135deg,#2a1a00,#5a3800',
+  'Visa Dorada':        '135deg,#0a1233,#1f3a72',
   'Mastercard Dorada':  '135deg,#2a1a00,#5a3800',
   'Visa Platinum':      '135deg,#1a1a2e,#2d2d5e',
   'Mastercard Platinum':'135deg,#1a1a2e,#2d2d5e',
@@ -1275,21 +1282,30 @@ function renderCard(){
   const grad=ccGrad(card.tipo);
   const mo=calcMonthly(card);
   const mantEst=Math.round((card.mant||0)*UF);
+  const isMC=(card.tipo||'').includes('Mastercard');
+  const bankInitial=(card.banco||'B').trim().charAt(0).toUpperCase();
   if(d.cards.length>1){
     h+=`<div class="cctab">`;
     d.cards.forEach((c,i)=>h+=`<button class="cct2${i===idx?' on':''}" onclick="CC_IDX=${i};go('card')">${c.alias||c.tipo}</button>`);
     h+=`</div>`;
   }
   h+=`<div class="cc" style="background:linear-gradient(${grad})">
-    <div><div class="ccb">${card.banco}</div><div class="cct">${card.alias||card.tipo}</div></div>
-    <div><div class="ccal">Próximo pago · vence día ${(card.cut||5)+(card.due||12)}</div><div class="cca">${fmt(mo.total)}</div></div>
-    <div class="ccm">
+    <div class="cc-water" aria-hidden="true">${bankInitial}<br>${bankInitial}<br>${bankInitial}</div>
+    <div style="position:relative;display:flex;justify-content:space-between;align-items:flex-start;z-index:1">
+      <div><div class="cc-word">${card.banco}</div><div class="cct">${card.alias||card.tipo}</div></div>
+      <div style="text-align:right"><div class="ccal">Próximo pago · vence día ${(card.cut||5)+(card.due||12)}</div><div class="cca">${fmt(mo.total)}</div></div>
+    </div>
+    <div class="ccm" style="position:relative;z-index:1">
       <div class="ccmi">Compras<strong>${fmt(mo.purch)}</strong></div>
       <div class="ccmi">Mantención<strong>${fmt(mantEst)}/mes</strong></div>
       ${mo.tax>0?`<div class="ccmi">Impuesto DL3475<strong>${fmt(mo.tax)}</strong></div>`:''}
       ${mo.ext>0?`<div class="ccmi">Otros<strong>${fmt(mo.ext)}</strong></div>`:''}
     </div>
-    ${card.limit>0?`<div class="ccbar"><div class="ccbf" style="width:${pct(mo.bal,card.limit)}%"></div></div>`:''}
+    <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px">
+      <div class="cc-mask">${card.last4?`•••• ${card.last4}`:''}</div>
+      ${isMC?`<div class="cc-mc"><span></span><span></span></div>`:`<div class="cc-network">VISA</div>`}
+    </div>
+    ${card.limit>0?`<div class="ccbar" style="position:relative;z-index:1"><div class="ccbf" style="width:${pct(mo.bal,card.limit)}%"></div></div>`:''}
   </div>`;
   h+=`<div class="ccrec"><span>📄 ¿Llegó tu estado de cuenta?</span><button onclick="openSheet('reconcile-card','${card.id}')">Cotejar ahora →</button></div>`;
   h+=`<div class="ccax">
@@ -2087,6 +2103,7 @@ function sheetContent(name, data){
         💳 Tasa: <strong>${(info.tasa||1.5).toFixed(2)}%</strong> mensual.
       </div>
       <div class="fld"><label>Alias (opcional)</label><input type="text" id="wz-al" placeholder="Ej: Mi Visa Dorada"></div>
+      <div class="fld"><label>Últimos 4 dígitos (opcional)</label><input type="text" id="wz-l4" placeholder="Ej: 4910" inputmode="numeric" maxlength="4"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="fld"><label>Día de corte</label><input type="number" id="wz-ct" value="5" min="1" max="28" inputmode="numeric"></div>
         <div class="fld"><label>Días al vencimiento</label><input type="number" id="wz-du" value="12" min="1" max="30" inputmode="numeric"></div>
@@ -2102,6 +2119,7 @@ function sheetContent(name, data){
     if(!card) return'';
     return`<div class="stl">⚙️ ${card.alias||card.tipo}</div>
       <div class="fld"><label>Alias</label><input type="text" id="ec-al" value="${card.alias||''}"></div>
+      <div class="fld"><label>Últimos 4 dígitos (opcional)</label><input type="text" id="ec-l4" value="${card.last4||''}" placeholder="Ej: 4910" inputmode="numeric" maxlength="4"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="fld"><label>Día de corte</label><input type="number" id="ec-ct" value="${card.cut||5}" inputmode="numeric"></div>
         <div class="fld"><label>Días al vencimiento</label><input type="number" id="ec-du" value="${card.due||12}" inputmode="numeric"></div>
@@ -2736,6 +2754,7 @@ function saveNewCard(banco,tipo){
   d.cards.push({
     id:uid(),banco,tipo,
     alias:document.getElementById('wz-al')?.value.trim()||'',
+    last4:(document.getElementById('wz-l4')?.value.trim()||'').slice(0,4),
     cut:parseInt(document.getElementById('wz-ct')?.value||5),
     due:parseInt(document.getElementById('wz-du')?.value||12),
     limit:moneyVal('wz-lm'),
@@ -2747,6 +2766,7 @@ function saveNewCard(banco,tipo){
 function updateCard(){
   const d=getData(); const card=d.cards.find(c=>c.id===EID); if(!card)return;
   card.alias=document.getElementById('ec-al')?.value.trim()||card.alias;
+  card.last4=(document.getElementById('ec-l4')?.value.trim()||'').slice(0,4);
   card.cut=parseInt(document.getElementById('ec-ct')?.value||card.cut);
   card.due=parseInt(document.getElementById('ec-du')?.value||card.due);
   card.limit=moneyVal('ec-lm')||card.limit;
