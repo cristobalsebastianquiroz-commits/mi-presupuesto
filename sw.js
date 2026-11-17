@@ -1,79 +1,46 @@
-// ── VERSIÓN: cambia este número cada vez que subas cambios ──────────────────
-// El navegador detecta que el número cambió y descarga todo de nuevo
-const VERSION = '4.0.0';
-const CACHE = `presupuesto-${VERSION}`;
-const FILES = ['./index.html', './manifest.json', './icon.png'];
+// ── BOLSILLO · service worker ────────────────────────────────────────────────
+// Cambia VERSION cada vez que publiques cambios: el navegador descargará todo.
+const VERSION = '5.1.0';
+const CACHE = `bolsillo-${VERSION}`;
+const APP_FILES = ['./', './index.html', './styles.css', './core.js', './ui.js', './forms.js', './sync.js', './manifest.json', './icon.png'];
+// SDK de Firebase: URLs versionadas (inmutables). Se guardan para poder abrir
+// la app sin conexión.
+const SDK = 'https://www.gstatic.com/firebasejs/';
 
-// ── INSTALL: cachear archivos de la nueva versión ────────────────────────────
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(FILES))
-  );
-  // Activar inmediatamente sin esperar a que el usuario cierre la app
+  // Cada archivo por separado: si uno falla (p. ej. el ícono) no se cae toda la instalación.
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(APP_FILES.map(f => c.add(f).catch(() => null)))));
   self.skipWaiting();
 });
 
-// ── ACTIVATE: borrar cachés viejos y tomar control al instante ───────────────
 self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(k => k !== CACHE)  // borrar todas las versiones anteriores
-          .map(k => caches.delete(k))
-      )
-    )
-  );
-  // Tomar control de todas las pestañas abiertas inmediatamente
-  self.clients.claim();
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
-// ── FETCH: estrategia "Network First con fallback a caché" ───────────────────
-// Siempre intenta la red primero para tener la versión más reciente
-// Si no hay red, usa la caché (modo offline)
 self.addEventListener('fetch', e => {
-  // Solo manejar peticiones GET
-  if (e.request.method !== 'GET') return;
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
 
-  // Para los archivos de la app: Network First
-  const isAppFile = FILES.some(f => e.request.url.includes(f.replace('./','')));
-
-  if (isAppFile) {
+  // Archivos de la app (mismo origen): red primero, caché como respaldo.
+  if (url.origin === self.location.origin) {
     e.respondWith(
-      fetch(e.request)
-        .then(networkResponse => {
-          // Actualizar el caché con la versión más reciente
-          const clone = networkResponse.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-          return networkResponse;
-        })
-        .catch(() => {
-          // Sin red: usar caché
-          return caches.match(e.request);
-        })
+      fetch(req).then(res => {
+        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+        return res;
+      }).catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || (req.mode === 'navigate' ? caches.match('./index.html') : Response.error())))
     );
-  } else {
-    // Para otros recursos (fuentes, APIs): Cache First
-    e.respondWith(
-      caches.match(e.request).then(cached => {
-        return cached || fetch(e.request).catch(() => caches.match('./index.html'));
-      })
-    );
+    return;
   }
+  // SDK de Firebase: caché primero (no cambia para una misma versión).
+  if (req.url.startsWith(SDK)) {
+    e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
+      if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+      return res;
+    })));
+    return;
+  }
+  // Todo lo demás (Firestore, autenticación, indicadores): directo a la red, sin interceptar.
 });
 
-// ── MENSAJES DESDE LA APP ────────────────────────────────────────────────────
-self.addEventListener('message', e => {
-  // La app pide activar la nueva versión inmediatamente
-  if (e.data === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  // La app pregunta qué versión está corriendo
-  if (e.data === 'CHECK_UPDATE') {
-    self.clients.matchAll().then(clients => {
-      clients.forEach(client => {
-        client.postMessage({ type: 'SW_VERSION', version: VERSION });
-      });
-    });
-  }
-});
+self.addEventListener('message', e => { if (e.data === 'SKIP_WAITING') self.skipWaiting(); });
