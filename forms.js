@@ -24,6 +24,7 @@ const toggle = (k, on, title, sub) => `<button type="button" class="sw" role="sw
 const emojiPick = (list, cur) => `<div class="emo" role="group" aria-label="Ícono">${list.map(e => `<button type="button" class="${e === cur ? 'on' : ''}"${fn('setEmoji', e)} aria-pressed="${e === cur}">${e}</button>`).join('')}</div>`;
 const kv = (k, v, cls = '') => `<div class="kv ${cls}"><span>${k}</span><span class="num">${v}</span></div>`;
 const g = n => (n ? C.group(n) : '');
+const amtW = v => Math.max(String(v || '').length, 1) + 0.2 + 'ch'; // el monto grande crece con lo escrito
 const topState = () => STACK[STACK.length - 1].state;
 ACTIONS.toggleK = k => { const st = topState(); st[k] = !st[k]; rerender(); };
 ACTIONS.setEmoji = e => { topState().emoji = e; rerender(); };
@@ -48,7 +49,7 @@ function txInit(data, st) {
   st.init = 1;
   if (t) {
     const link = t.purchId && d.cards.map(c => (c.purchases || []).find(p => p.id === t.purchId)).find(Boolean);
-    Object.assign(st, { id: t.id, type: t.type, amount: g(t.amount), desc: t.desc || '', note: t.note || '', date: t.date || C.defaultDateFor(t.month), cat: t.cat, pago: t.pago || 'debit', metaId: t.metaId || '', acc: t.acc || '', cardId: t.cardId || '', crType: link ? link.type : 'cash', inst: link ? link.installments : 3, pickedCat: 1, origDate: t.date, wasCredit: t.pago === 'credit', legacy: !t.purchId, prevAmount: t.amount, prevDesc: t.desc });
+    Object.assign(st, { id: t.id, type: t.type, amount: g(t.amount), desc: t.desc || '', note: t.note || '', date: t.date || C.defaultDateFor(t.month), cat: t.cat, pago: t.pago || 'debit', metaId: t.metaId || '', acc: t.acc || '', cardId: t.cardId || '', crType: link ? link.type : 'cash', inst: link ? link.installments : 3, pickedCat: 1, origCard: t.cardId || '', origDate: t.date, wasCredit: t.pago === 'credit', legacy: !t.purchId, prevAmount: t.amount, prevDesc: t.desc });
   } else {
     const goalId = data ? String(data).slice(5) : '';
     Object.assign(st, { id: null, type: 'exp', amount: '', desc: '', note: '', date: C.defaultDateFor(UI.month), cat: goalId ? 'savings' : topCats(d, 'exp')[0].id, pago: ls.get('bolsillo_pago') || 'debit', metaId: goalId, acc: '', cardId: (d.cards[0] || {}).id || '', crType: 'cash', inst: 3, pickedCat: goalId ? 1 : 0, repeat: false });
@@ -92,7 +93,7 @@ SHEETS.tx = {
       if (st.pago === 'credit') {
         if (!d.cards.length) pay += `<div class="note">Aún no registras una tarjeta de crédito. El gasto se guardará igual; <button type="button" class="link"${sh('card-new')}>agrégala</button> para llevar sus cuotas.</div>`;
         else pay += `${d.cards.length > 1 ? fld('Tarjeta', 'tx-card', select('tx-card', 'cardId', d.cards.map(c => [c.id, `${c.alias || c.tipo} · ${c.banco}`]), st.cardId)) : ''}
-          <div class="two">${fld('Modalidad', 'tx-crt', select('tx-crt', 'crType', [['cash', 'Sin cuotas'], ['no', 'Cuotas sin interés'], ['yes', 'Cuotas con interés']], st.crType))}
+          <div class="two">${fld('Modalidad', 'tx-crt', select('tx-crt', 'crType', [['cash', 'Sin cuotas'], ['no', 'Sin interés'], ['yes', 'Con interés']], st.crType))}
           ${st.crType !== 'cash' ? fld('N° de cuotas', 'tx-ci', select('tx-ci', 'inst', INST.map(n => [n, n + ' cuotas']), st.inst)) : '<div></div>'}</div><div id="tx-cr">${txCreditPreview(st)}</div>`;
       } else pay += accSel;
       const metas = d.metas.filter(m => !m.done || m.id === st.metaId);
@@ -100,7 +101,7 @@ SHEETS.tx = {
       else { const lm = C.linkedMetaFor(d, st.cat); if (lm) pay += `<div class="note">Este gasto abonará a tu meta “${esc(lm.name)}”.</div>`; }
     } else pay = accSel;
     return `<div class="seg" role="group" style="margin-bottom:4px"><button type="button" class="${isExp ? 'on' : ''}"${fn('txType', 'exp')} aria-pressed="${isExp}">Gasto</button><button type="button" class="${!isExp ? 'on' : ''}"${fn('txType', 'inc')} aria-pressed="${!isExp}">Ingreso</button></div>
-      <div class="amt-in ${st.type} fld"><label class="sr" for="tx-a">Monto</label><input type="text" inputmode="numeric" autocomplete="off" data-money data-k="amount" id="tx-a" placeholder="$0" value="${esc(st.amount)}"></div>
+      <div class="amt-in ${st.type} fld"><label class="sr" for="tx-a">Monto</label><div class="amt-row"><span class="cur" aria-hidden="true">$</span><input type="text" inputmode="numeric" autocomplete="off" data-money data-k="amount" id="tx-a" placeholder="0" value="${esc(st.amount)}" style="width:${amtW(st.amount)}"></div></div>
       ${fld('Descripción <span style="font-weight:400">(opcional)</span>', 'tx-d', text('tx-d', 'desc', st.desc, isExp ? '¿En qué fue?' : '¿De dónde viene?', 'list="tx-dl"') + `<datalist id="tx-dl">${descs.map(x => `<option value="${esc(x)}">`).join('')}</datalist>`)}
       <div class="fld"><div class="lab">Categoría</div><div id="tx-cats">${txCatGrid(st)}</div></div>
       ${pay}
@@ -123,7 +124,7 @@ SHEETS.tx = {
   },
 };
 ACTIONS.txType = v => { const st = topState(), d = getData(); if (st.type === v) return; st.type = v; st.cat = topCats(d, v)[0].id; st.pickedCat = 0; if (d.accounts.length) st.acc = defaultAcc(d, st); rerender(); };
-ACTIONS.txCat = id => { const st = topState(); st.cat = id; st.pickedCat = 1; rerender(); };
+ACTIONS.txCat = id => { const st = topState(); st.cat = id; st.pickedCat = 1; if (C.SAVINGS_CAT_IDS.includes(id) && !st.metaId) { const m = C.linkedMetaFor(getData(), id); if (m) st.metaId = m.id; } rerender(); };
 ACTIONS.txPago = v => { const st = topState(), d = getData(); st.pago = v; if (d.accounts.length && v !== 'credit') st.acc = defaultAcc(d, st); rerender(); };
 ACTIONS.txSave = () => {
   const st = topState(), d = getData();
@@ -138,18 +139,24 @@ ACTIONS.txSave = () => {
   t.metaId = !isExp ? null : C.SAVINGS_CAT_IDS.includes(t.cat) ? (st.metaId || null) : ((C.linkedMetaFor(d, t.cat) || {}).id || null);
   touch(t);
   if (isNew) d.txs.push(t);
-  C.syncTxPurchase(d, t, { cardId: st.cardId, crType: st.crType, inst: st.inst, legacy: !isNew && st.legacy, wasCredit: st.wasCredit, prevAmount: st.prevAmount, prevDesc: st.prevDesc });
-  if (t.metaId) { const m = d.metas.find(x => x.id === t.metaId); if (m && !m.done && C.metaSaved(d, m) >= m.target) { m.done = true; touch(m); toast(`¡Meta “${m.name}” alcanzada!`); } }
-  if (isNew && st.repeat) d.recur.push(touch({ id: C.uid(), type: t.type, amount, cat: t.cat, pago: t.pago, desc: t.desc, note: t.note, startMonth: t.month, day: parseInt(dt.slice(8, 10)), acc: t.acc || '', cardId: t.cardId || '' }));
+  const relink = !!st.cardId && st.cardId !== st.origCard && d.cards.some(c => c.id === st.cardId);
+  C.syncTxPurchase(d, t, { cardId: st.cardId, crType: st.crType, inst: st.inst, legacy: !isNew && st.legacy, wasCredit: st.wasCredit, prevAmount: st.prevAmount, prevDesc: st.prevDesc, relink, dateChanged: !isNew && dt !== st.origDate });
+  if (t.metaId) { const m = d.metas.find(x => x.id === t.metaId); if (m && !m.done && C.metaSaved(d, m) >= m.target) { m.done = true; m.autoDone = true; touch(m); toast(`¡Meta “${m.name}” alcanzada!`); } }
+  const recurId = isNew && st.repeat ? C.uid() : null;
+  if (recurId) d.recur.push(touch({ id: recurId, type: t.type, amount, cat: t.cat, pago: t.pago, desc: t.desc, note: t.note, startMonth: t.month, day: parseInt(dt.slice(8, 10)), acc: t.acc || '', cardId: t.cardId || '' }));
   if (isExp) ls.set('bolsillo_pago', st.pago);
   commit();
   const where = t.month !== UI.month ? ` en ${C.mlabel(t.month).toLowerCase()}` : '';
-  doneSheet(isNew ? `${isExp ? 'Gasto' : 'Ingreso'} de ${fmt(amount)} registrado${where}.` : `Movimiento actualizado${where}.`, isNew ? { undo: () => deleteTx(t.id, true) } : undefined);
+  doneSheet(isNew ? `${isExp ? 'Gasto' : 'Ingreso'} de ${fmt(amount)} registrado${where}.` : `Movimiento actualizado${where}.`, isNew ? { undo: () => { if (recurId && getData().recur.some(r => r.id === recurId)) removeFrom('recur', recurId); deleteTx(t.id, true); } } : undefined);
 };
 function deleteTx(id, silent) {
   const d = getData(), t = d.txs.find(x => x.id === id); if (!t) return;
   C.syncTxPurchase(d, { ...t, type: 'deleted' }, { legacy: !t.purchId, wasCredit: t.pago === 'credit' });
-  removeFrom('txs', id); commit();
+  removeFrom('txs', id);
+  // Si el aporte había completado la meta automáticamente y ya no alcanza, se reabre.
+  const m = t.metaId && d.metas.find(x => x.id === t.metaId);
+  if (m && m.done && m.autoDone && C.metaSaved(d, m) < m.target) { m.done = false; m.autoDone = false; touch(m); }
+  commit();
   if (silent) { refresh(); toast('Movimiento eliminado.'); } else doneSheet('Movimiento eliminado.');
 }
 ACTIONS.txDelete = id => confirmSheet('¿Eliminar este movimiento?', 'Se quitará de tus totales, de tu presupuesto y, si era a crédito, de las cuotas de la tarjeta.', 'Eliminar', () => deleteTx(id));
@@ -170,7 +177,7 @@ SHEETS.transfer = {
     const dest = d.accounts.filter(a => a.id !== st.from).map(a => ['a:' + a.id, a.name]).concat(d.cards.map(c => ['c:' + c.id, 'Pago tarjeta ' + (c.alias || c.tipo)]));
     if (!dest.length) return `<div class="note">Necesitas otra cuenta o una tarjeta de crédito como destino.</div>`;
     if (!dest.some(x => x[0] === st.to)) st.to = dest[0][0];
-    return `<div class="amt-in fld"><label class="sr" for="tr-a">Monto</label><input type="text" inputmode="numeric" autocomplete="off" data-money data-k="amount" id="tr-a" placeholder="$0" value="${esc(st.amount)}"></div>
+    return `<div class="amt-in fld"><label class="sr" for="tr-a">Monto</label><div class="amt-row"><span class="cur" aria-hidden="true">$</span><input type="text" inputmode="numeric" autocomplete="off" data-money data-k="amount" id="tr-a" placeholder="0" value="${esc(st.amount)}" style="width:${amtW(st.amount)}"></div></div>
       ${fld('Desde', 'tr-f', select('tr-f', 'from', d.accounts.map(a => [a.id, `${a.name} · ${fmt(C.accountBalance(d, a))}`]), st.from))}
       ${fld('Hacia', 'tr-t', select('tr-t', 'to', dest, st.to), 'Una transferencia no es gasto ni ingreso: solo mueve plata. El pago de la tarjeta descuenta tu cuenta sin contar el gasto dos veces.')}
       ${fld('Fecha', 'tr-dt', date('tr-dt', 'date', st.date))}
@@ -185,17 +192,29 @@ ACTIONS.trSave = () => {
   const t = st.id ? d.txs.find(x => x.id === st.id) : { id: C.uid() };
   if (!t) { doneSheet(); return; }
   const [kind, id] = [st.to.slice(0, 1), st.to.slice(2)];
+  unmarkPaid(d, t);
   Object.assign(t, { type: 'tr', amount, acc: st.from, date: dt, dateLabel: C.dateLabel(dt), month: C.mkOf(dt), desc: '', cat: null, pago: null });
   delete t.toAcc; delete t.toCard;
+  let paidNote = '';
   if (kind === 'c') {
     t.toCard = id;
+    // Solo un pago que cubre el estado facturado lo marca como pagado.
     const card = d.cards.find(c => c.id === id), np = card && C.nextPayment(card, uf());
-    if (np && np.closed) { card.paidCycles = { ...(card.paidCycles || {}), [np.cycle]: 1 }; touch(card); } // el estado facturado queda pagado
+    if (np && np.closed) {
+      if (amount >= np.total - 500) { card.paidCycles = { ...(card.paidCycles || {}), [np.cycle]: 1 }; t.paidCycle = np.cycle; touch(card); }
+      else paidNote = ` Falta ${fmt(np.total - amount)} para cubrir el estado.`;
+    }
   } else t.toAcc = id;
   touch(t); if (!st.id) d.txs.push(t);
-  commit(); doneSheet(kind === 'c' ? 'Pago de tarjeta registrado.' : 'Transferencia registrada.');
+  commit(); doneSheet(kind === 'c' ? 'Pago de tarjeta registrado.' + paidNote : 'Transferencia registrada.');
 };
-ACTIONS.trDelete = id => confirmSheet('¿Eliminar esta transferencia?', 'Los saldos de las cuentas volverán a su valor anterior.', 'Eliminar', () => { removeFrom('txs', id); commit(); doneSheet('Transferencia eliminada.'); });
+function unmarkPaid(d, t) {
+  if (!t || !t.paidCycle || !t.toCard) return;
+  const c = d.cards.find(x => x.id === t.toCard);
+  if (c && c.paidCycles && c.paidCycles[t.paidCycle]) { c.paidCycles = { ...c.paidCycles }; delete c.paidCycles[t.paidCycle]; touch(c); }
+  delete t.paidCycle;
+}
+ACTIONS.trDelete = id => confirmSheet('¿Eliminar esta transferencia?', 'Los saldos de las cuentas volverán a su valor anterior.', 'Eliminar', () => { const d = getData(); unmarkPaid(d, d.txs.find(x => x.id === id)); removeFrom('txs', id); commit(); doneSheet('Transferencia eliminada.'); });
 
 // ══ CONSULTAS: categoría, alertas, compromisos, meses ══════════
 SHEETS.cat = {
@@ -226,7 +245,7 @@ SHEETS.months = {
   body() {
     const d = getData(), cur = C.nowMk();
     const mks = [...new Set(d.txs.map(t => t.month).filter(C.isMk).concat([cur, UI.month]))].sort().reverse();
-    return `<section class="card"><div class="rows">${mks.map(mk => { const t = C.totals(C.mTxs(d, mk)); return row({ title: esc(C.mlabel(mk)) + (mk === cur ? ' ' + tag('Mes actual', 'g') : ''), sub: `Ingresos ${fmt(t.inc)} · Gastos ${fmt(t.exp)}`, right: mk === UI.month ? ico('check') : '', attr: fn('pickMonth', mk) }); }).join('')}</div></section>`;
+    return `<section class="card"><div class="rows">${mks.map(mk => { const t = C.totals(C.mTxs(d, mk)); return row({ title: esc(C.mlabel(mk)) + (mk === cur ? ' ' + tag('Mes actual', 'g') : ''), sub: `Ingresos ${fmt(t.inc)} · Gastos ${fmt(t.spend)}`, right: mk === UI.month ? ico('check') : '', attr: fn('pickMonth', mk) }); }).join('')}</div></section>`;
   },
 };
 
@@ -340,6 +359,7 @@ ACTIONS.recurSave = id => {
   const day = parseInt(st.day); if (!(day >= 1 && day <= 31)) return setErr('r-day', 'Día entre 1 y 31.');
   const r = id ? d.recur.find(x => x.id === id) : { id: C.uid(), startMonth: st.thisMonth ? C.shiftMk(cur, -1) : cur, note: '' };
   if (!r) return doneSheet();
+  if (r.paused && !st.paused) d.recurApplied[r.id + '|' + C.shiftMk(cur, -1)] = 1; // al reactivar, el mes en pausa no se recupera
   Object.assign(r, { type: st.type, amount, desc: (st.desc || '').trim(), cat: st.cat, pago: st.type === 'exp' ? st.pago : null, day, acc: st.acc || '', cardId: st.cardId || '', paused: !!st.paused });
   touch(r); if (!id) d.recur.push(r);
   const n = C.applyRecurrents(d);
@@ -360,24 +380,35 @@ SHEETS['account-form'] = {
   body(id, st) {
     const d = getData(), a = id ? d.accounts.find(x => x.id === id) : null;
     if (id && !a) return null;
-    if (!st.init) Object.assign(st, { init: 1, name: a ? a.name : '', kind: a ? a.kind : 'bank', bal: a ? g(Math.max(C.accountBalance(d, a), 0)) : '', neg: a ? C.accountBalance(d, a) < 0 : false });
+    if (!st.init) Object.assign(st, { init: 1, name: a ? a.name : '', kind: a ? a.kind : 'bank', bal: a ? g(Math.abs(C.accountBalance(d, a))) : '', neg: a ? C.accountBalance(d, a) < 0 : false });
     return `${fld('Nombre', 'ac-n', text('ac-n', 'name', st.name, 'Ej: Cuenta corriente, CuentaRUT, Efectivo'))}
       ${fld('Tipo', 'ac-k', select('ac-k', 'kind', ACC_KINDS.map(k => [k[0], k[1]]), st.kind))}
       ${fld('Saldo actual', 'ac-b', money('ac-b', 'bal', st.bal), a ? 'Si no coincide con tu banco, corrígelo aquí: Bolsillo ajusta el saldo sin crear movimientos.' : 'El saldo de hoy. Desde ahora cada ingreso, gasto o transferencia de esta cuenta lo actualizará.')}
+      ${toggle('neg', st.neg, 'Saldo negativo', 'Por ejemplo, si usas la línea de crédito o sobregiro')}
       <div class="btns"><button class="btn pri"${fn('accSave', id || '')}>Guardar</button>${a ? `<button class="btn dan"${fn('accDelete', id)}>Eliminar cuenta</button>` : ''}</div>`;
   },
 };
 ACTIONS.accSave = id => {
   const st = topState(), d = getData();
   if (!(st.name || '').trim()) return setErr('ac-n', 'Ponle un nombre a la cuenta.');
-  const bal = C.parseMoney(st.bal); if (bal > MAX_AMOUNT) return setErr('ac-b', 'El monto es demasiado grande.');
+  const bal = C.parseMoney(st.bal) * (st.neg ? -1 : 1); if (Math.abs(bal) > MAX_AMOUNT) return setErr('ac-b', 'El monto es demasiado grande.');
   const a = id ? d.accounts.find(x => x.id === id) : { id: C.uid(), opening: 0 };
   if (!a) return doneSheet();
   Object.assign(a, { name: st.name.trim(), kind: st.kind, icon: (ACC_KINDS.find(k => k[0] === st.kind) || ACC_KINDS[0])[2] });
   if (!id) { a.opening = bal; d.accounts.push(a); } else a.opening = (a.opening || 0) + (bal - C.accountBalance(d, a));
   touch(a); commit(); doneSheet(id ? 'Cuenta actualizada.' : 'Cuenta agregada.');
 };
-ACTIONS.accDelete = id => confirmSheet('¿Eliminar esta cuenta?', 'Sus movimientos se conservan, pero dejan de estar asociados a una cuenta.', 'Eliminar', () => { removeFrom('accounts', id); commit(); doneSheet('Cuenta eliminada.'); });
+ACTIONS.accDelete = id => confirmSheet('¿Eliminar esta cuenta?', 'Sus ingresos y gastos se conservan sin cuenta asociada. Las transferencias y abonos desde o hacia esta cuenta se eliminan.', 'Eliminar', () => {
+  const d = getData();
+  d.txs.filter(t => t.type === 'tr' && (t.acc === id || t.toAcc === id)).forEach(t => {
+    unmarkPaid(d, t);
+    if (t.owe) { const [k, oid] = t.owe.split('|'), c = (d[k] || []).find(x => x.id === oid), i = c ? (c.abonos || []).findIndex(a => a.txId === t.id) : -1; if (i >= 0) c.abonos[i] = { ...c.abonos[i], txId: null }; if (c) touch(c); }
+    removeFrom('txs', t.id);
+  });
+  d.txs.forEach(t => { if (t.acc === id) { delete t.acc; touch(t); } });
+  d.recur.forEach(r => { if (r.acc === id) { r.acc = ''; touch(r); } });
+  removeFrom('accounts', id); commit(); closeSheet(); refresh(); toast('Cuenta eliminada.');
+});
 
 // ══ TARJETAS DE CRÉDITO ════════════════════════════════════════
 SHEETS['card-new'] = {
@@ -471,7 +502,7 @@ SHEETS['purchase-form'] = {
     return `${hist ? `<div class="note">Para compras anteriores que aún estás pagando. Usa el número de cuota que aparece en tu estado de cuenta (ej. “03/12”).</div>` : ''}
       ${fld('Descripción', 'pu-d', text('pu-d', 'desc', st.desc, 'Ej: Televisor'))}
       ${fld('Monto total de la compra', 'pu-a', money('pu-a', 'amount', st.amount))}
-      <div class="two">${fld('Modalidad', 'pu-t', select('pu-t', 'type', (hist ? [] : [['cash', 'Sin cuotas']]).concat([['no', 'Cuotas sin interés'], ['yes', `Con interés (${String(c.tasa || 0).replace('.', ',')}%)`]]), st.type))}
+      <div class="two">${fld('Modalidad', 'pu-t', select('pu-t', 'type', (hist ? [] : [['cash', 'Sin cuotas']]).concat([['no', 'Sin interés'], ['yes', `Con interés (${String(c.tasa || 0).replace('.', ',')}%)`]]), st.type))}
       ${st.type !== 'cash' ? fld('N° de cuotas', 'pu-i', select('pu-i', 'inst', INST.map(n => [n, n + ' cuotas']), st.inst)) : '<div></div>'}</div>
       ${hist ? fld('Cuota que se cobra en el ciclo actual', 'pu-cur', `<input class="inp" type="number" inputmode="numeric" min="1" max="48" id="pu-cur" data-k="cur" value="${esc(st.cur)}">`)
         : fld('Primera cuota en el estado de', 'pu-f', select('pu-f', 'from', [0, 1, 2].map(i => { const k = C.shiftMk(open, i); return [k, `${C.mlabel(k)} · vence ${C.shortDate(C.cycleDueDate(c, k))}`]; }), st.from))}
@@ -507,7 +538,7 @@ SHEETS.purchase = {
   },
 };
 ACTIONS.purchFix = data => { const [cardId, pid] = String(data).split('|'), st = topState(), c = getData().cards.find(x => x.id === cardId), p = c && c.purchases.find(x => x.id === pid); if (!p) return; const cur = parseInt(st.cur); if (!(cur >= 1 && cur <= p.installments)) return setErr('ep-cur', `Entre 1 y ${p.installments}.`); p.from = C.shiftMk(C.billingCycle(c), -(cur - 1)); touch(c); commit(); doneSheet('Cuota corregida.'); };
-ACTIONS.purchDelete = data => confirmSheet('¿Eliminar esta compra?', 'Se quitarán sus cuotas pendientes de la tarjeta.', 'Eliminar', () => { const [cardId, pid] = String(data).split('|'), c = getData().cards.find(x => x.id === cardId); if (c) { c.purchases = c.purchases.filter(p => p.id !== pid); touch(c); commit(); } doneSheet('Compra eliminada.'); });
+ACTIONS.purchDelete = data => confirmSheet('¿Eliminar esta compra?', 'Se quitarán sus cuotas pendientes de la tarjeta.', 'Eliminar', () => { const [cardId, pid] = String(data).split('|'), c = getData().cards.find(x => x.id === cardId); if (c) { c.purchases = c.purchases.filter(p => p.id !== pid); getData().deleted[pid] = Date.now(); touch(c); commit(); } doneSheet('Compra eliminada.'); });
 SHEETS['card-calc'] = {
   title: () => 'Simular compra en cuotas', focus: 'cc-a',
   body(id, st) {
@@ -561,6 +592,7 @@ ACTIONS.oweSave = data => {
   if (!c) return doneSheet();
   if (id && amount < (c.paid || 0)) return setErr('ow-a', `Ya hay ${fmt(c.paid)} abonados: el monto no puede ser menor.`);
   Object.assign(c, { name: st.name.trim(), amount, desc: (st.desc || '').trim(), date: st.date, due: st.due || null });
+  if (id) c.done = (c.paid || 0) >= amount;
   touch(c); if (!id) d[kind].push(c);
   commit(); doneSheet('Guardado.');
 };
@@ -576,7 +608,7 @@ SHEETS.owe = {
     if (st.abAcc === undefined) st.abAcc = (d.accounts.find(a => a.kind === 'bank') || d.accounts[0] || {}).id || '';
     const accSel = d.accounts.length ? fld(kind === 'deudas' ? 'Pagado desde' : 'Recibido en', 'ow-acc', select('ow-acc', 'abAcc', [['', 'No registrar en una cuenta']].concat(d.accounts.map(a => [a.id, `${a.name} · ${fmt(C.accountBalance(d, a))}`])), st.abAcc)) : '';
     return `<div class="hero" style="text-align:center;margin-bottom:12px"><div class="lbl">${c.done ? 'Saldada' : 'Pendiente'}</div><div class="big num">${fmt(c.done ? 0 : left)}</div>
-      <div class="hint num">de ${fmt(c.amount)}${c.paid ? ` · ${fmt(c.paid)} ${o.paid}` : ''}${c.desc ? ' · ' + esc(c.desc) : ''}${c.due ? ' · vence ' + esc(C.dateLabel(c.due)) : ''}</div>${pg(C.pct(c.paid || 0, c.amount), 'ok')}</div>
+      <div class="hint num">de ${fmt(c.amount)}${c.paid ? ` · ${fmt(c.paid)} ${o.paid}` : ''}${c.desc ? ' · ' + esc(c.desc) : ''}${c.due ? ' · vence ' + esc(C.dateLabel(c.due)) : ''}</div><div style="margin-top:10px">${pg(C.pct(c.paid || 0, c.amount), 'ok')}</div></div>
       ${(c.abonos || []).length ? `<section class="card" style="margin-bottom:12px"><div class="rows">${c.abonos.map((a, i) => { const acc = a.txId && d.txs.find(t => t.id === a.txId); const an = acc && d.accounts.find(x => x.id === (acc.acc || acc.toAcc)); return row({ title: 'Abono', sub: esc(C.isISO(a.date) ? C.dateLabel(a.date) : a.date) + (an ? ' · ' + esc(an.name) : ''), right: fmt(a.amount), rsub: `<button class="link"${fn('abonoDelete', data + '|' + i)}>Quitar</button>` }); }).join('')}</div></section>` : ''}
       ${c.done ? '' : `${fld('Registrar abono', 'ow-ab', money('ow-ab', 'abono', st.abono || ''))}${accSel}<button class="btn pri"${fn('oweAbono', data)}>Registrar abono</button>`}
       <div class="btns"><button class="btn sec2"${fn('oweToggle', data)}>${c.done ? 'Reabrir' : o.done}</button><button class="btn sec2"${sh('owe-form', data)}>Editar</button><button class="btn dan"${fn('oweDelete', data)}>Eliminar</button></div>`;
@@ -586,7 +618,7 @@ ACTIONS.oweAbono = data => {
   const [kind, id] = String(data).split('|'), st = topState(), d = getData(), c = d[kind].find(x => x.id === id); if (!c) return;
   const a = validAmount('ow-ab', st, 'abono'); if (!a) return;
   if (a > C.owedLeft(c)) return setErr('ow-ab', `El abono supera lo pendiente (${fmt(C.owedLeft(c))}).`);
-  const date = C.isoDate(), ab = { amount: a, date };
+  const date = C.isoDate(), ab = { id: C.uid(), amount: a, date };
   if (st.abAcc && d.accounts.some(x => x.id === st.abAcc)) {
     const t = { id: C.uid(), type: 'tr', amount: a, date, dateLabel: C.dateLabel(date), month: C.mkOf(date), desc: `${kind === 'deudas' ? 'Abono a' : 'Abono de'} ${c.name}`, cat: null, pago: null, owe: kind + '|' + id };
     if (kind === 'deudas') t.acc = st.abAcc; else t.toAcc = st.abAcc;
@@ -600,7 +632,7 @@ ACTIONS.abonoDelete = arg => {
   const [kind, id, i] = String(arg).split('|');
   confirmSheet('¿Quitar este abono?', 'Lo pendiente vuelve a aumentar y, si estaba en una cuenta, su saldo vuelve al valor anterior.', 'Quitar', () => {
     const d = getData(), c = d[kind].find(x => x.id === id), a = c && (c.abonos || [])[parseInt(i)]; if (!a) return;
-    c.abonos.splice(parseInt(i), 1); c.paid = Math.max((c.paid || 0) - a.amount, 0); if (c.paid < c.amount) c.done = false;
+    c.abonos.splice(parseInt(i), 1); if (a.id) d.deleted[a.id] = Date.now(); c.paid = Math.max((c.paid || 0) - a.amount, 0); if (c.paid < c.amount) c.done = false;
     if (a.txId && d.txs.some(t => t.id === a.txId)) removeFrom('txs', a.txId);
     touch(c); commit(); refresh(); toast('Abono quitado.');
   });
@@ -678,7 +710,7 @@ SHEETS.report = {
     const d = getData(), mk = UI.month, t = C.totals(C.mTxs(d, mk)), cb = C.categoryBreakdown(d, mk), bs = C.budgetSummary(d, mk);
     return `<section class="card"><div class="card-h"><h2>Bolsillo · ${esc(C.mlabel(mk))}</h2></div>
         ${kv('Ingresos', fmt(t.inc))}${kv('Gastos', fmt(t.spend))}${kv('Ahorro e inversión', fmt(t.saved))}${t.credit ? kv('<span class="muted">De los gastos, con tarjeta de crédito</span>', fmt(t.credit)) : ''}${kv('Disponible del mes', fmt(t.net), 'tot')}</section>
-      ${cb.rows.length ? `<section class="card" style="margin-top:12px"><div class="card-h"><h2>Egresos por categoría</h2></div>${cb.rows.map(r => { const b = (d.budgets[mk] || {})[r.c.id]; return kv(esc(r.c.name), `${fmt(r.spent)} · ${C.pct(r.spent, cb.total)}%${b > 0 ? ` <span class="muted">(límite ${fmt(b)})</span>` : ''}`); }).join('')}${bs.hasBudget ? kv('Presupuesto total', `${fmt(bs.spentB)} de ${fmt(bs.totalB)}`, 'tot') : ''}</section>` : ''}
+      ${cb.rows.length ? `<section class="card" style="margin-top:12px"><div class="card-h"><h2>Egresos por categoría</h2></div>${cb.rows.map(r => { const b = (d.budgets[mk] || {})[r.c.id]; return kv(esc(r.c.name) + (b > 0 ? `<div class="hint" style="margin:0">límite ${fmt(b)}</div>` : ''), `${fmt(r.spent)} · ${C.pct(r.spent, cb.total)}%`); }).join('')}${bs.hasBudget ? kv('Presupuesto total', `${fmt(bs.spentB)} de ${fmt(bs.totalB)}`, 'tot') : ''}</section>` : ''}
       <p class="hint" style="text-align:center;margin-top:12px">Generado el ${esc(C.dateLabel(C.isoDate()))}</p>
       <button class="btn pri no-print" style="margin-top:12px" onclick="window.print()">Imprimir o guardar como PDF</button>`;
   },
@@ -749,7 +781,7 @@ SHEETS['cat-form'] = {
     return `<div class="two" style="grid-template-columns:96px 1fr">${fld('Ícono', 'ct-i', text('ct-i', 'icon', st.icon, '📌', 'maxlength="4" style="text-align:center;font-size:20px"'))}${fld('Nombre', 'ct-n', text('ct-n', 'name', st.name, 'Ej: Peluquería', 'maxlength="24"'))}</div>
       ${c ? '' : `<div class="fld"><div class="lab">Tipo</div><div class="seg"><button type="button" class="${st.kind === 'exp' ? 'on' : ''}"${fn('setK', 'kind=exp')}>Gasto</button><button type="button" class="${st.kind === 'inc' ? 'on' : ''}"${fn('setK', 'kind=inc')}>Ingreso</button></div></div>`}
       <div class="btns"><button class="btn pri"${fn('catSave', id || '')}>${c ? 'Guardar' : 'Crear categoría'}</button></div>
-      ${c ? `<div class="sec"><span>Eliminar</span></div>${used ? fld(`Mover sus ${used} movimiento(s) a`, 'ct-mv', select('ct-mv', 'moveTo', [['', 'Elige una categoría']].concat(others.map(x => [x.id, `${x.icon} ${x.name}`])), st.moveTo), 'Para no dejar movimientos sin categoría, elige a dónde pasan.') : ''}<button class="btn dan"${fn('catDelete', id)}>Eliminar categoría</button>` : ''}`;
+      ${c ? `<div style="border-top:1px solid var(--bd);margin:20px 0 14px"></div>${used ? fld(`Mover sus ${used} movimiento(s) a`, 'ct-mv', select('ct-mv', 'moveTo', [['', 'Elige una categoría']].concat(others.map(x => [x.id, `${x.icon} ${x.name}`])), st.moveTo), 'Para no dejar movimientos sin categoría, elige a dónde pasan.') : ''}<button class="btn dan"${fn('catDelete', id)}>Eliminar categoría</button>` : ''}`;
   },
 };
 ACTIONS.catSave = id => {
@@ -769,9 +801,12 @@ ACTIONS.catDelete = id => {
     if (used) {
       d.txs.forEach(t => { if (t.cat === id) { t.cat = st.moveTo; touch(t); } });
       d.recur.forEach(r => { if (r.cat === id) { r.cat = st.moveTo; touch(r); } });
+    }
+    {
       Object.keys(d.budgets).forEach(mk => { if (d.budgets[mk] && d.budgets[mk][id] != null) { d.budgets[mk] = { ...d.budgets[mk] }; delete d.budgets[mk][id]; d.budgetsU[mk] = Date.now(); } });
     }
     d.metas.forEach(m => { if (m.linkedCat === id) { m.linkedCat = null; touch(m); } });
+    if (UI.f.cat === id) UI.f.cat = '';
     removeFrom('cats', id); commit(); doneSheet('Categoría eliminada.');
   };
   used ? run() : confirmSheet('¿Eliminar esta categoría?', 'No tiene movimientos asociados.', 'Eliminar', run);
