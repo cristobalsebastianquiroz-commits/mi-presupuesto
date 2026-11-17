@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Bolsillo">
 <meta name="description" content="Bolsillo: tu presupuesto personal, ordenado.">
-<meta name="theme-color" content="#F5F2EC" id="mc">
+<meta name="theme-color" content="#F2EFE8" id="mc">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -19,7 +19,7 @@
   var t=localStorage.getItem('bolsillo_theme');
   if(!t&&localStorage.getItem('dk')==='1')t='dark';           // preferencia de la versión anterior
   var dark=t==='dark'||((!t||t==='auto')&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
-  if(dark){document.documentElement.setAttribute('data-theme','dark');document.getElementById('mc').content='#101311';}
+  if(dark){document.documentElement.setAttribute('data-theme','dark');document.getElementById('mc').content='#0E1210';}
 }catch(e){}})();
 </script>
 <link rel="stylesheet" href="styles.css">
