@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 'use strict';
 const C = Core, { esc, fmt } = Core;
-const APP_VERSION = '5.3.0';
+const APP_VERSION = '5.4.0';
 const KEY = 'bolsillo_v1', OWNER_KEY = 'bolsillo_owner', SESS_KEY = 'bolsillo_sess', THEME_KEY = 'bolsillo_theme';
 const $ = id => document.getElementById(id);
 const ls = {
@@ -122,7 +122,7 @@ function applyTheme(t) {
   if (t) ls.set(THEME_KEY, t); else t = ls.get(THEME_KEY) || (ls.get('dk') === '1' ? 'dark' : 'auto');
   const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
   if (dark) document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
-  const m = $('mc'); if (m) m.setAttribute('content', dark ? '#0E1210' : '#F2EFE8');
+  const m = $('mc'); if (m) m.setAttribute('content', dark ? '#0C100E' : '#EAE5DA');
   return t;
 }
 
@@ -247,7 +247,7 @@ function upRow(u) {
     right: `<span class="${u.income ? 'pos' : ''}">${u.income ? '+' : ''}${fmt(u.amount)}</span>`, attr: fn('insightGo', u.kind + '|' + u.id) });
 }
 function budRow(r) {
-  return `<button class="bud"${sh('cat', r.c.id)}><div class="top"><span class="nm">${esc(r.c.icon)} ${esc(r.c.name)}</span><span class="rt num ${r.left < 0 ? 'neg' : 'muted'}">${r.left < 0 ? fmt(-r.left) + ' excedido' : 'quedan ' + fmt(r.left)}</span></div>${pg(r.pct, r.status, 'sm')}<div class="ft"><span class="num">${fmt(r.spent)} de ${fmt(r.b)}</span><span class="num">${r.pct}%</span></div></button>`;
+  return `<button class="bud"${sh('cat', r.c.id)}><div class="top"><span class="nm">${esc(r.c.icon)} ${esc(r.c.name)}</span><span class="rt num ${r.saving ? (r.left <= 0 ? 'pos' : 'muted') : r.left < 0 ? 'neg' : 'muted'}">${r.saving ? (r.left <= 0 ? (r.left < 0 ? fmt(-r.left) + ' sobre lo planeado' : 'meta cumplida') : 'faltan ' + fmt(r.left)) : r.left < 0 ? fmt(-r.left) + ' excedido' : 'quedan ' + fmt(r.left)}</span></div>${pg(r.pct, r.status, 'sm')}<div class="ft"><span class="num">${fmt(r.spent)} de ${fmt(r.b)}</span><span class="num">${r.pct}%</span></div></button>`;
 }
 
 // ── MOVIMIENTOS ────────────────────────────────────────────────
@@ -257,7 +257,7 @@ function filteredTxs() {
   if (f.type !== 'all') txs = txs.filter(t => t.type === f.type);
   if (f.cat) txs = txs.filter(t => t.cat === f.cat && t.type !== 'tr');
   if (f.pago) txs = txs.filter(t => t.pago === f.pago);
-  if (q) txs = txs.filter(t => (t.desc || '').toLowerCase().includes(q) || (t.note || '').toLowerCase().includes(q) || C.getCat(d, t.cat).name.toLowerCase().includes(q) || String(t.amount).includes(q.replace(/\D/g, '') || '§'));
+  if (q) txs = txs.filter(t => (t.desc || '').toLowerCase().includes(q) || (t.note || '').toLowerCase().includes(q) || C.getCat(d, t.cat).name.toLowerCase().includes(q) || (/^[\d.$\s]+$/.test(q) && String(t.amount).includes(q.replace(/\D/g, '') || '§')));
   const idx = new Map(d.txs.map((t, i) => [t.id, i]));
   return txs.sort((a, b) => (String(b.date || '') > String(a.date || '') ? 1 : String(b.date || '') < String(a.date || '') ? -1 : idx.get(b.id) - idx.get(a.id)));
 }
@@ -288,7 +288,7 @@ function movesList() {
       : empty('🧾', `Aún no hay movimientos en ${esc(C.mlabel(UI.month).toLowerCase())}.`, `<button class="btn pri"${sh('tx')}>${ico('plus')} Registrar movimiento</button>`));
   }
   const t = C.totals(txs);
-  let h = `<div class="hint num" id="moves-sum" style="margin:10px 4px 0">${txs.length} movimiento${txs.length !== 1 ? 's' : ''} · Ingresos ${fmt(t.inc)} · Gastos ${fmt(t.exp)}</div>`;
+  let h = `<div class="hint num" id="moves-sum" style="margin:10px 4px 0">${txs.length} movimiento${txs.length !== 1 ? 's' : ''} · Ingresos ${fmt(t.inc)} · Gastos ${fmt(t.spend)}${t.saved ? ' · Ahorro ' + fmt(t.saved) : ''}</div>`;
   const shown = txs.slice(0, UI.limit), groups = [];
   shown.forEach(x => { const k = x.date || ''; const g = groups[groups.length - 1]; if (g && g.k === k) g.items.push(x); else groups.push({ k, items: [x] }); });
   groups.forEach(g => {
@@ -390,7 +390,7 @@ function renderWealth() {
   const head = `<section class="card hero"><div class="lbl">Patrimonio neto</div><div class="big num ${nw.net < 0 ? 'neg' : ''}" id="nw-net">${fmt(nw.net)}</div>
     <div class="sub num">${tr.diff != null ? `<span class="${tr.diff >= 0 ? 'pos' : 'neg'}">${tr.diff >= 0 ? '▲' : '▼'} ${fmt(Math.abs(tr.diff))}</span> desde ${esc(C.mlabel(tr.lastKey).toLowerCase())}` : 'Lo que tienes menos lo que debes.'}</div>
     ${sparkline(tr.series)}
-    <div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><div class="k">Tienes</div><div class="v num pos" id="nw-assets">${fmt(nw.totalAssets)}</div></div><div class="stat"><div class="k">Debes</div><div class="v num ${nw.totalDebt ? 'neg' : ''}" id="nw-debt">${fmt(nw.totalDebt)}</div></div></div></section>
+    <div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><div class="k">Tienes</div><div class="v num ${nw.totalAssets ? 'pos' : ''}" id="nw-assets">${fmt(nw.totalAssets)}</div></div><div class="stat"><div class="k">Debes</div><div class="v num ${nw.totalDebt ? 'neg' : ''}" id="nw-debt">${fmt(nw.totalDebt)}</div></div></div></section>
     <button class="card" style="width:100%"${sh('kpis')}><div class="row" style="border:none;padding:0;min-height:0"><div class="ic">${ico('chart')}</div><div class="b"><div class="t">Salud financiera</div><div class="s">Ahorro, deuda, fondo de emergencia y costo de vida</div></div><span class="chev">${ico('chevR')}</span></div></button>`;
   const sect = (title, add, body) => `<section class="card"><div class="card-h"><h2>${title}</h2>${add}</div>${body}</section>`;
   const accs = sect('Cuentas y efectivo', `<button class="link"${sh('account-form')}>+ Agregar</button>`, d.accounts.length
@@ -413,10 +413,13 @@ const SHEETS = {};
 let STACK = [];
 function openSheet(name, data) {
   if (!SHEETS[name]) return;
-  STACK.push({ name, data, state: {} });
+  const entry = { name, data, state: {} };
+  STACK.push(entry);
   renderSheet();
+  if (STACK[STACK.length - 1] !== entry) return; // el registro ya no existe: no se muestra una hoja vacía
   $('ov').classList.add('on'); $('sh').classList.add('on');
   document.body.dataset.sheet = '1';
+  armHistory();
 }
 function renderSheet(keepScroll) {
   const top = STACK[STACK.length - 1]; if (!top) return;
@@ -432,10 +435,34 @@ function renderSheet(keepScroll) {
   if (!keepScroll && def.focus) setTimeout(() => { const el = $(def.focus); if (el && STACK.length) el.focus(); }, 300);
 }
 function sheetBack() { STACK.pop(); if (!STACK.length) closeSheet(); else renderSheet(); }
-function closeSheet() {
+function hideSheet() {
   STACK = []; $('ov').classList.remove('on'); $('sh').classList.remove('on'); delete document.body.dataset.sheet;
+  if (document.activeElement && $('sh').contains(document.activeElement)) document.activeElement.blur(); // cierra el teclado
   setTimeout(() => { if (!STACK.length) $('shb').innerHTML = ''; }, 320); // no dejar formularios ocultos en el DOM
 }
+function closeSheet() { hideSheet(); releaseHistory(); }
+
+// ── Botón "atrás" del teléfono: cierra la hoja en vez de salir de la app ──
+// Mientras hay una hoja abierta existe UNA entrada extra en el historial.
+// Atrás (gesto o botón) retrocede un nivel de la hoja; si quedan niveles, se
+// vuelve a armar la entrada. Al cerrar desde la interfaz se consume la entrada.
+let HIST = false, SKIP_POP = false;
+function armHistory() { if (!HIST && STACK.length) { try { history.pushState({ bolsilloSheet: 1 }, ''); HIST = true; } catch (e) {} } }
+function releaseHistory() {
+  if (!HIST) return;
+  setTimeout(() => { if (HIST && !STACK.length) { HIST = false; SKIP_POP = true; try { history.back(); } catch (e) { SKIP_POP = false; } } }, 0);
+}
+window.addEventListener('popstate', () => {
+  // La entrada a la que se volvió puede tener otra pestaña en la URL (si se
+  // cambió de pestaña al cerrar la hoja): se corrige antes del hashchange.
+  if (SKIP_POP || HIST) { try { history.replaceState(null, '', '#/' + UI.tab); } catch (e) {} }
+  if (SKIP_POP) { SKIP_POP = false; return; }
+  if (!HIST) return;
+  HIST = false;
+  if (!STACK.length) return;
+  STACK.pop();
+  if (STACK.length) { renderSheet(); armHistory(); } else hideSheet();
+});
 // Tras guardar: vuelve a la hoja anterior si la hay; si no, cierra.
 function doneSheet(msg, opts) { STACK.pop(); if (!STACK.length) closeSheet(); else renderSheet(); paintMain(); if (msg) toast(msg, opts); }
 const rerender = () => renderSheet(true);
@@ -494,6 +521,13 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && STACK.length) closeSheet();
   if (e.key === 'Enter' && e.target.tagName === 'INPUT' && $('sh').contains(e.target)) { const b = $('shb').querySelector('.btn.pri'); if (b) { e.preventDefault(); b.click(); } }
 });
+// ── Comportamiento de app: sin zoom, sin menú contextual ni arrastre ──
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false })); // pellizco en iOS
+document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });  // pellizco con dos dedos
+document.addEventListener('wheel', e => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });                              // Ctrl + rueda / pellizco en trackpad
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0', '_'].includes(e.key)) e.preventDefault(); });
+document.addEventListener('contextmenu', e => { if (!e.target.closest('input,textarea')) e.preventDefault(); });
+document.addEventListener('dragstart', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
 window.addEventListener('hashchange', () => { const t = location.hash.replace('#/', ''); if (TITLES[t] && t !== UI.tab) go(t); });
 
 // ── Campos de dinero y validación ──────────────────────────────
@@ -501,6 +535,7 @@ function onMoneyInput(el) {
   const digits = el.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
   const fromEnd = el.value.length - (el.selectionStart || 0);
   el.value = digits ? C.group(parseInt(digits.slice(0, 13), 10)) : '';
+  if (el.closest('.amt-row')) el.style.width = Math.max(el.value.length, 1) + 0.2 + 'ch';
   const pos = Math.max(el.value.length - fromEnd, 0);
   try { el.setSelectionRange(pos, pos); } catch (e) {}
 }
@@ -521,15 +556,24 @@ let CONFIRM = null;
 function confirmSheet(title, text, label, onYes) { CONFIRM = onYes; openSheet('confirm', JSON.stringify({ title, text, label })); }
 SHEETS.confirm = {
   title: d => JSON.parse(d).title,
-  body: d => { const o = JSON.parse(d); return `<p class="muted" style="text-align:center;margin:8px 0 4px">${esc(o.text)}</p><div class="btns"><button class="btn pri" style="background:var(--rd);color:#fff"${fn('confirmYes')}>${esc(o.label)}</button><button class="btn sec2"${fn('sheetBack')}>Cancelar</button></div>`; },
+  body: d => { const o = JSON.parse(d); return `<p class="muted" style="text-align:center;margin:8px 0 4px">${esc(o.text)}</p><div class="btns"><button class="btn dang"${fn('confirmYes')}>${esc(o.label)}</button><button class="btn sec2"${fn('sheetBack')}>Cancelar</button></div>`; },
 };
 ACTIONS.confirmYes = () => { const f = CONFIRM; CONFIRM = null; STACK.pop(); if (f) f(); };
 ACTIONS.sheetBack = () => sheetBack();
 
 // ── Tareas automáticas (después de sincronizar, nunca antes) ───
-let AUTO_DONE = false;
+// Si la app queda abierta y se vuelve a ella otro día, se repiten; si además
+// cambió el mes y se estaba mirando el mes en curso, se pasa al nuevo.
+let SEEN_MK = C.nowMk();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !AUTO_DONE || $('app').hidden) return;
+  const mk = C.nowMk();
+  if (mk !== SEEN_MK) { if (UI.month === SEEN_MK) UI.month = mk; SEEN_MK = mk; refresh(true); }
+  if (AUTO_DAY !== C.isoDate()) autoTasks();
+});
+let AUTO_DONE = false, AUTO_DAY = '';
 function autoTasks() {
-  if (AUTO_DONE) return; AUTO_DONE = true;
+  if (AUTO_DONE && AUTO_DAY === C.isoDate()) return; AUTO_DONE = true; AUTO_DAY = C.isoDate();
   const d = getData(), cur = C.nowMk();
   let changed = false;
   const n = C.applyRecurrents(d);
