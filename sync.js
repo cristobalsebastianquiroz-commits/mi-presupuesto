@@ -44,32 +44,43 @@ function claimLocal(uid) {
   window.App.dropCache();
 }
 
-async function syncNow(manual) {
-  if (!fb || !user) { if (manual) status(navigator.onLine ? 'error' : 'offline'); return; }
-  if (busy) { again = true; return; }
+// gen cambia al cerrar sesión: una sincronización que termine después ya no
+// toca los datos locales (evita que los datos de una cuenta pasen a otra).
+let gen = 0, inflight = null;
+function syncNow(manual) {
+  if (!fb || !user) { if (manual) status(navigator.onLine ? 'error' : 'offline'); return Promise.resolve(); }
+  if (busy) { again = true; return inflight; }
   busy = true; clearTimeout(timer); timer = null; status('syncing');
-  try {
-    const ref = fb.doc(fb.db, 'usuarios', user.uid);
-    const snap = await fb.getDoc(ref);
-    const remote = snap.exists() ? snap.data() : null;
-    const local = window.App.getDoc();                 // se lee DESPUÉS de la red: incluye lo último
-    const merged = remote ? Core.mergeDocs(local, remote) : local;
-    if (remote && !Core.sameData(merged, local)) window.App.replaceDoc(JSON.parse(JSON.stringify(merged)));
-    if (!remote || !Core.sameData(merged, remote)) {
-      const out = JSON.parse(JSON.stringify(merged)); // sin undefined (Firestore los rechaza)
-      delete out.month;                               // el mes visible es propio de cada dispositivo
-      await fb.setDoc(ref, out);
+  const myGen = gen, ref = fb.doc(fb.db, 'usuarios', user.uid);
+  inflight = (async () => {
+    try {
+      const snap = await fb.getDoc(ref);
+      if (myGen !== gen) return;
+      const remote = snap.exists() ? snap.data() : null;
+      if (remote) Core.normalize(remote);              // migra documentos v4 antes de fusionar
+      const local = window.App.getDoc();               // se lee DESPUÉS de la red: incluye lo último
+      const merged = remote ? Core.mergeDocs(local, remote) : local;
+      if (remote && !Core.sameData(merged, local)) window.App.replaceDoc(JSON.parse(JSON.stringify(merged)));
+      if (!remote || !Core.sameData(merged, remote)) {
+        const out = JSON.parse(JSON.stringify(merged)); // sin undefined (Firestore los rechaza)
+        delete out.month;                               // el mes visible es propio de cada dispositivo
+        await fb.setDoc(ref, out);
+      }
+      if (myGen !== gen) return;
+      dirty = false; status('ok');
+    } catch (e) {
+      if (myGen !== gen) return;
+      console.warn('Sincronización:', e && e.message ? e.message : e);
+      status(navigator.onLine ? 'error' : 'offline');
+      if (/maximum allowed size|exceeds/i.test(String(e && e.message))) window.App.toastErr('Tus datos superaron el máximo de la nube y no se sincronizaron. Están a salvo en este dispositivo: descarga un respaldo desde Más.');
+    } finally {
+      busy = false;
+      if (myGen !== gen) { again = false; return; }
+      if (!firstDone) { firstDone = true; window.App.afterFirstSync(); }
+      if (again) { again = false; schedule(); }
     }
-    dirty = false; status('ok');
-  } catch (e) {
-    console.warn('Sincronización:', e && e.message ? e.message : e);
-    status(navigator.onLine ? 'error' : 'offline');
-    if (/maximum allowed size|exceeds/i.test(String(e && e.message))) window.App.toastErr('Tus datos superaron el máximo de la nube y no se sincronizaron. Están a salvo en este dispositivo: descarga un respaldo desde Más.');
-  } finally {
-    busy = false;
-    if (!firstDone) { firstDone = true; window.App.afterFirstSync(); }
-    if (again) { again = false; schedule(); }
-  }
+  })();
+  return inflight;
 }
 function schedule() {
   dirty = true;
@@ -91,8 +102,11 @@ window.Sync = {
     finally { btn.disabled = false; }
   },
   async signOut() {
-    // Intenta subir lo pendiente; después aparta los datos locales del usuario.
-    if (dirty) await syncNow();
+    // Espera la sincronización en curso y sube lo pendiente; después aparta
+    // los datos locales del usuario. Desde aquí ninguna sincronización
+    // anterior puede volver a escribir en el dispositivo.
+    try { if (inflight) await inflight; if (dirty) await syncNow(); } catch (e) {}
+    gen++; clearTimeout(timer); timer = null; busy = false; again = false;
     const owner = lsGet(OWNER_KEY), raw = lsGet(KEY);
     if (owner && raw) lsSet(KEY + '__' + owner, raw);
     lsDel(KEY); lsDel(SESS_KEY); lsDel(OWNER_KEY);
