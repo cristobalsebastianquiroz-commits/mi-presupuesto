@@ -1,6 +1,6 @@
 // ── BOLSILLO · service worker ────────────────────────────────────────────────
 // Cambia VERSION cada vez que publiques cambios: el navegador descargará todo.
-const VERSION = '5.3.0';
+const VERSION = '5.4.0';
 const CACHE = `bolsillo-${VERSION}`;
 const APP_FILES = ['./', './index.html', './styles.css', './core.js', './ui.js', './forms.js', './sync.js', './manifest.json', './icon.png'];
 // SDK de Firebase: URLs versionadas (inmutables). Se guardan para poder abrir
