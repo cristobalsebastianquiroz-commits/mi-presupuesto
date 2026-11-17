@@ -2,13 +2,13 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Bolsillo">
 <meta name="description" content="Bolsillo: tu presupuesto personal, ordenado.">
-<meta name="theme-color" content="#F2EFE8" id="mc">
+<meta name="theme-color" content="#EAE5DA" id="mc">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -19,7 +19,7 @@
   var t=localStorage.getItem('bolsillo_theme');
   if(!t&&localStorage.getItem('dk')==='1')t='dark';           // preferencia de la versión anterior
   var dark=t==='dark'||((!t||t==='auto')&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
-  if(dark){document.documentElement.setAttribute('data-theme','dark');document.getElementById('mc').content='#0E1210';}
+  if(dark){document.documentElement.setAttribute('data-theme','dark');document.getElementById('mc').content='#0C100E';}
 }catch(e){}})();
 </script>
 <link rel="stylesheet" href="styles.css">
