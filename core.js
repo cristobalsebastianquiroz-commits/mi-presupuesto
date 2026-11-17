@@ -101,6 +101,8 @@
         delete m.saved; m._migrated = true; changed = true;
       }
     });
+    // Abonos sin id (versión anterior): id determinista según su posición.
+    ['deudas', 'cobros'].forEach(k => (d[k] || []).forEach(c => (c.abonos || []).forEach((a, i) => { if (a && a.id == null) { a.id = `ab_${c.id}_${i}`; changed = true; } })));
     // Recurrentes: de "mes aplicado" (global) a aplicado por recurrente y mes.
     if ((d.schema || 1) < 2) {
       Object.keys(d.applied).forEach(mk => {
@@ -166,7 +168,8 @@
     const spentBy = {}; spentRows.forEach(r => { spentBy[r.c.id] = r.spent; });
     const rows = Object.keys(budget).filter(id => budget[id] > 0).map(id => {
       const b = budget[id], spent = spentBy[id] || 0, p = pct(spent, b);
-      return { c: getCat(d, id), b, spent, left: b - spent, pct: p, status: spent > b ? 'over' : (p >= 85 && spent < b) ? 'warn' : 'ok' };
+      const saving = SAVINGS_CAT_IDS.includes(id); // ahorrar más de lo planeado es bueno
+      return { c: getCat(d, id), b, spent, left: b - spent, pct: p, saving, status: saving ? 'ok' : spent > b ? 'over' : (p >= 85 && spent < b) ? 'warn' : 'ok' };
     }).sort((a, b) => b.pct - a.pct);
     const unbudgeted = spentRows.filter(r => !(budget[r.c.id] > 0));
     const totalB = sum(rows, r => r.b), spentB = sum(rows, r => r.spent);
@@ -252,9 +255,12 @@
     const closedDue = cycleDueDate(card, closed);
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const paid = (card.paidCycles || {})[closed];
-    if (closedDue >= today && !paid) {
+    // Un estado facturado sin marcar como pagado se sigue mostrando hasta
+    // 7 días después de su vencimiento (como "vencido"); luego se asume pagado.
+    const graceEnd = new Date(closedDue.getFullYear(), closedDue.getMonth(), closedDue.getDate() + 7);
+    if (graceEnd >= today && !paid) {
       const t = cycleTotal(card, closed, UF);
-      if (t.total > 0) return { ...t, due: closedDue, closed: true };
+      if (t.total > 0) return { ...t, due: closedDue, closed: true, overdue: closedDue < today };
     }
     return { ...cycleTotal(card, open, UF), due: cycleDueDate(card, open), closed: false };
   }
@@ -264,8 +270,8 @@
     return { open, cut: cycleCutDate(card, open), current: cycleTotal(card, open, UF), next, bal, used: card.limit > 0 ? clamp(pct(bal, card.limit), 0, 100) : null };
   }
   function cardProjection(card, UF, now = new Date(), n = 3) {
-    const base = billingCycle(card, now);
-    return Array.from({ length: n }, (_, i) => { const cyc = shiftMk(base, i + 1); return { cycle: cyc, total: cycleTotal(card, cyc, UF).total }; });
+    const base = billingCycle(card, now), start = nextPayment(card, UF, now).closed ? 0 : 1;
+    return Array.from({ length: n }, (_, i) => { const cyc = shiftMk(base, i + start); return { cycle: cyc, total: cycleTotal(card, cyc, UF).total }; });
   }
   // Mantiene enlazados un movimiento pagado con crédito y su compra en la
   // tarjeta: crear, actualizar o quitar la compra según el estado del movimiento.
@@ -281,20 +287,24 @@
       return null;
     };
     const cur = find() || adopt();
+    const drop = (c, p) => { c.purchases = c.purchases.filter(x => x !== p); c.u = ts; if (d.deleted) d.deleted[p.id] = ts; };
     const wants = tx.type === 'exp' && tx.pago === 'credit' && d.cards.length > 0;
     if (!wants) {
-      if (cur) { cur.c.purchases = cur.c.purchases.filter(x => x !== cur.p); cur.c.u = ts; }
+      if (cur) drop(cur.c, cur.p);
       delete tx.purchId; delete tx.cardId;
       return null;
     }
     // Movimiento antiguo a crédito sin compra identificable: no se crea otra
     // (evita duplicar la deuda que ya pudo quedar registrada en la tarjeta).
     if (!cur && opts.legacy && opts.wasCredit) return null;
+    // Estaba enlazado a una compra que ya no existe (se eliminó su tarjeta):
+    // no se crea deuda en otra tarjeta salvo que el usuario elija una.
+    if (!cur && tx.purchId && !opts.relink) return null;
     const card = d.cards.find(c => c.id === (opts.cardId || (cur && cur.c.id) || tx.cardId)) || d.cards[0];
     const type = opts.crType || (cur && cur.p.type) || 'cash';
     const inst = type === 'cash' ? 1 : Math.max(parseInt(opts.inst || (cur && cur.p.installments)) || 2, 2);
     const plan = instPlan(tx.amount, inst, type, card.tasa || 0);
-    if (cur && cur.c !== card) { cur.c.purchases = cur.c.purchases.filter(x => x !== cur.p); cur.c.u = ts; }
+    if (cur && cur.c !== card) drop(cur.c, cur.p);
     let p = cur && cur.c === card ? cur.p : null;
     if (!p) {
       // El ciclo de la primera cuota depende de la fecha de la compra.
@@ -302,6 +312,8 @@
       p = { id: uid(), emoji: '🛍️', active: true, fromTx: true, txId: tx.id, from: billingCycle(card, when) };
       (card.purchases = card.purchases || []).push(p);
     }
+    else if ((opts.dateChanged || (p.txDate && p.txDate !== tx.date)) && tx.date && isISO(tx.date)) p.from = billingCycle(card, parseISO(tx.date)); // la fecha mueve la compra de ciclo
+    if (tx.date) p.txDate = tx.date;
     Object.assign(p, { desc: tx.desc || getCat(d, tx.cat).name, amount: tx.amount, type, installments: inst, instAmt: plan.monthly, stamps: plan.stamps });
     card.u = ts; tx.purchId = p.id; tx.cardId = card.id;
     return p;
@@ -387,7 +399,7 @@
         const date = `${mk}-${pad(rd)}`;
         const tx = { id: `rc_${r.id}_${mk}`, type: r.type, amount: r.amount, cat: r.cat, pago: r.type === 'inc' ? null : (r.pago || 'debit'), desc: r.desc || '', note: r.note || '', date, dateLabel: dateLabel(date), month: mk, metaId: null, isRecur: true, recurId: r.id, u: ts };
         if (r.acc && d.accounts.some(a => a.id === r.acc)) tx.acc = r.acc;
-        if (tx.type === 'exp') { const m = SAVINGS_CAT_IDS.includes(tx.cat) ? null : linkedMetaFor(d, tx.cat); if (m) tx.metaId = m.id; }
+        if (tx.type === 'exp') { const m = linkedMetaFor(d, tx.cat); if (m) tx.metaId = m.id; }
         if (!d.txs.some(t => t.id === tx.id)) { d.txs.push(tx); syncTxPurchase(d, tx, { cardId: r.cardId }, parseISO(date)); }
         d.recurApplied[recurKey(r, mk)] = 1; n++;
       });
@@ -509,6 +521,24 @@
   // un borrado (tombstone en .deleted) solo gana si es posterior a la última
   // edición. Nunca descarta un registro que exista en un solo lado sin haber
   // sido borrado explícitamente.
+  // Dentro de un registro editado en dos dispositivos, no se pierden las
+  // compras de una tarjeta ni los abonos agregados en el otro.
+  function mergeNested(col, w, l, del) {
+    if (!l) return w;
+    const extra = (wl, ll) => (ll || []).filter(x => x && x.id != null && !del[x.id] && !(wl || []).some(y => y && y.id === x.id));
+    if (col === 'cards') {
+      const add = extra(w.purchases, l.purchases), pc = { ...(l.paidCycles || {}), ...(w.paidCycles || {}) };
+      if (!add.length && Object.keys(pc).length === Object.keys(w.paidCycles || {}).length) return w;
+      return { ...w, purchases: [...(w.purchases || []), ...add], paidCycles: pc };
+    }
+    if (col === 'deudas' || col === 'cobros') {
+      const add = extra(w.abonos, l.abonos);
+      if (!add.length) return w;
+      const paid = (w.paid || 0) + sum(add, x => x.amount);
+      return { ...w, abonos: [...(w.abonos || []), ...add], paid, done: paid >= (w.amount || 0) ? true : w.done };
+    }
+    return w;
+  }
   function mergeDocs(a, b) {
     a = a || {}; b = b || {};
     const aNew = (a.updatedAt || 0) >= (b.updatedAt || 0), out = {};
@@ -519,21 +549,24 @@
       const put = (it, pref) => {
         if (!it || it.id == null) return;
         const ex = map.get(it.id);
-        if (!ex || (it.u || 0) > (ex.it.u || 0) || ((it.u || 0) === (ex.it.u || 0) && pref && !ex.pref)) map.set(it.id, { it, pref });
+        if (!ex) { map.set(it.id, { it, pref, other: null }); return; }
+        if ((it.u || 0) > (ex.it.u || 0) || ((it.u || 0) === (ex.it.u || 0) && pref && !ex.pref)) map.set(it.id, { it, pref, other: ex.it });
+        else ex.other = it;
       };
       (a[col] || []).forEach(it => put(it, aNew));
       (b[col] || []).forEach(it => put(it, !aNew));
-      out[col] = [...map.values()].map(x => x.it).filter(it => !(del[it.id] && del[it.id] >= (it.u || 0)));
+      out[col] = [...map.values()].map(x => mergeNested(col, x.it, x.other, del)).filter(it => !(del[it.id] && del[it.id] >= (it.u || 0)));
     }
     const pick = (k, mk) => {
       const au = (a.budgetsU || {})[mk] || 0, bu = (b.budgetsU || {})[mk] || 0;
       const A = (a[k] || {})[mk], B = (b[k] || {})[mk];
+      if (au !== bu) return au > bu ? A : B;          // gana la versión más reciente, aunque sea "sin presupuesto"
       if (A === undefined) return B; if (B === undefined) return A;
-      return au !== bu ? (au > bu ? A : B) : (aNew ? A : B);
+      return aNew ? A : B;
     };
     out.budgets = {}; out.budgetsU = {};
     new Set([...Object.keys(a.budgets || {}), ...Object.keys(b.budgets || {})]).forEach(mk => {
-      out.budgets[mk] = pick('budgets', mk);
+      const v = pick('budgets', mk); if (v !== undefined) out.budgets[mk] = v;
       const u = Math.max((a.budgetsU || {})[mk] || 0, (b.budgetsU || {})[mk] || 0); if (u) out.budgetsU[mk] = u;
     });
     const [hi, lo] = aNew ? [a, b] : [b, a];
