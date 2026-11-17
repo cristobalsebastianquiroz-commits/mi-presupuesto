@@ -4,9 +4,9 @@
   "description": "Tu presupuesto personal, ordenado",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#F2EFE8",
-  "theme_color": "#F2EFE8",
-  "orientation": "any",
+  "background_color": "#EAE5DA",
+  "theme_color": "#EAE5DA",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "icon.png",
@@ -16,5 +16,8 @@
     }
   ],
   "scope": "./",
-  "lang": "es-CL"
+  "lang": "es-CL",
+  "display_override": [
+    "standalone"
+  ]
 }
