@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Bolsillo">
 <meta name="description" content="Bolsillo: tu presupuesto personal, ordenado.">
-<meta name="theme-color" content="#EAE5DA" id="mc">
+<meta name="theme-color" content="#F3EDE2" id="mc">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -19,9 +19,11 @@
   var t=localStorage.getItem('bolsillo_theme');
   if(!t&&localStorage.getItem('dk')==='1')t='dark';           // preferencia de la versión anterior
   var dark=t==='dark'||((!t||t==='auto')&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
-  if(dark){document.documentElement.setAttribute('data-theme','dark');document.getElementById('mc').content='#0C100E';}
+  if(dark){document.documentElement.setAttribute('data-theme','dark');document.getElementById('mc').content='#0C1310';}
 }catch(e){}})();
 </script>
+<link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/source-serif-4-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -48,6 +50,7 @@
 
 <div id="ov" onclick="closeSheet()"></div>
 <section id="sh" role="dialog" aria-modal="true" aria-labelledby="sht">
+  <div class="grab" aria-hidden="true"></div>
   <div id="shh">
     <button class="iconbtn" id="shback" onclick="sheetBack()" aria-label="Volver"></button>
     <h2 id="sht"></h2>
