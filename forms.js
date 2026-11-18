@@ -79,6 +79,7 @@ function txCreditPreview(st) {
   return `<div class="box">${kv(inst > 1 ? `${inst} cuotas de` : 'Cargo único', fmt(p.monthly))}${p.stamps ? kv('Impuesto de timbres (1ª cuota)', fmt(p.stamps)) : ''}${p.interest ? kv('<span class="neg">Interés total</span>', `<span class="neg">${fmt(p.interest)}</span>`) : ''}${inst > 1 ? kv('Total a pagar', fmt(p.total), 'tot') : ''}</div>`;
 }
 SHEETS.tx = {
+  commit(t, data, st) { if (t.id === 'tx-d' && !st.id) applyQuick(st, t.value, false, 'tap'); },
   title: (data, st) => (st.id ? 'Editar movimiento' : 'Nuevo movimiento'),
   focus: 'tx-a',
   body(data, st) {
@@ -93,16 +94,19 @@ SHEETS.tx = {
       if (st.pago === 'credit') {
         if (!d.cards.length) pay += `<div class="note">Aún no registras una tarjeta de crédito. El gasto se guardará igual; <button type="button" class="link"${sh('card-new')}>agrégala</button> para llevar sus cuotas.</div>`;
         else pay += `${d.cards.length > 1 ? fld('Tarjeta', 'tx-card', select('tx-card', 'cardId', d.cards.map(c => [c.id, `${c.alias || c.tipo} · ${c.banco}`]), st.cardId)) : ''}
-          <div class="two">${fld('Modalidad', 'tx-crt', select('tx-crt', 'crType', [['cash', 'Sin cuotas'], ['no', 'Sin interés'], ['yes', 'Con interés']], st.crType))}
-          ${st.crType !== 'cash' ? fld('N° de cuotas', 'tx-ci', select('tx-ci', 'inst', INST.map(n => [n, n + ' cuotas']), st.inst)) : '<div></div>'}</div><div id="tx-cr">${txCreditPreview(st)}</div>`;
+          <div class="${st.crType !== 'cash' ? 'two' : ''}">${fld('Modalidad', 'tx-crt', select('tx-crt', 'crType', [['cash', 'Sin cuotas'], ['no', 'Sin interés'], ['yes', 'Con interés']], st.crType))}
+          ${st.crType !== 'cash' ? fld('N° de cuotas', 'tx-ci', select('tx-ci', 'inst', INST.map(n => [n, n + ' cuotas']), st.inst)) : ''}</div><div id="tx-cr">${txCreditPreview(st)}</div>`;
       } else pay += accSel;
       const metas = d.metas.filter(m => !m.done || m.id === st.metaId);
       if (C.SAVINGS_CAT_IDS.includes(st.cat) && metas.length) pay += fld('Abonar a la meta', 'tx-meta', select('tx-meta', 'metaId', [['', 'Ninguna (ahorro general)']].concat(metas.map(m => [m.id, `${m.emoji || '🎯'} ${m.name}`])), st.metaId));
       else { const lm = C.linkedMetaFor(d, st.cat); if (lm) pay += `<div class="note">Este gasto abonará a tu meta “${esc(lm.name)}”.</div>`; }
     } else pay = accSel;
-    return `<div class="seg" role="group" style="margin-bottom:4px"><button type="button" class="${isExp ? 'on' : ''}"${fn('txType', 'exp')} aria-pressed="${isExp}">Gasto</button><button type="button" class="${!isExp ? 'on' : ''}"${fn('txType', 'inc')} aria-pressed="${!isExp}">Ingreso</button></div>
+    if (!st.id && !st.freq) st.freq = C.frequentTxs(d);
+    const freq = !st.id && st.freq.length ? `<div class="lab" style="margin:2px 0 6px">Frecuentes</div><div class="chips freq" style="margin-bottom:10px">${st.freq.map((f, i) => `<button type="button" class="chip"${fn('txFreq', i)}>${esc(C.getCat(d, f.cat).icon)} ${esc(f.desc)} <span class="muted num">${fmt(f.amount)}</span></button>`).join('')}</div>` : '';
+    const mic = SPEECH && !st.id ? `<button type="button" class="mic${st.listening ? ' rec' : ''}" aria-label="Dictar movimiento"${fn('txVoice')}>${ico('mic')}</button>` : '';
+    return `${freq}<div class="seg" role="group" style="margin-bottom:4px"><button type="button" class="${isExp ? 'on' : ''}"${fn('txType', 'exp')} aria-pressed="${isExp}">Gasto</button><button type="button" class="${!isExp ? 'on' : ''}"${fn('txType', 'inc')} aria-pressed="${!isExp}">Ingreso</button></div>
       <div class="amt-in ${st.type} fld"><label class="sr" for="tx-a">Monto</label><div class="amt-row"><span class="cur" aria-hidden="true">$</span><input type="text" inputmode="numeric" autocomplete="off" data-money data-k="amount" id="tx-a" placeholder="0" value="${esc(st.amount)}" style="width:${amtW(st.amount)}"></div></div>
-      ${fld('Descripción <span style="font-weight:400">(opcional)</span>', 'tx-d', text('tx-d', 'desc', st.desc, isExp ? '¿En qué fue?' : '¿De dónde viene?', 'list="tx-dl"') + `<datalist id="tx-dl">${descs.map(x => `<option value="${esc(x)}">`).join('')}</datalist>`)}
+      ${fld('Descripción <span style="font-weight:400">(opcional)</span>', 'tx-d', `<div class="with-mic">${text('tx-d', 'desc', st.desc, st.id ? (isExp ? '¿En qué fue?' : '¿De dónde viene?') : (isExp ? 'Ej: almuerzo 8.500 débito' : 'Ej: sueldo 1.200.000'), 'list="tx-dl"')}${mic}</div>` + `<datalist id="tx-dl">${descs.map(x => `<option value="${esc(x)}">`).join('')}</datalist>`)}
       <div class="fld"><div class="lab">Categoría</div><div id="tx-cats">${txCatGrid(st)}</div></div>
       ${pay}
       ${fld('Fecha', 'tx-dt', date('tx-dt', 'date', st.date))}
@@ -123,11 +127,59 @@ SHEETS.tx = {
     } else if (t.id === 'tx-crt' || t.id === 'tx-card' || t.id === 'tx-ci') rerender();
   },
 };
+// Texto libre o dictado: "almuerzo 8.500 débito" completa monto, descripción, medio y categoría.
+// Texto libre o dictado: "almuerzo 8.500 débito" completa monto, descripción, medio y categoría.
+// paint: 'now' repinta; 'tap' espera a que termine el toque en curso (al salir del
+// campo, el siguiente toque —por ejemplo en Guardar— no se pierde); 'none' no repinta.
+function applyQuick(st, text, force, paint = 'now') {
+  const d = getData(), q = C.parseQuick(text, d);
+  if (!force && !(q.amount && !C.parseMoney(st.amount))) return false;
+  if (q.type && q.type !== st.type && !st.id && force) { st.type = q.type; st.cat = topCats(d, q.type)[0].id; st.pickedCat = 0; }
+  if (q.amount && (!C.parseMoney(st.amount) || force)) st.amount = C.group(q.amount);
+  st.desc = q.desc || '';
+  if (q.pago && st.type === 'exp') st.pago = q.pago;
+  if (q.cat && (!st.pickedCat || force) && C.catKind(C.getCat(d, q.cat)) === st.type) st.cat = q.cat;
+  if (d.accounts.length && st.type === 'exp' && st.pago !== 'credit' && q.pago) st.acc = defaultAcc(d, st);
+  if (paint === 'now') rerender();
+  else if (paint === 'tap') afterTap(() => { if (STACK.length && topState() === st) rerender(); });
+  return true;
+}
+// Ejecuta fn cuando termina el toque/clic en curso (o a los 400 ms si no hay ninguno).
+function afterTap(fn) {
+  let done = false;
+  const go = () => { if (done) return; done = true; document.removeEventListener('click', go, true); setTimeout(fn, 0); };
+  document.addEventListener('click', go, true);
+  setTimeout(go, 400);
+}
+const SPEECH = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition) || null;
+let REC = null;
+function stopVoice() { if (REC) { const r = REC; REC = null; r.onresult = null; r.onend = null; try { r.abort(); } catch (e) {} if (r.st) r.st.listening = false; } }
+window.stopVoice = stopVoice;
+ACTIONS.txVoice = () => {
+  const st = topState();
+  if (REC && REC.st === st) { try { REC.stop(); } catch (e) {} return; }
+  stopVoice();
+  try {
+    REC = new SPEECH(); REC.st = st; REC.lang = 'es-CL'; REC.interimResults = false; REC.maxAlternatives = 1;
+    REC.onresult = e => { const txt = e.results[0][0].transcript; if (STACK.length && topState() === st) { applyQuick(st, txt, true); toast(`Entendí: “${txt}”`); } };
+    REC.onerror = e => { if (e.error !== 'aborted' && e.error !== 'no-speech') toast('No se pudo usar el micrófono. Revisa el permiso del navegador.', { err: true }); };
+    REC.onend = () => { if (REC && REC.st === st) REC = null; st.listening = false; if (STACK.length && topState() === st) rerender(); };
+    REC.start(); st.listening = true; rerender();
+  } catch (e) { REC = null; toast('El dictado no está disponible en este navegador.', { err: true }); }
+};
+ACTIONS.txFreq = i => {
+  const st = topState(), f = (st.freq || [])[parseInt(i)]; if (!f) return;
+  Object.assign(st, { type: f.type, amount: C.group(f.amount), desc: f.desc, cat: f.cat, pickedCat: 1 });
+  if (f.type === 'exp' && f.pago) st.pago = f.pago;
+  if (getData().accounts.length) st.acc = defaultAcc(getData(), st);
+  rerender();
+};
 ACTIONS.txType = v => { const st = topState(), d = getData(); if (st.type === v) return; st.type = v; st.cat = topCats(d, v)[0].id; st.pickedCat = 0; if (d.accounts.length) st.acc = defaultAcc(d, st); rerender(); };
 ACTIONS.txCat = id => { const st = topState(); st.cat = id; st.pickedCat = 1; if (C.SAVINGS_CAT_IDS.includes(id) && !st.metaId) { const m = C.linkedMetaFor(getData(), id); if (m) st.metaId = m.id; } rerender(); };
 ACTIONS.txPago = v => { const st = topState(), d = getData(); st.pago = v; if (d.accounts.length && v !== 'credit') st.acc = defaultAcc(d, st); rerender(); };
 ACTIONS.txSave = () => {
   const st = topState(), d = getData();
+  if (!st.id && !C.parseMoney(st.amount) && st.desc) applyQuick(st, st.desc, false, 'none'); // "café 3.500" + Enter
   const amount = validAmount('tx-a', st); if (!amount) return;
   const dt = validDate('tx-dt', st.date); if (!dt) return;
   const isNew = !st.id, isExp = st.type === 'exp';
@@ -395,7 +447,8 @@ ACTIONS.accSave = id => {
   const a = id ? d.accounts.find(x => x.id === id) : { id: C.uid(), opening: 0 };
   if (!a) return doneSheet();
   Object.assign(a, { name: st.name.trim(), kind: st.kind, icon: (ACC_KINDS.find(k => k[0] === st.kind) || ACC_KINDS[0])[2] });
-  if (!id) { a.opening = bal; d.accounts.push(a); } else a.opening = (a.opening || 0) + (bal - C.accountBalance(d, a));
+  if (!id) { a.opening = bal; a.cuadre = C.isoDate(); d.accounts.push(a); }
+  else { if (bal !== C.accountBalance(d, a)) a.cuadre = C.isoDate(); a.opening = (a.opening || 0) + (bal - C.accountBalance(d, a)); }
   touch(a); commit(); doneSheet(id ? 'Cuenta actualizada.' : 'Cuenta agregada.');
 };
 ACTIONS.accDelete = id => confirmSheet('¿Eliminar esta cuenta?', 'Sus ingresos y gastos se conservan sin cuenta asociada. Las transferencias y abonos desde o hacia esta cuenta se eliminan.', 'Eliminar', () => {
@@ -409,6 +462,55 @@ ACTIONS.accDelete = id => confirmSheet('¿Eliminar esta cuenta?', 'Sus ingresos 
   d.recur.forEach(r => { if (r.acc === id) { r.acc = ''; touch(r); } });
   removeFrom('accounts', id); commit(); closeSheet(); refresh(); toast('Cuenta eliminada.');
 });
+
+// ══ CUADRAR (saldo esperado vs. saldo real) ═══════════════════
+// Inspirado en "Pulso" de Cuadra: comparas el saldo real de tu banco con el
+// que calcula Bolsillo y registras la diferencia en un paso.
+function cuadreDiff(d, st, a) {
+  const raw = st['r_' + a.id]; if (raw == null || raw === '' || C.parseMoney(raw) > MAX_AMOUNT) return null;
+  return C.parseMoney(raw) * (st['n_' + a.id] ? -1 : 1) - C.accountBalance(d, a);
+}
+function cuadreLine(d, st, a) {
+  const diff = cuadreDiff(d, st, a);
+  if (diff == null) return '<span class="muted">Escribe el saldo que ves en tu banco</span>';
+  if (diff === 0) return '<span class="pos">✓ Cuadra perfecto</span>';
+  return `<span class="${diff < 0 ? 'neg' : 'pos'}">${diff < 0 ? 'Faltan' : 'Sobran'} ${fmt(Math.abs(diff))}</span> <span class="muted">${diff < 0 ? '(gastos sin anotar)' : '(ingresos sin anotar)'}</span>`;
+}
+SHEETS.cuadrar = {
+  title: () => 'Cuadrar cuentas',
+  body(data, st) {
+    const d = getData();
+    if (!d.accounts.length) return `<div class="note">Para cuadrar, primero agrega tu cuenta con el saldo de hoy. Luego, cada cierto tiempo, compara ese saldo con el de tu banco.</div><button class="btn pri"${sh('account-form')}>Agregar cuenta</button>`;
+    if (!st.init) { st.init = 1; st.how = 'mov'; d.accounts.forEach(a => { const b = C.accountBalance(d, a); st['r_' + a.id] = C.group(Math.abs(b)); st['n_' + a.id] = b < 0; }); }
+    return `<p class="muted" style="margin-bottom:12px">Abre tu banco y escribe el saldo real de cada cuenta. Si no coincide, Bolsillo registra la diferencia.</p>
+      ${d.accounts.map(a => `<section class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:8px"><strong>${esc(a.icon || '🏦')} ${esc(a.name)}</strong><span class="hint num" style="margin:0">En Bolsillo ${fmt(C.accountBalance(d, a))}</span></div>
+        ${money('cu-' + a.id, 'r_' + a.id, st['r_' + a.id])}
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px"><div class="hint num" id="cu-d-${esc(a.id)}" style="margin:0">${cuadreLine(d, st, a)}</div><button type="button" class="link"${fn('cuNeg', a.id)}>${st['n_' + a.id] ? 'Saldo negativo ✓' : '¿Negativo?'}</button></div></section>`).join('')}
+      <div class="lab" style="margin-top:6px">Si hay diferencias</div>
+      <div class="seg" style="margin-bottom:6px"><button type="button" class="${st.how === 'mov' ? 'on' : ''}"${fn('setK', 'how=mov')}>Registrar movimiento</button><button type="button" class="${st.how === 'adj' ? 'on' : ''}"${fn('setK', 'how=adj')}>Solo ajustar saldo</button></div>
+      <div class="hint" style="margin-bottom:8px">${st.how === 'mov' ? 'Se anota como gasto o ingreso “Diferencia al cuadrar” y cuenta en tus totales del mes.' : 'Se corrige el saldo sin afectar tus gastos ni ingresos.'}</div>
+      <div class="stick"><button class="btn pri"${fn('cuSave')}>Cuadrar</button></div>`;
+  },
+  input(t, data, st) { const d = getData(), a = t.id && t.id.startsWith('cu-') && d.accounts.find(x => 'cu-' + x.id === t.id); if (a) { const el = document.getElementById('cu-d-' + a.id); if (el) el.innerHTML = cuadreLine(d, st, a); } },
+};
+ACTIONS.cuNeg = id => { const st = topState(); st['n_' + id] = !st['n_' + id]; rerender(); };
+ACTIONS.cuSave = () => {
+  const st = topState(), d = getData(), today = C.isoDate();
+  const big = d.accounts.find(a => C.parseMoney(st['r_' + a.id]) > MAX_AMOUNT);
+  if (big) return setErr('cu-' + big.id, 'El monto es demasiado grande.');
+  let total = 0, n = 0;
+  d.accounts.forEach(a => {
+    const diff = cuadreDiff(d, st, a); if (diff == null) return;
+    if (diff !== 0) {
+      n++; total += diff;
+      if (st.how === 'adj') a.opening = (a.opening || 0) + diff;
+      else d.txs.push(touch({ id: C.uid(), type: diff < 0 ? 'exp' : 'inc', amount: Math.abs(diff), cat: diff < 0 ? 'other' : 'income', pago: diff < 0 ? (a.kind === 'cash' ? 'cash' : 'debit') : null, acc: a.id, desc: 'Diferencia al cuadrar', note: '', date: today, dateLabel: C.dateLabel(today), month: C.mkOf(today), metaId: diff < 0 ? ((C.linkedMetaFor(d, 'other') || {}).id || null) : null, isRecur: false }));
+    }
+    a.cuadre = today; touch(a);
+  });
+  commit(); closeSheet(); refresh();
+  toast(n ? `Cuentas cuadradas. Diferencia total: ${total > 0 ? '+' : ''}${fmt(total)}.` : '¡Todo cuadra! Tus cuentas coinciden con tu banco.');
+};
 
 // ══ TARJETAS DE CRÉDITO ════════════════════════════════════════
 SHEETS['card-new'] = {
@@ -502,8 +604,8 @@ SHEETS['purchase-form'] = {
     return `${hist ? `<div class="note">Para compras anteriores que aún estás pagando. Usa el número de cuota que aparece en tu estado de cuenta (ej. “03/12”).</div>` : ''}
       ${fld('Descripción', 'pu-d', text('pu-d', 'desc', st.desc, 'Ej: Televisor'))}
       ${fld('Monto total de la compra', 'pu-a', money('pu-a', 'amount', st.amount))}
-      <div class="two">${fld('Modalidad', 'pu-t', select('pu-t', 'type', (hist ? [] : [['cash', 'Sin cuotas']]).concat([['no', 'Sin interés'], ['yes', `Con interés (${String(c.tasa || 0).replace('.', ',')}%)`]]), st.type))}
-      ${st.type !== 'cash' ? fld('N° de cuotas', 'pu-i', select('pu-i', 'inst', INST.map(n => [n, n + ' cuotas']), st.inst)) : '<div></div>'}</div>
+      <div class="${st.type !== 'cash' ? 'two' : ''}">${fld('Modalidad', 'pu-t', select('pu-t', 'type', (hist ? [] : [['cash', 'Sin cuotas']]).concat([['no', 'Sin interés'], ['yes', `Con interés (${String(c.tasa || 0).replace('.', ',')}%)`]]), st.type))}
+      ${st.type !== 'cash' ? fld('N° de cuotas', 'pu-i', select('pu-i', 'inst', INST.map(n => [n, n + ' cuotas']), st.inst)) : ''}</div>
       ${hist ? fld('Cuota que se cobra en el ciclo actual', 'pu-cur', `<input class="inp" type="number" inputmode="numeric" min="1" max="48" id="pu-cur" data-k="cur" value="${esc(st.cur)}">`)
         : fld('Primera cuota en el estado de', 'pu-f', select('pu-f', 'from', [0, 1, 2].map(i => { const k = C.shiftMk(open, i); return [k, `${C.mlabel(k)} · vence ${C.shortDate(C.cycleDueDate(c, k))}`]; }), st.from))}
       <div id="pu-pv">${purchPreview(st, c, hist)}</div>
@@ -766,8 +868,8 @@ SHEETS.categories = {
   live: true, title: () => 'Categorías',
   body() {
     const d = getData();
-    return `<button class="btn sec2" style="margin-bottom:12px"${sh('cat-form')}>${ico('plus')} Nueva categoría</button>
-      ${d.cats.length ? `<div class="sec" style="margin-top:0"><span>Tuyas</span></div><section class="card"><div class="rows">${d.cats.map(c => row({ icon: catIcon(c), title: esc(c.name), sub: `${C.catKind(c) === 'inc' ? 'Ingreso' : 'Gasto'} · ${C.catUsage(d, c.id)} movimiento(s)`, attr: sh('cat-form', c.id), chev: 1 })).join('')}</div></section>` : ''}
+    return `<div class="sec" style="margin-top:0"><span>Tuyas</span><button class="link"${sh('cat-form')}>+ Nueva</button></div>
+      ${d.cats.length ? `<section class="card"><div class="rows">${d.cats.map(c => row({ icon: catIcon(c), title: esc(c.name), sub: `${C.catKind(c) === 'inc' ? 'Ingreso' : 'Gasto'} · ${C.catUsage(d, c.id)} movimiento(s)`, attr: sh('cat-form', c.id), chev: 1 })).join('')}</div></section>` : '<p class="muted" style="margin:0 4px">Aún no creas categorías propias.</p>'}
       <div class="sec"><span>Incluidas</span></div><section class="card"><div class="rows">${C.BASE_CATS.map(c => row({ icon: catIcon(c), title: esc(c.name), sub: C.catKind(c) === 'inc' ? 'Ingreso' : 'Gasto' })).join('')}</div></section>`;
   },
 };
@@ -781,7 +883,7 @@ SHEETS['cat-form'] = {
     return `<div class="two" style="grid-template-columns:96px 1fr">${fld('Ícono', 'ct-i', text('ct-i', 'icon', st.icon, '📌', 'maxlength="4" style="text-align:center;font-size:20px"'))}${fld('Nombre', 'ct-n', text('ct-n', 'name', st.name, 'Ej: Peluquería', 'maxlength="24"'))}</div>
       ${c ? '' : `<div class="fld"><div class="lab">Tipo</div><div class="seg"><button type="button" class="${st.kind === 'exp' ? 'on' : ''}"${fn('setK', 'kind=exp')}>Gasto</button><button type="button" class="${st.kind === 'inc' ? 'on' : ''}"${fn('setK', 'kind=inc')}>Ingreso</button></div></div>`}
       <div class="btns"><button class="btn pri"${fn('catSave', id || '')}>${c ? 'Guardar' : 'Crear categoría'}</button></div>
-      ${c ? `<div style="border-top:1px solid var(--bd);margin:20px 0 14px"></div>${used ? fld(`Mover sus ${used} movimiento(s) a`, 'ct-mv', select('ct-mv', 'moveTo', [['', 'Elige una categoría']].concat(others.map(x => [x.id, `${x.icon} ${x.name}`])), st.moveTo), 'Para no dejar movimientos sin categoría, elige a dónde pasan.') : ''}<button class="btn dan"${fn('catDelete', id)}>Eliminar categoría</button>` : ''}`;
+      ${c ? `<div style="margin-top:20px"></div>${used ? fld(`Mover sus ${used} movimiento(s) a`, 'ct-mv', select('ct-mv', 'moveTo', [['', 'Elige una categoría']].concat(others.map(x => [x.id, `${x.icon} ${x.name}`])), st.moveTo), 'Para no dejar movimientos sin categoría, elige a dónde pasan.') : ''}<button class="btn dan"${fn('catDelete', id)}>Eliminar categoría</button>` : ''}`;
   },
 };
 ACTIONS.catSave = id => {
