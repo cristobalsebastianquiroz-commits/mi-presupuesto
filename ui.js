@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 'use strict';
 const C = Core, { esc, fmt } = Core;
-const APP_VERSION = '5.4.0';
+const APP_VERSION = '5.5.1';
 const KEY = 'bolsillo_v1', OWNER_KEY = 'bolsillo_owner', SESS_KEY = 'bolsillo_sess', THEME_KEY = 'bolsillo_theme';
 const $ = id => document.getElementById(id);
 const ls = {
@@ -84,6 +84,9 @@ const ICONS = {
   cal: 'M4 5h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 10h18M8 3v4M16 3v4',
   chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
+  cash: 'M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM6 10v4M18 10v4',
+  mic: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
+  scale: 'M12 3v18M5 21h14M3 8h18M6 8l-3 7a3 3 0 0 0 6 0zM18 8l-3 7a3 3 0 0 0 6 0z',
 };
 const ico = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[n] || ''}"/></svg>`;
 
@@ -93,6 +96,7 @@ const safeColor = c => (/^#[0-9a-fA-F]{3,8}$/.test(c || '') ? c : '#8A8478');
 // texto del usuario dentro de código JavaScript).
 const sh = (name, id) => ` data-sheet="${esc(name)}" data-id="${esc(id == null ? '' : id)}"`;
 const fn = (name, arg) => ` data-fn="${esc(name)}" data-arg="${esc(arg == null ? '' : arg)}"`;
+const icSm = c => `<span class="ic sm" style="background:${safeColor(c.color)}22">${esc(c.icon || '•')}</span>`;
 const catIcon = c => `<div class="ic" style="background:${safeColor(c.color)}22">${esc(c.icon || '•')}</div>`;
 const pg = (p, tone = '', cls = '') => `<div class="pg ${tone} ${cls}" role="progressbar" aria-valuenow="${Math.round(p)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${C.clamp(p, 0, 100)}%"></i></div>`;
 const tag = (t, tone = '') => `<span class="tag ${tone}">${esc(t)}</span>`;
@@ -148,15 +152,25 @@ function monthNav() {
 }
 function paintChrome() {
   const withMonth = UI.tab !== 'wealth';
-  $('top').innerHTML = `<h1>${TITLES[UI.tab]}</h1>${withMonth ? monthNav() : ''}
-    <button class="iconbtn" aria-label="Más opciones y ajustes"${sh('more')}>${ico('more')}<span id="syncdot" class="dot off"></span></button>`;
+  // Cabecera estilo iOS: fila de controles y título grande que se compacta al desplazar.
+  $('top').innerHTML = `<div class="tbar">${withMonth ? `<div class="mwrap">${monthNav()}</div>` : '<div class="mwrap"></div>'}<span class="tsm" aria-hidden="true">${TITLES[UI.tab]}</span>
+    <button class="iconbtn" aria-label="Más opciones y ajustes"${sh('more')}>${ico('more')}<span id="syncdot" class="dot off"></span></button></div><h1>${TITLES[UI.tab]}</h1>`;
+  // Barra de pestañas flotante (cápsula de vidrio) y botón + aparte, como en iOS.
   const btn = ([id, label, ic]) => `<button class="nb${UI.tab === id ? ' on' : ''}"${fn('go', id)} ${UI.tab === id ? 'aria-current="page"' : ''}>${ico(ic)}<span>${label}</span></button>`;
-  $('nav').innerHTML = btn(TABS[0]) + btn(TABS[1]) + `<button class="nb-add" aria-label="Registrar movimiento"${sh('tx')}><span>${ico('plus')}</span></button>` + btn(TABS[2]) + btn(TABS[3]);
+  $('nav').innerHTML = `<div class="tabbar">${TABS.map(btn).join('')}</div><button class="nb-add" aria-label="Registrar movimiento"${sh('tx')}><span>${ico('plus')}</span></button>`;
   $('side').innerHTML = `<div class="brand"><img src="icon.png" alt="">Bolsillo</div>
     <button class="btn pri"${sh('tx')}>${ico('plus')} Registrar</button>
     ${TABS.map(([id, label, ic]) => `<button class="sb${UI.tab === id ? ' on' : ''}"${fn('go', id)}>${ico(ic)}${label}</button>`).join('')}
     <div class="sp"></div><button class="sb"${sh('more')}>${ico('more')}Más y ajustes</button>`;
   paintSyncDot();
+}
+let COMPACT = false;
+function onScrollCon() {
+  // Histéresis: se compacta pasado los 28 px y vuelve solo cerca del inicio,
+  // y no se compacta si la página apenas desborda (evita el parpadeo).
+  const con = $('con'), y = con.scrollTop, room = con.scrollHeight - con.clientHeight;
+  const c = COMPACT ? y > 4 : (y > 28 && room > 80);
+  if (c !== COMPACT) { COMPACT = c; $('top').classList.toggle('compact', c); }
 }
 function paintMain(resetScroll) {
   if ($('app').hidden) return;
@@ -165,6 +179,7 @@ function paintMain(resetScroll) {
   const y = con.scrollTop;
   con.innerHTML = `<div class="wrap">${({ home: renderHome, moves: renderMoves, plan: renderPlan, wealth: renderWealth })[UI.tab]()}</div>`;
   con.scrollTop = resetScroll ? 0 : y;
+  COMPACT = con.scrollTop > 28 && con.scrollHeight - con.clientHeight > 80; $('top').classList.toggle('compact', COMPACT);
 }
 // Repinta la pantalla y, si hay una hoja de consulta abierta, también la hoja.
 // Las hojas con formulario no se repintan solas: se perdería lo que se escribe.
@@ -197,10 +212,12 @@ function renderHome() {
     const diff = curSpend - prevSpend, p = Math.round(Math.abs(diff) / prevSpend * 100);
     if (p >= 1) cmp = `<button class="link"${sh('compare')}><span class="${diff > 0 ? 'neg' : 'pos'}">${diff > 0 ? '▲' : '▼'} ${p}% ${diff > 0 ? 'más' : 'menos'}</span> <span class="muted" style="font-weight:500">de gasto que ${esc(C.mlabel(prev).split(' ')[0].toLowerCase())}${isCur ? ' a esta fecha' : ''}</span></button>`;
   }
+  const fc = isCur ? C.monthForecast(d, now) : null;
+  const proj = fc && fc.projInc > 0 ? `<div class="hint" style="margin-top:6px">Al cierre del mes, si gastas como en los meses anteriores: <strong class="num ${fc.projNet < 0 ? 'neg' : ''}">${fmt(fc.projNet)}</strong></div>` : '';
   const hero = `<section class="card hero">
     <div class="lbl">Disponible en ${esc(C.mlabel(mk).split(' ')[0].toLowerCase())}</div>
     <div class="big num ${t.net < 0 ? 'neg' : ''}" id="hero-net">${fmt(t.net)}</div>
-    <div class="sub">${sub}</div>${cmp}
+    <div class="sub">${sub}</div>${proj}${cmp}
     <div class="stats">
       <div class="stat"><div class="k">Ingresos</div><div class="v num pos" id="st-inc">${fmt(t.inc)}</div></div>
       <div class="stat"><div class="k">Gastos</div><div class="v num" id="st-exp">${fmt(t.spend)}</div></div>
@@ -228,7 +245,7 @@ function renderHome() {
   }
 
   const cb = C.categoryBreakdown(d, mk);
-  const catCard = cb.rows.length ? card('En qué se fue', `<div class="rows">${cb.rows.slice(0, 5).map(r => `<button class="bud"${sh('cat', r.c.id)}><div class="top"><span class="nm">${esc(r.c.icon)} ${esc(r.c.name)}</span><span class="rt num"><strong>${fmt(r.spent)}</strong> <span class="muted">· ${C.pct(r.spent, cb.total)}%</span></span></div>${pg(C.pct(r.spent, cb.rows[0].spent), '', 'sm')}</button>`).join('')}</div>`,
+  const catCard = cb.rows.length ? card('En qué se fue', `<div class="rows">${cb.rows.slice(0, 5).map(r => `<button class="bud"${sh('cat', r.c.id)}><div class="top"><span class="nm">${icSm(r.c)}${esc(r.c.name)}</span><span class="rt num"><strong>${fmt(r.spent)}</strong> <span class="muted">· ${C.pct(r.spent, cb.total)}%</span></span></div>${pg(C.pct(r.spent, cb.rows[0].spent), '', 'sm')}</button>`).join('')}</div>`,
     cb.rows.length > 5 ? `<button class="link"${sh('cats-month')}>Ver las ${cb.rows.length}</button>` : '') : '';
 
   const goals = d.metas.filter(m => !m.done);
@@ -247,7 +264,7 @@ function upRow(u) {
     right: `<span class="${u.income ? 'pos' : ''}">${u.income ? '+' : ''}${fmt(u.amount)}</span>`, attr: fn('insightGo', u.kind + '|' + u.id) });
 }
 function budRow(r) {
-  return `<button class="bud"${sh('cat', r.c.id)}><div class="top"><span class="nm">${esc(r.c.icon)} ${esc(r.c.name)}</span><span class="rt num ${r.saving ? (r.left <= 0 ? 'pos' : 'muted') : r.left < 0 ? 'neg' : 'muted'}">${r.saving ? (r.left <= 0 ? (r.left < 0 ? fmt(-r.left) + ' sobre lo planeado' : 'meta cumplida') : 'faltan ' + fmt(r.left)) : r.left < 0 ? fmt(-r.left) + ' excedido' : 'quedan ' + fmt(r.left)}</span></div>${pg(r.pct, r.status, 'sm')}<div class="ft"><span class="num">${fmt(r.spent)} de ${fmt(r.b)}</span><span class="num">${r.pct}%</span></div></button>`;
+  return `<button class="bud"${sh('cat', r.c.id)}><div class="top"><span class="nm">${icSm(r.c)}${esc(r.c.name)}</span><span class="rt num ${r.saving ? (r.left <= 0 ? 'pos' : 'muted') : r.left < 0 ? 'neg' : 'muted'}">${r.saving ? (r.left <= 0 ? (r.left < 0 ? fmt(-r.left) + ' sobre lo planeado' : 'meta cumplida') : 'faltan ' + fmt(r.left)) : r.left < 0 ? fmt(-r.left) + ' excedido' : 'quedan ' + fmt(r.left)}</span></div>${pg(r.pct, r.status, 'sm')}<div class="ft"><span class="num">${fmt(r.spent)} de ${fmt(r.b)}</span><span class="num">${r.pct}%</span></div></button>`;
 }
 
 // ── MOVIMIENTOS ────────────────────────────────────────────────
@@ -323,7 +340,7 @@ function planBudget() {
     return card('', empty('🎯', `No hay presupuesto para ${esc(C.mlabel(mk).toLowerCase())}. Un límite por categoría te dice cuánto puedes gastar sin pasarte.`,
       `<div class="btns">${sug.months ? `<button class="btn pri"${fn('budgetSuggest')}>Proponer según mi promedio (${sug.months} mes${sug.months > 1 ? 'es' : ''})</button>` : ''}
        ${hasPrev ? `<button class="btn sec2"${fn('budgetCopy')}>Copiar el de ${esc(C.mlabel(C.shiftMk(mk, -1)).toLowerCase())}</button>` : ''}
-       <button class="btn ${sug.months ? 'sec2' : 'pri'}"${sh('budget-add')}>Definir manualmente</button></div>`));
+       <button class="btn ${sug.months ? 'sec2' : 'pri'}"${sh('budget-add')}>${ico('plus')} Definir manualmente</button></div>`));
   }
   const tone = bs.spentB > bs.totalB ? 'over' : C.pct(bs.spentB, bs.totalB) >= 85 ? 'warn' : 'ok';
   let h = `<section class="card hero"><div class="lbl">${bs.leftB < 0 ? 'Excedido del presupuesto' : 'Libre del presupuesto'}</div>
@@ -353,8 +370,8 @@ function planGoals() {
   if (!d.metas.length) return card('', empty('🎯', 'Una meta le da propósito a tu ahorro: fondo de emergencia, un viaje, el pie de un depto.', `<button class="btn pri"${sh('goal-form')}>${ico('plus')} Crear meta</button>`));
   const month = C.sum(C.mTxs(d, UI.month).filter(t => t.metaId), t => t.amount);
   return `${month > 0 ? `<div class="note">Aportaste <strong class="num">${fmt(month)}</strong> a tus metas en ${esc(C.mlabel(UI.month).toLowerCase())}.</div>` : ''}
-    ${act.map(goalCard).join('')}${done.length ? `<div class="sec"><span>Completadas</span></div>${done.map(goalCard).join('')}` : ''}
-    <button class="btn sec2"${sh('goal-form')}>${ico('plus')} Nueva meta</button>`;
+    <div class="sec" style="margin-top:0"><span>Activas</span><button class="link"${sh('goal-form')}>+ Nueva</button></div>
+    ${act.map(goalCard).join('') || '<p class="muted" style="margin:0 4px 12px">No tienes metas activas.</p>'}${done.length ? `<div class="sec"><span>Completadas</span></div>${done.map(goalCard).join('')}` : ''}`;
 }
 function planRecur() {
   const d = getData(), cur = C.nowMk();
@@ -394,7 +411,7 @@ function renderWealth() {
     <button class="card" style="width:100%"${sh('kpis')}><div class="row" style="border:none;padding:0;min-height:0"><div class="ic">${ico('chart')}</div><div class="b"><div class="t">Salud financiera</div><div class="s">Ahorro, deuda, fondo de emergencia y costo de vida</div></div><span class="chev">${ico('chevR')}</span></div></button>`;
   const sect = (title, add, body) => `<section class="card"><div class="card-h"><h2>${title}</h2>${add}</div>${body}</section>`;
   const accs = sect('Cuentas y efectivo', `<button class="link"${sh('account-form')}>+ Agregar</button>`, d.accounts.length
-    ? `<div class="rows">${d.accounts.map(a => row({ icon: `<div class="ic">${esc(a.icon || '🏦')}</div>`, title: esc(a.name), sub: { bank: 'Cuenta bancaria', cash: 'Efectivo', savings: 'Ahorro' }[a.kind] || 'Cuenta', right: `<span class="${C.accountBalance(d, a) < 0 ? 'neg' : ''}">${fmt(C.accountBalance(d, a))}</span>`, attr: sh('account-form', a.id) })).join('')}</div>${d.accounts.length ? `<button class="btn sec2" style="margin-top:12px"${sh('transfer')}>${ico('swap')} Transferir o pagar tarjeta</button>` : ''}`
+    ? `<div class="rows">${d.accounts.map(a => row({ icon: `<div class="ic">${ico(a.kind === 'cash' ? 'cash' : 'wallet')}</div>`, title: esc(a.name), sub: `${{ bank: 'Cuenta bancaria', cash: 'Efectivo', savings: 'Ahorro' }[a.kind] || 'Cuenta'} · ${a.cuadre ? 'cuadrada ' + (C.daysBetween(C.parseISO(a.cuadre), new Date()) <= 0 ? 'hoy' : 'hace ' + Math.max(C.daysBetween(C.parseISO(a.cuadre), new Date()), 1) + ' d') : 'sin cuadrar'}`, right: `<span class="${C.accountBalance(d, a) < 0 ? 'neg' : ''}">${fmt(C.accountBalance(d, a))}</span>`, attr: sh('account-form', a.id) })).join('')}</div>${d.accounts.length ? `<div class="btns h" style="margin-top:12px"><button class="btn pri"${sh('cuadrar')}>${ico('scale')} Cuadrar</button><button class="btn sec2"${sh('transfer')}>${ico('swap')} Transferir</button></div>` : ''}`
     : `<p class="muted">Opcional: agrega tu cuenta con su saldo de hoy y Bolsillo lo mantendrá al día con cada ingreso, gasto y pago de tarjeta.</p>`);
   const cards = sect('Tarjetas de crédito', `<button class="link"${sh('card-new')}>+ Agregar</button>`, d.cards.length
     ? `<div class="rows">${d.cards.map(c => { const s = C.cardStatus(c, uf(), now); return row({ icon: `<div class="ic">${ico('card')}</div>`, title: esc(c.alias || c.tipo), sub: `${s.next.closed ? 'Pagar' : 'Próximo pago'} ${esc(C.shortDate(s.next.due))} · ${fmt(s.next.total)}${s.next.closed ? '' : ' est.'}`, right: `<span class="${s.bal ? 'neg' : ''}">${fmt(s.bal)}</span>`, rsub: 'en cuotas', attr: sh('card', c.id) }); }).join('')}</div>`
@@ -436,11 +453,37 @@ function renderSheet(keepScroll) {
 }
 function sheetBack() { STACK.pop(); if (!STACK.length) closeSheet(); else renderSheet(); }
 function hideSheet() {
+  if (window.stopVoice) window.stopVoice();
   STACK = []; $('ov').classList.remove('on'); $('sh').classList.remove('on'); delete document.body.dataset.sheet;
   if (document.activeElement && $('sh').contains(document.activeElement)) document.activeElement.blur(); // cierra el teclado
   setTimeout(() => { if (!STACK.length) $('shb').innerHTML = ''; }, 320); // no dejar formularios ocultos en el DOM
 }
 function closeSheet() { hideSheet(); releaseHistory(); }
+
+// ── Deslizar la hoja hacia abajo para cerrarla (desde el asa o el título) ──
+(function () {
+  let y0 = null, dy = 0, t0 = 0;
+  const sheet = () => $('sh');
+  const start = e => {
+    if (!STACK.length || window.innerWidth >= 960 || !e.target.closest('.grab,#shh') || e.target.closest('button')) return;
+    y0 = e.touches[0].clientY; dy = 0; t0 = Date.now(); sheet().style.transition = 'none';
+  };
+  const move = e => {
+    if (y0 == null) return;
+    dy = Math.max(e.touches[0].clientY - y0, 0);
+    sheet().style.transform = `translateY(${dy}px)`;
+    if (dy > 4) e.preventDefault();
+  };
+  const end = () => {
+    if (y0 == null) return;
+    const fast = dy > 40 && dy / Math.max(Date.now() - t0, 1) > 0.6;
+    y0 = null; sheet().style.transition = ''; sheet().style.transform = '';
+    if (dy > 110 || fast) closeSheet();
+  };
+  document.addEventListener('touchstart', start, { passive: true });
+  document.addEventListener('touchmove', move, { passive: false });
+  document.addEventListener('touchend', end); document.addEventListener('touchcancel', end);
+})();
 
 // ── Botón "atrás" del teléfono: cierra la hoja en vez de salir de la app ──
 // Mientras hay una hoja abierta existe UNA entrada extra en el historial.
@@ -485,6 +528,7 @@ const ACTIONS = {
     else if (k === 'debt') openSheet('owe', 'deudas|' + id);
     else if (k === 'loan') openSheet('owe', 'cobros|' + id);
     else if (k === 'compare') openSheet('compare');
+    else if (k === 'cuadrar') openSheet('cuadrar');
     else if (k === 'more') openSheet('more');
     else { closeSheet(); go('plan', { plan: 'recur' }); }
   },
@@ -516,6 +560,7 @@ document.addEventListener('change', e => {
   if (t.id === 'f-cat') { UI.f.cat = t.value; refresh(); }
   else if (t.id === 'f-pago') { UI.f.pago = t.value; refresh(); }
   else if (t.tagName === 'SELECT' || t.type === 'date' || t.type === 'month' || t.type === 'file') bindField(t);
+  else if (t.type === 'text') { const top = STACK[STACK.length - 1], def = top && SHEETS[top.name]; if (def && def.commit && $('sh').contains(t)) def.commit(t, top.data, top.state); }
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && STACK.length) closeSheet();
@@ -612,6 +657,7 @@ function showApp() {
 function showLogin() { closeSheet(); $('app').hidden = true; $('login').hidden = false; }
 function boot() {
   applyTheme();
+  $('con').addEventListener('scroll', onScrollCon, { passive: true });
   if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme()); } catch (e) {} }
   let sess = null; try { sess = JSON.parse(ls.get(SESS_KEY) || 'null'); } catch (e) {}
   if (sess && sess.uid) {
