@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 'use strict';
 const C = Core, { esc, fmt } = Core;
-const APP_VERSION = '5.5.1';
+const APP_VERSION = '5.6.0';
 const KEY = 'bolsillo_v1', OWNER_KEY = 'bolsillo_owner', SESS_KEY = 'bolsillo_sess', THEME_KEY = 'bolsillo_theme';
 const $ = id => document.getElementById(id);
 const ls = {
@@ -126,7 +126,7 @@ function applyTheme(t) {
   if (t) ls.set(THEME_KEY, t); else t = ls.get(THEME_KEY) || (ls.get('dk') === '1' ? 'dark' : 'auto');
   const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
   if (dark) document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
-  const m = $('mc'); if (m) m.setAttribute('content', dark ? '#0C100E' : '#EAE5DA');
+  const m = $('mc'); if (m) m.setAttribute('content', dark ? '#0C1310' : '#F3EDE2');
   return t;
 }
 
