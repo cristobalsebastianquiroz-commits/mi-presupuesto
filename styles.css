@@ -1,27 +1,31 @@
 /* ═══════════════════════════════════════════════════════════════
-   BOLSILLO · sistema visual "Vidrio sobrio" (glassmorphism)
-   Paleta sobria: verde bosque de marca, arena y salvia. Fondo cálido con
-   manchas muy suaves y superficies de vidrio esmerilado.
+   BOLSILLO · sistema visual "Bosque y arena" (glassmorphism, estética iOS)
+   Verde bosque de marca, arena dorada y fondo hueso; títulos en Source
+   Serif 4 e interfaz en Inter. Superficies de vidrio esmerilado.
    Contraste medido en el peor caso (texto sobre vidrio encima de la mancha
    más intensa): todo texto ≥ 5,2:1 en claro y ≥ 6,2:1 en oscuro.
    Escala de texto: 12 · 13 · 14 · 16 · 20 · 28 · 36  (nada bajo 12px)
    Espaciado: múltiplos de 4.
    ═══════════════════════════════════════════════════════════════ */
+/* Tipografía: Source Serif 4 (títulos y cifras destacadas) + Inter (interfaz).
+   Ambas con licencia SIL Open Font License; incluidas en /fonts para funcionar sin conexión. */
+@font-face{font-family:'Source Serif 4';src:url('fonts/source-serif-4-latin-wght-normal.woff2') format('woff2');font-weight:200 900;font-style:normal;font-display:swap;}
+@font-face{font-family:'Inter';src:url('fonts/inter-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap;}
 :root{
-  /* Manchas de color visibles (verde bosque, salvia, arena) para que el vidrio se note */
+  /* Paleta "Bosque y arena": verde bosque, arena dorada y fondo hueso */
   --mesh:
-    radial-gradient(30rem 30rem at 0% 0%, rgba(27,107,80,.40), transparent 65%),
-    radial-gradient(28rem 28rem at 100% 22%, rgba(184,146,90,.48), transparent 65%),
-    radial-gradient(26rem 26rem at 12% 58%, rgba(94,140,120,.40), transparent 65%),
-    radial-gradient(30rem 30rem at 92% 82%, rgba(27,107,80,.30), transparent 65%),
-    radial-gradient(26rem 26rem at 30% 110%, rgba(184,146,90,.40), transparent 65%);
+    radial-gradient(30rem 30rem at 0% 0%, rgba(30,77,59,.30), transparent 65%),
+    radial-gradient(28rem 28rem at 100% 22%, rgba(196,165,116,.42), transparent 65%),
+    radial-gradient(26rem 26rem at 12% 58%, rgba(46,107,83,.26), transparent 65%),
+    radial-gradient(30rem 30rem at 92% 82%, rgba(196,165,116,.30), transparent 65%),
+    radial-gradient(26rem 26rem at 30% 110%, rgba(30,77,59,.22), transparent 65%);
   /* Superficies */
-  --bg:#EAE5DA; --sf:rgba(255,255,255,.45); --s2:rgba(29,27,23,.06); --bd:rgba(29,27,23,.10);
-  --rim:rgba(255,255,255,.72); --field:rgba(255,255,255,.62); --sheet:rgba(244,241,234,.86); --sheet-solid:#F2EFE8; --navbg:rgba(255,255,255,.62);
+  --bg:#F3EDE2; --sf:rgba(255,255,255,.45); --s2:rgba(28,26,22,.06); --bd:rgba(28,26,22,.10);
+  --rim:rgba(255,255,255,.72); --field:rgba(255,255,255,.62); --sheet:rgba(246,241,233,.86); --sheet-solid:#F5EFE5; --navbg:rgba(255,255,255,.62);
   --blur:blur(22px) saturate(150%);
   /* Texto y semánticos */
-  --tx:#1D1B17; --mu:#544D42; --mu2:#3E392F;
-  --ac:#155A45; --ac-s:rgba(27,107,80,.12); --on-ac:#FFFFFF; --ac-fill:#155A45; --rd-fill:#A8322A;
+  --tx:#1C1A16; --mu:#554E43; --mu2:#3B362D; --gold:#7A5C2A; --sand:#C4A574;
+  --ac:#1E4D3B; --ac-s:rgba(30,77,59,.12); --on-ac:#FFFFFF; --ac-fill:#1E4D3B; --rd-fill:#A8322A;
   --gn:#14663A; --gn-s:rgba(27,122,75,.14);
   --rd:#9E2F27; --rd-s:rgba(179,54,45,.11);
   --am:#6E4600; --am-f:#C98A1B; --on-rd:#FFFFFF; --am-s:rgba(184,128,30,.15);
@@ -29,23 +33,24 @@
   --r:20px; --rs:14px;
   --sh:0 10px 30px rgba(29,27,23,.10), inset 0 1px 0 rgba(255,255,255,.85), inset 0 -1px 0 rgba(255,255,255,.25);
   --sh2:0 20px 60px rgba(29,27,23,.22);
-  --glow:0 6px 18px rgba(23,96,74,.28);
-  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --glow:0 6px 18px rgba(30,77,59,.28);
+  --font:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --serif:'Source Serif 4',Georgia,'Times New Roman',serif;
   --nav-h:64px;
   color-scheme:light;
 }
 :root[data-theme="dark"]{
   --mesh:
-    radial-gradient(30rem 30rem at 0% 0%, rgba(47,143,106,.40), transparent 65%),
-    radial-gradient(28rem 28rem at 100% 22%, rgba(184,146,90,.26), transparent 65%),
-    radial-gradient(26rem 26rem at 12% 58%, rgba(62,124,140,.32), transparent 65%),
-    radial-gradient(30rem 30rem at 92% 82%, rgba(47,143,106,.30), transparent 65%),
-    radial-gradient(26rem 26rem at 30% 110%, rgba(184,146,90,.22), transparent 65%);
-  --bg:#0C100E; --sf:rgba(26,32,28,.45); --s2:rgba(255,255,255,.06); --bd:rgba(255,255,255,.10);
-  --rim:rgba(255,255,255,.12); --field:rgba(255,255,255,.07); --sheet:rgba(18,23,20,.86); --sheet-solid:#121714; --navbg:rgba(18,23,20,.62);
-  --mu2:#BFC5BC;
-  --tx:#ECEFEA; --mu:#A3AAA1;
-  --ac:#6FD0A6; --ac-s:rgba(111,208,166,.16); --on-ac:#FFFFFF; --ac-fill:#1F7A5C; --rd-fill:#B83F35;
+    radial-gradient(30rem 30rem at 0% 0%, rgba(46,107,83,.40), transparent 65%),
+    radial-gradient(28rem 28rem at 100% 22%, rgba(196,165,116,.20), transparent 65%),
+    radial-gradient(26rem 26rem at 12% 58%, rgba(46,107,83,.24), transparent 65%),
+    radial-gradient(30rem 30rem at 92% 82%, rgba(46,107,83,.28), transparent 65%),
+    radial-gradient(26rem 26rem at 30% 110%, rgba(196,165,116,.16), transparent 65%);
+  --bg:#0C1310; --sf:rgba(26,34,29,.45); --s2:rgba(255,255,255,.06); --bd:rgba(255,255,255,.10);
+  --rim:rgba(255,255,255,.12); --field:rgba(255,255,255,.07); --sheet:rgba(17,24,20,.86); --sheet-solid:#111814; --navbg:rgba(17,24,20,.62);
+  --mu2:#C3C9BF; --gold:#D9B97E; --sand:#C4A574;
+  --tx:#EEF0EA; --mu:#A9B0A6;
+  --ac:#8FCBB0; --ac-s:rgba(143,203,176,.16); --on-ac:#FFFFFF; --ac-fill:#2C6B53; --rd-fill:#B83F35;
   --gn:#6FD09A; --gn-s:rgba(111,208,154,.14);
   --rd:#F2867C; --rd-s:rgba(242,134,124,.14);
   --am:#E5B55A; --am-f:#E5B55A; --on-rd:#2A0E0B; --am-s:rgba(229,181,90,.14);
@@ -246,6 +251,15 @@ details.more>summary::before{content:'+ ';} details.more[open]>summary::before{c
 .chips.freq .chip{height:40px;}
 .btns.h .btn{flex:1;}
 
+/* Tipografía: serif para títulos y cifras destacadas, sans para la interfaz */
+#top h1,#shh h2,.card-h h2,#login h1,#side .brand,#top .tsm{font-family:var(--serif);letter-spacing:0;}
+#top h1{font-weight:600;} #top .tsm{font-weight:600;font-size:18px;}
+.card-h h2{font-size:17px;font-weight:600;} #shh h2{font-size:18px;font-weight:600;}
+.hero .big,.cc .big{font-family:var(--serif);font-weight:600;letter-spacing:-.5px;}
+.num,.amt-row,.hero .big,.cc .big{font-variant-numeric:lining-nums tabular-nums;}
+body{font-feature-settings:"cv11","ss01";} /* Inter: cifras y letras más legibles */
+#login h1{font-size:34px;font-weight:600;}
+
 /* Respuesta táctil al presionar */
 .iconbtn:active,.mnav button:active,.chip:active,.nb:active{opacity:.6;}
 button.row:active,button.bud:active,button.card:active,.ban:active,.catc:active{opacity:.7;}
@@ -362,8 +376,8 @@ body[data-sheet] #toasts{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 @media (max-width:359px){
   .hero .big{font-size:30px;} .stat .v{font-size:14px;} .catgrid{grid-template-columns:repeat(3,1fr);}
   #top{padding-left:12px;padding-right:8px;} #top h1{font-size:28px;} .mnav .lbl{min-width:0;padding:0;font-size:12px;} .mnav button{min-width:30px;}
-  :root{--nav-h:56px;} #nav{left:8px;right:8px;gap:8px;} .nb{font-size:10px;letter-spacing:-.2px;} .nb span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .stats{gap:6px;} .stat{min-width:0;} .stat .k{white-space:normal;line-height:1.25;} .stat .v{font-size:13px;}
+  :root{--nav-h:56px;} #nav{left:8px;right:8px;gap:8px;} #nav .tabbar{padding:3px;} .nb{font-size:9.5px;letter-spacing:-.35px;} .nb span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .stats{gap:8px;} .stat{min-width:0;} .stat .k{white-space:normal;line-height:1.25;font-size:11px;letter-spacing:-.2px;} .stat .v{font-size:13px;}
   .cc .big{font-size:24px;}
 }
 /* Tablet: la hoja no se estira a todo el ancho */
