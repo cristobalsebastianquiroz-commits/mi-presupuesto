@@ -453,18 +453,24 @@
   // mes no inflan la proyección. Sin historial no se proyecta nada.
   function monthForecast(d, now = new Date()) {
     const mk = nowMk(now), day = now.getDate(), dim = daysInMonth(mk);
-    const t = totals(mTxs(d, mk));
+    const dayOf = x => parseInt(String(x.date || '').slice(8, 10)) || 1;
+    const txs = mTxs(d, mk), t = totals(txs);
     if (day >= dim || t.exp <= 0) return null;
+    // Lo variable que suele gastarse en los días que quedan (sin recurrentes, que se suman aparte).
     const tails = [];
     for (let i = 1; i <= 3; i++) {
-      const txs = mTxs(d, shiftMk(mk, -i));
-      if (!txs.some(x => x.type === 'exp')) continue;
-      tails.push(sum(txs.filter(x => x.type === 'exp' && (parseInt(String(x.date || '').slice(8, 10)) || 1) > day), x => x.amount));
+      const prev = mTxs(d, shiftMk(mk, -i));
+      if (!prev.some(x => x.type === 'exp')) continue;
+      tails.push(sum(prev.filter(x => x.type === 'exp' && !x.isRecur && dayOf(x) > day), x => x.amount));
     }
     if (!tails.length) return null;
-    const tail = Math.round(sum(tails, x => x) / tails.length);
-    const pendInc = sum(recurPendingFor(d, mk).filter(r => r.type === 'inc'), r => r.amount);
-    const projExp = t.exp + tail, projInc = t.inc + pendInc;
+    const histTail = Math.round(sum(tails, x => x) / tails.length);
+    const spentToDate = sum(txs.filter(x => x.type === 'exp' && (dayOf(x) <= day || x.isRecur)), x => x.amount);
+    const futureManual = sum(txs.filter(x => x.type === 'exp' && !x.isRecur && dayOf(x) > day), x => x.amount); // ya anotados con fecha futura
+    const pend = recurPendingFor(d, mk);
+    const pendExp = sum(pend.filter(r => r.type === 'exp'), r => r.amount), pendInc = sum(pend.filter(r => r.type === 'inc'), r => r.amount);
+    const tail = Math.max(histTail, futureManual);
+    const projExp = spentToDate + tail + pendExp, projInc = t.inc + pendInc;
     return { projExp, projInc, projNet: projInc - projExp, tail, months: tails.length, daysLeft: dim - day };
   }
 
@@ -505,6 +511,7 @@
     if (!bs.hasBudget && avg.months >= 1) out.push({ level: 'info', key: 'nobudget', title: 'Aún no tienes presupuesto este mes', text: 'Puedo proponerte uno a partir de lo que gastaste en los meses anteriores.', action: ['tab', 'plan'] });
     if (isCur) detectRecurring(d, now).slice(0, 1).forEach(r => out.push({ level: 'info', key: 'recur-' + r.desc, title: `"${r.desc}" se repite cada mes`, text: `Lo registraste 3 meses seguidos por ~${fmt(r.amount)}. Puedes automatizarlo como recurrente.`, action: ['recur-suggest', r.desc] }));
     if (t.inc > 0 && t.saved > 0 && t.saved / t.inc >= 0.1 && t.net >= 0) out.push({ level: 'good', key: 'saving', title: `Ahorraste el ${pct(t.saved, t.inc)}% de tu ingreso`, text: `${fmt(t.saved)} destinados a ahorro o inversión este mes.`, action: ['tab', 'plan'] });
+    if (isCur && d.accounts.some(a => needsCuadre(a, now))) out.push({ level: 'info', key: 'cuadre', title: 'Cuadra tus cuentas', text: 'Compara el saldo real de tu banco con el de Bolsillo: toma un minuto y mantiene tus cifras al día.', action: ['cuadrar', ''] });
     if (isCur) { const st = positiveStreak(d, now); if (st >= 2) out.push({ level: 'good', key: 'streak', title: `${st} meses seguidos en positivo`, text: 'Cerraste cada uno gastando menos de lo que ingresó.', action: ['compare', ''] }); }
     const order = { bad: 0, warn: 1, info: 2, good: 3 };
     return out.sort((a, b) => order[a.level] - order[b.level]);
@@ -586,6 +593,95 @@
     return canon(a) === canon(b);
   }
 
+  // ── Registro rápido ─────────────────────────────────────────
+  // Movimientos frecuentes (últimos 90 días): misma descripción, categoría,
+  // tipo y monto repetidos al menos 2 veces. Sirven de atajo de un toque.
+  function frequentTxs(d, now = new Date(), n = 6) {
+    const since = isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 90));
+    const by = {};
+    d.txs.forEach(t => {
+      if ((t.type !== 'exp' && t.type !== 'inc') || !t.desc || String(t.date || '') < since) return;
+      const k = [t.type, t.cat, String(t.desc).trim().toLowerCase(), t.amount].join('|');
+      const e = by[k] || (by[k] = { n: 0, last: '', t });
+      e.n++; if (String(t.date) >= e.last) { e.last = String(t.date); e.t = t; }
+    });
+    return Object.values(by).filter(e => e.n >= 2).sort((a, b) => b.n - a.n || (a.last < b.last ? 1 : -1)).slice(0, n)
+      .map(e => ({ type: e.t.type, cat: e.t.cat, desc: e.t.desc, amount: e.t.amount, pago: e.t.pago || null, n: e.n }));
+  }
+  // Interpreta un texto libre ("almuerzo 8.500 débito", "sueldo 1.200.000")
+  // y devuelve los campos que reconoce. Lo que no reconoce no lo inventa.
+  // Palabras habituales en Chile → categoría sugerida (solo una sugerencia, editable).
+  const QUICK_WORDS = {
+    food: ['super', 'supermercado', 'lider', 'jumbo', 'unimarc', 'tottus', 'santa', 'feria', 'almacen', 'almacén', 'pan', 'verduras'],
+    restaurant: ['almuerzo', 'cena', 'desayuno', 'cafe', 'café', 'restaurant', 'restaurante', 'sushi', 'pizza', 'completo', 'delivery', 'rappi', 'pedidosya'],
+    transport: ['uber', 'didi', 'cabify', 'taxi', 'metro', 'bip', 'micro', 'bus', 'colectivo', 'peaje', 'tag'],
+    car: ['bencina', 'copec', 'shell', 'petrobras', 'estacionamiento', 'mecanico', 'mecánico'],
+    health: ['farmacia', 'medico', 'médico', 'doctor', 'dentista', 'isapre', 'fonasa', 'remedios', 'examen'],
+    subs: ['netflix', 'spotify', 'disney', 'youtube', 'icloud', 'hbo', 'max', 'prime', 'chatgpt'],
+    home: ['luz', 'agua', 'gas', 'internet', 'gastos comunes', 'enel', 'aguas', 'vtr', 'entel', 'movistar', 'wom'],
+    rent: ['arriendo', 'dividendo'],
+    leisure: ['cine', 'concierto', 'entradas', 'bar', 'carrete', 'juego'],
+    gym: ['gimnasio', 'gym', 'smartfit', 'energy'],
+    clothes: ['ropa', 'zapatillas', 'zapatos', 'polera', 'pantalon', 'pantalón'],
+    pets: ['veterinario', 'mascota', 'perro', 'gato'],
+    edu: ['colegio', 'universidad', 'curso', 'matricula', 'matrícula', 'libros'],
+    gifts: ['regalo', 'cumpleaños'],
+  };
+  // Valor de un número escrito o dictado: "8.500", "8,500", "1.250.000", "8.500,50",
+  // "30 mil", "1,5 lucas", "3 mil 500". Los pesos chilenos no usan decimales.
+  function quickNumber(tok, mult, extra) {
+    let v;
+    if (/^\d{1,3}([.,]\d{3})+([.,]\d{1,2})?$/.test(tok) && !(mult && /^\d+[.,]\d{1,2}$/.test(tok))) {
+      v = parseInt(tok.replace(/[.,]\d{1,2}$/, m => (/^[.,]\d{3}$/.test(m) ? m : '')).replace(/\D/g, ''), 10);
+    } else v = parseFloat(tok.replace(',', '.'));
+    if (mult) v = v * 1000 + (extra || 0);
+    return Math.round(v);
+  }
+  function parseQuick(text, d) {
+    const raw = String(text || '').trim(); if (!raw) return {};
+    const out = {};
+    let rest = raw;
+    // Monto: entre todos los números, el mayor que parezca un monto (no un año suelto).
+    const re = /\$?\s*(\d{1,3}(?:[.,]\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d+)?)(?:\s*(mil|lucas?)\b(?:\s+(\d{1,3})\b)?)?/gi;
+    const cands = [];
+    let m;
+    while ((m = re.exec(rest))) {
+      const mult = !!m[2], v = quickNumber(m[1], mult, m[3] ? parseInt(m[3], 10) : 0);
+      const year = !mult && /^(19|20)\d{2}$/.test(m[1]);
+      if (v > 0 && (mult || v >= 100)) cands.push({ v, year, i: m.index, len: m[0].length });
+    }
+    const pool = cands.some(c => !c.year) ? cands.filter(c => !c.year) : cands;
+    const best = pool.sort((a, b) => b.v - a.v)[0];
+    if (best) { out.amount = best.v; rest = rest.slice(0, best.i) + ' ' + rest.slice(best.i + best.len); }
+    const take = (re2, k, v) => { if (re2.test(rest)) { out[k] = v; rest = rest.replace(re2, ' '); } };
+    take(/\b(con\s+)?(tarjeta\s+de\s+)?cr[eé]dito\b/i, 'pago', 'credit');
+    take(/\b(con\s+)?(tarjeta\s+de\s+)?d[eé]bito\b/i, 'pago', 'debit');
+    take(/\b(en\s+|con\s+)?efectivo\b/i, 'pago', 'cash');
+    if (/\b(sueldo|ingreso|me\s+pagaron|honorarios?|aguinaldo|gratificaci[oó]n)\b/i.test(rest)) out.type = 'inc';
+    rest = rest.replace(/\s+/g, ' ').replace(/^[\s,.;:$-]+|[\s,.;:$-]+$/g, '');
+    if (rest) out.desc = rest.charAt(0).toUpperCase() + rest.slice(1);
+    // Categoría: la usada antes con esa misma descripción; si no, palabras
+    // habituales; si no, el nombre exacto de una categoría.
+    if (d && out.desc) {
+      const q = out.desc.toLowerCase(), kind = out.type || 'exp';
+      const prev = [...d.txs].reverse().find(t => t.type === kind && String(t.desc || '').toLowerCase() === q);
+      if (prev && getCat(d, prev.cat) !== UNKNOWN_CAT) out.cat = prev.cat;
+      else {
+        const words = q.split(/[^a-záéíóúñü]+/i).filter(Boolean);
+        const has = w => (w.includes(' ') ? q.includes(w) : words.includes(w));
+        const k = kind === 'exp' && Object.keys(QUICK_WORDS).find(id => QUICK_WORDS[id].some(has));
+        const c = !k && catsOf(d, kind).find(c => c.name.toLowerCase().split(/[\/\s.]+/).some(w => w.length >= 4 && words.some(x => x === w || x + 's' === w || w + 's' === x)));
+        if (k) out.cat = k; else if (c) out.cat = c.id;
+      }
+      if (!out.type && out.cat && catKind(getCat(d, out.cat)) === 'exp') out.type = 'exp';
+    } else if (!out.type && out.pago) out.type = 'exp';
+    return out;
+  }
+
+  // ── Cuadrar cuentas (saldo esperado vs. saldo real) ─────────
+  // Una cuenta está "por cuadrar" si nunca se cuadró o hace más de 7 días.
+  const needsCuadre = (a, now = new Date()) => !isISO(a.cuadre) || daysBetween(parseISO(a.cuadre), now) > 7;
+
   // ── Tamaño del documento en la nube ──────────────────────────
   // Firestore admite hasta 1 MiB por documento. El JSON en UTF-8 es una
   // aproximación razonable del tamaño que calcula Firestore.
@@ -623,6 +719,6 @@
     stampsTax, instPlan, cardCut, cardDueDays, billingCycle, cycleCutDate, cycleDueDate, purchState, cycleTotal, debtFrom, nextPayment, cardStatus, cardProjection, syncTxPurchase,
     accountBalance, owedLeft, pendingSum, netWorth, netWorthTrend, finKPIs,
     recurDay, recurPendingFor, applyRecurrents, detectRecurring, upcoming, monthForecast, positiveStreak, insights, monthsSeries,
-    mergeDocs, sameData, validateBackup, toCSV, CLOUD_LIMIT, docBytes, cloudUsage,
+    mergeDocs, sameData, validateBackup, toCSV, CLOUD_LIMIT, docBytes, cloudUsage, frequentTxs, parseQuick, needsCuadre,
   };
 });
